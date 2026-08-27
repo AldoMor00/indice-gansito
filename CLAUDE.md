@@ -5,6 +5,10 @@
 - **Sin coautoría ni firma de asistentes de IA.** Nada de `Co-Authored-By: Claude`
   ni de `Generated with` en mensajes de commit ni en cuerpos de PR.
 - Mensajes en español, en imperativo: `Agrega...`, `Corrige...`, `Documenta...`.
+- **No abrir pull requests sin que se pidan explícitamente.** Commitear y empujar la
+  rama está bien; abrir el PR es decisión del usuario.
+- Cuerpos de PR breves: qué entra, qué no entra y por qué, y qué hace falta antes de
+  mergear. Nada más.
 
 ## Python
 
