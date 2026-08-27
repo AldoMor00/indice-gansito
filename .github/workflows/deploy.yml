@@ -1,0 +1,46 @@
+name: deploy-prod
+
+# Despliega los items de Fabric a ws-gansito-prod al mergear a main.
+# prod NO esta conectado a git: se le despliega, no se le sincroniza.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fabric/**'
+      - 'scripts/deploy.py'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # credencial federada OIDC: sin client secret guardado
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instala uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Autentica contra Entra por OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Publica items en prod
+        env:
+          FABRIC_WORKSPACE_ID: ${{ vars.FABRIC_WORKSPACE_ID_PROD }}
+          FABRIC_ENVIRONMENT: prod
+        run: uv run --with fabric-cicd scripts/deploy.py
