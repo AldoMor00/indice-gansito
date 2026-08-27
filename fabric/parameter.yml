@@ -1,18 +1,10 @@
 # Reasignacion de referencias entre items al desplegar dev -> prod (fabric-cicd).
-#
-# PENDIENTE: los GUID reales se llenan cuando existan los dos workspaces con sus
-# lakehouses. Hasta entonces este archivo es una plantilla y el despliegue solo
-# deberia publicar items que no referencian a otros.
-#
-# Formato de referencia:
+# Plantilla: los GUID se llenan cuando existan los dos workspaces.
 #
 # find_replace:
-#   - find_value: "00000000-0000-0000-0000-000000000000"   # lh_bronze en dev
+#   - find_value: "<guid de lh_bronze en dev>"
 #     replace_value:
-#       prod: "11111111-1111-1111-1111-111111111111"       # lh_bronze en prod
+#       prod: "<guid de lh_bronze en prod>"
 #     item_type: ["DataPipeline"]
-#
-# El esquema de este archivo cambia entre versiones de fabric-cicd; confirmar
-# contra la version que instala .github/workflows/deploy.yml antes de llenarlo.
 
 find_replace: []
