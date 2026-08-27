@@ -1,0 +1,47 @@
+"""Despliega los items de fabric/ al workspace destino con fabric-cicd.
+
+Corre en GitHub Actions, no en Fabric. La autenticacion viene de `azure/login`
+por OIDC, asi que DefaultAzureCredential la recoge sin secretos en el repo.
+
+Ver docs/adr/0004-despliegue-con-fabric-cicd.md.
+"""
+
+import os
+import sys
+from pathlib import Path
+
+from azure.identity import DefaultAzureCredential
+from fabric_cicd import FabricWorkspace, publish_all_items
+
+# Los tipos de item que fabric-cicd soporta han ido cambiando entre versiones.
+# Esta lista se confirma contra la version instalada antes de agregar un item nuevo.
+TIPOS_EN_ALCANCE = [
+    "Lakehouse",
+    "Notebook",
+    "DataPipeline",
+    "SemanticModel",
+    "Report",
+]
+
+
+def main() -> int:
+    workspace_id = os.environ["FABRIC_WORKSPACE_ID"]
+    entorno = os.environ.get("FABRIC_ENVIRONMENT", "prod")
+    directorio = Path(__file__).resolve().parent.parent / "fabric"
+
+    workspace = FabricWorkspace(
+        workspace_id=workspace_id,
+        environment=entorno,
+        repository_directory=str(directorio),
+        item_type_in_scope=TIPOS_EN_ALCANCE,
+        token_credential=DefaultAzureCredential(),
+    )
+
+    # Deliberadamente NO se llama a unpublish_all_orphan_items: borrar un item
+    # huerfano puede llevarse un lakehouse y sus datos.
+    publish_all_items(workspace)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
