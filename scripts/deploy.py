@@ -35,6 +35,16 @@ def main() -> int:
     entorno = os.environ["FABRIC_ENVIRONMENT"]
     directorio = Path(__file__).resolve().parent.parent / "fabric"
 
+    en_alcance = sorted(
+        p.name
+        for p in directorio.iterdir()
+        if p.is_dir() and p.name.rsplit(".", 1)[-1] in TIPOS_EN_ALCANCE
+    )
+    print(f"workspace : {workspace_id}")
+    print(f"entorno   : {entorno}")
+    print(f"commit    : {os.environ.get('GITHUB_SHA', 'local')}")
+    print(f"en alcance: {len(en_alcance)} items {en_alcance}")
+
     workspace = FabricWorkspace(
         workspace_id=workspace_id,
         environment=entorno,
