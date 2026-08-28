@@ -10,8 +10,10 @@
   antes.
 - Cuerpos de PR breves: qué entra, qué no entra y por qué, y qué hace falta antes de
   mergear. Nada más.
-- **Se mergea con squash**, y al mergear se borra la rama en local y en remoto. No se
-  dejan ramas muertas colgando.
+- **Las `feat/*` y `fix/*` se mergean con squash**, y al mergear se borra la rama en
+  local y en remoto. No se dejan ramas muertas colgando.
+- **`dev` a `main` va con merge commit, nunca squash.** `dev` es permanente: el squash
+  deja la base de comparación obsoleta y el merge siguiente sale vacío sin avisar.
 
 ## Python
 
