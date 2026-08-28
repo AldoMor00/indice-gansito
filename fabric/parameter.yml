@@ -1,0 +1,10 @@
+# Reasignacion de referencias entre items al desplegar dev -> prod (fabric-cicd).
+# Plantilla: los GUID se llenan cuando existan los dos workspaces.
+#
+# find_replace:
+#   - find_value: "<guid de lh_bronze en dev>"
+#     replace_value:
+#       prod: "<guid de lh_bronze en prod>"
+#     item_type: ["DataPipeline"]
+
+find_replace: []

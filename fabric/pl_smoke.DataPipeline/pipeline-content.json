@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "8a65d0e4-80e8-a4f3-4047-7c028cf0c7eb",
+          "workspaceId": "00000000-0000-0000-0000-000000000000"
+        },
+        "name": "ejecuta_nb_90_smoke",
+        "dependsOn": []
+      }
+    ]
+  }
+}
