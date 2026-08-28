@@ -1,7 +1,9 @@
 """Despliega los items de fabric/ al workspace destino con fabric-cicd.
 
-Corre en GitHub Actions, no en Fabric. La autenticacion viene de `azure/login`
-por OIDC, asi que DefaultAzureCredential la recoge sin secretos en el repo.
+Corre en GitHub Actions, no en Fabric. `azure/login` autentica por OIDC y deja una
+sesion de az CLI; AzureCliCredential es la que la recoge. Es la credencial que
+documenta fabric-cicd para este escenario: el fallback de DefaultAzureCredential
+dejo de estar soportado en la version 1.0.0.
 
 Ver docs/decisiones.md.
 """
@@ -10,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-from azure.identity import DefaultAzureCredential
+from azure.identity import AzureCliCredential
 from fabric_cicd import FabricWorkspace, publish_all_items
 
 # Los tipos de item que fabric-cicd soporta han ido cambiando entre versiones.
@@ -30,7 +32,7 @@ TIPOS_EN_ALCANCE = [
 
 def main() -> int:
     workspace_id = os.environ["FABRIC_WORKSPACE_ID"]
-    entorno = os.environ.get("FABRIC_ENVIRONMENT", "prod")
+    entorno = os.environ["FABRIC_ENVIRONMENT"]
     directorio = Path(__file__).resolve().parent.parent / "fabric"
 
     workspace = FabricWorkspace(
@@ -38,7 +40,7 @@ def main() -> int:
         environment=entorno,
         repository_directory=str(directorio),
         item_type_in_scope=TIPOS_EN_ALCANCE,
-        token_credential=DefaultAzureCredential(),
+        token_credential=AzureCliCredential(),
     )
 
     # Deliberadamente NO se llama a unpublish_all_orphan_items: borrar un item
