@@ -3,7 +3,7 @@
 Corre en GitHub Actions, no en Fabric. La autenticacion viene de `azure/login`
 por OIDC, asi que DefaultAzureCredential la recoge sin secretos en el repo.
 
-Ver docs/adr/0004-despliegue-con-fabric-cicd.md.
+Ver docs/decisiones.md.
 """
 
 import os
@@ -15,8 +15,12 @@ from fabric_cicd import FabricWorkspace, publish_all_items
 
 # Los tipos de item que fabric-cicd soporta han ido cambiando entre versiones.
 # Esta lista se confirma contra la version instalada antes de agregar un item nuevo.
+#
+# Lakehouse queda fuera a proposito: los de prod se crean a mano y son los duenos de
+# los datos, asi que el deploy no debe administrarlos. Ademas la carpeta que serializa
+# git integration incluye shortcuts.metadata.json, y publicarla le empujaria a prod el
+# shortcut con el que dev lee de prod.
 TIPOS_EN_ALCANCE = [
-    "Lakehouse",
     "Notebook",
     "DataPipeline",
     "SemanticModel",

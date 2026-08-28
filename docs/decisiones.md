@@ -34,11 +34,23 @@ Sólo `ws-gansito-dev` tiene git integration. A prod se le despliega desde `main
 `fabric-cicd` y credencial federada OIDC, sin secretos guardados. Rollback = revertir el
 commit. `unpublish_all_orphan_items` no se llama: puede borrar un lakehouse con datos.
 
+Por lo mismo, `Lakehouse` está fuera del alcance del despliegue. Los tres de prod se
+crean a mano y son los dueños de los datos; el CI no tiene por qué administrarlos. Y la
+carpeta que git integration serializa incluye `shortcuts.metadata.json`, así que
+publicarla le empujaría a prod el shortcut con el que dev lee de prod.
+
+El costo es que prod acumula huérfanos: un item borrado en dev sigue vivo en prod
+hasta que alguien lo borre a mano. Se prefiere limpiar basura manualmente a arriesgar
+un borrado destructivo automático.
+
 ## 5. Dos ambientes, sin test
 
 Dev no ingesta: lee el `lh_bronze` de prod por un shortcut de sólo lectura y escribe en
 sus propios silver y gold. Así desarrolla contra datos reales, que es justo lo que un
 ambiente de test iría a comprobar.
+
+El costo lo paga la decisión #1: si se reconstruye prod, dev queda ciego hasta que el
+bronze se vuelva a ingestar. No se pierde historia, pero dev no trabaja mientras tanto.
 
 ## 6. Dos modelos semánticos
 
