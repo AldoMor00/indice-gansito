@@ -32,12 +32,15 @@ sí hay que reasignar —pipelines, modelo semántico, reporte, conexiones— vi
 
 Sólo `ws-gansito-dev` tiene git integration. A prod se le despliega desde `main` con
 `fabric-cicd` y credencial federada OIDC, sin secretos guardados. Rollback = revertir el
-commit. `unpublish_all_orphan_items` no se llama: puede borrar un lakehouse con datos.
+commit. `unpublish_all_orphan_items` no se llama porque borraría cualquier `Report` o
+`SemanticModel` creado a mano en prod: la rama no representa el estado deseado completo.
+No es que pueda llevarse un lakehouse —eso está cubierto dos veces, por el alcance del
+despliegue y por el feature flag `enable_lakehouse_unpublish`.
 
-Por lo mismo, `Lakehouse` está fuera del alcance del despliegue. Los tres de prod se
-crean a mano y son los dueños de los datos; el CI no tiene por qué administrarlos. Y la
-carpeta que git integration serializa incluye `shortcuts.metadata.json`, así que
-publicarla le empujaría a prod el shortcut con el que dev lee de prod.
+`Lakehouse` está fuera del alcance por otra razón: los tres de prod se crean a mano y son
+los dueños de los datos; el CI no tiene por qué administrarlos. Los shortcuts no entran en
+esto —publicarlos es opt-in (`enable_shortcut_publish`), así que el de dev no viajaría a
+prod aunque el alcance incluyera `Lakehouse`.
 
 El costo es que prod acumula huérfanos: un item borrado en dev sigue vivo en prod
 hasta que alguien lo borre a mano. Se prefiere limpiar basura manualmente a arriesgar
