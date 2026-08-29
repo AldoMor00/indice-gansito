@@ -1,0 +1,28 @@
+[project]
+name = "indice-gansito"
+version = "0.1.0"
+description = "Ingesta de Quién es Quién en los Precios hacia la zona raw"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "polars>=1.0",
+    "pyyaml>=6.0",
+]
+
+# deploy.py no entra aquí: sus dependencias van inline en `uv run --with`,
+# porque sólo las necesita el workflow de despliegue.
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["scripts"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 96
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
