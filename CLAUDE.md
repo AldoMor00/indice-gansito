@@ -62,7 +62,8 @@ Capas en inglés (`bronze`/`silver`/`gold`); tablas y columnas en español, como
 2. **Bronze no castea, no filtra, no deduplica.**
 3. **Nada llega a gold sin pasar por las reglas de calidad.** Lo que falla se
    cuarentena, no se tira.
-4. **`unpublish_orphans` se queda apagado** en el despliegue: puede borrar un
-   lakehouse y llevarse los datos.
+4. **`unpublish_orphans` se queda apagado** en el despliegue: borraría cualquier
+   `Report` o `SemanticModel` creado a mano en prod. No es una protección contra
+   perder un lakehouse; de eso se encarga el alcance del despliegue.
 5. **Sin wheels ni Environments de Fabric.** Los helpers se comparten con
    `%run nb_00_config`.

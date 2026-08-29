@@ -1,0 +1,9 @@
+# Catálogo objetivo: qué filas del CSV de Profeco se persisten en `precios/`.
+# Las tiendas salen del archivo completo, no de este corte (decisión #2).
+#
+# Va por `producto`, que es el genérico y no el nombre comercial: ver
+# docs/fuente-profeco.md. El corte da 4,530 filas en 2024 y 2,847 en 2025,
+# menos del 1% del archivo, con 11 y 9 SKUs.
+
+producto:
+  - Pastelillos y Pan Dulce Empaquetado

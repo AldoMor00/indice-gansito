@@ -1,0 +1,34 @@
+name: ci
+
+# Sólo cubre el Python que corre en Actions. El que corre en Fabric se prueba en
+# nb_90_pruebas, dentro del notebook: ver decisión #7.
+
+on:
+  push:
+    branches: [dev, main]
+    paths: &python
+      - 'scripts/**'
+      - 'tests/**'
+      - 'objetivo.yml'
+      - 'pyproject.toml'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths: *python
+
+permissions:
+  contents: read
+
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instala uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv run --python 3.11 ruff check .
+      - run: uv run --python 3.11 ruff format --check .
+      - run: uv run --python 3.11 pytest -q

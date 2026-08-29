@@ -43,4 +43,4 @@ jobs:
         env:
           FABRIC_WORKSPACE_ID: ${{ vars.FABRIC_WORKSPACE_ID_PROD }}
           FABRIC_ENVIRONMENT: prod
-        run: uv run --with fabric-cicd scripts/deploy.py
+        run: uv run --python 3.11 --with 'fabric-cicd==1.3.0' scripts/deploy.py
