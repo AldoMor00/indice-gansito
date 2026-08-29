@@ -1,0 +1,60 @@
+name: ingesta
+
+# Baja quincenas de Profeco y las commitea en indice-gansito-datos.
+#
+# El backfill y el cron son la misma corrida: el manifiesto dice qué falta y `max`
+# limita la tanda. Para cargar el histórico se dispara a mano hasta que no quede nada
+# pendiente; de ahí en adelante el cron toma la quincena nueva.
+
+on:
+  schedule:
+    # Diario, no quincenal: Profeco publica sin calendario fijo, y sondear dos veces al
+    # mes puede dejar una quincena esperando dos semanas. Sondear a diario es casi gratis
+    # porque el script no descarga nada de más: lo que ya está en el manifiesto ni se
+    # intenta, y lo que no está publicado muere en el 503 antes del primer byte.
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+    inputs:
+      max:
+        description: 'Cuántas quincenas procesar en esta tanda'
+        default: '5'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingesta
+  cancel-in-progress: false
+
+jobs:
+  ingestar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clona la zona raw
+        uses: actions/checkout@v4
+        with:
+          repository: AldoMor00/indice-gansito-datos
+          # Deploy key con escritura sólo en ese repo: no cuelga de ninguna cuenta.
+          ssh-key: ${{ secrets.DATOS_DEPLOY_KEY }}
+          path: datos
+
+      - name: Instala uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Procesa la tanda
+        id: ingesta
+        run: uv run --python 3.11 scripts/ingesta.py --destino datos --max "${{ inputs.max || 5 }}"
+
+      - name: Commitea los cortes
+        if: steps.ingesta.outputs.procesadas != ''
+        working-directory: datos
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add precios tiendas manifiesto.jsonl
+          git commit -m "Agrega los cortes de ${{ steps.ingesta.outputs.procesadas }}"
+          git push

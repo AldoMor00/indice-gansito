@@ -3,7 +3,7 @@
 Pipeline de datos de punta a punta en Microsoft Fabric sobre *Quién es Quién en los
 Precios* (Profeco): cuánto cuesta un Gansito en México y quién lo vende más caro.
 
-> **Estado:** fase F0 — andamiaje. Todavía no hay datos cargados.
+> **Estado:** fase F1 — landing. La ingesta ya corre; falta cargar el histórico.
 
 ## Arquitectura
 
@@ -31,10 +31,12 @@ el workspace entero y reconstruirlo sin perder un día de historia.
 ## Estructura
 
 ```
-.github/workflows/   despliegue a prod con fabric-cicd
+.github/workflows/   despliegue a prod, ingesta quincenal y CI
 fabric/              items de Fabric, sincronizados por git integration
 scripts/             lo que corre en GitHub Actions, no en Fabric
-docs/                decisiones, diagramas y capturas
+tests/               pruebas de scripts/, no de los notebooks
+objetivo.yml         qué productos entran al corte de precios
+docs/                decisiones, perfil de la fuente, diagramas y capturas
 ```
 
 ## Despliegue
@@ -47,8 +49,8 @@ Prod no está conectado a git: se le despliega, no se le sincroniza.
 
 | | | Estado |
 |---|---|---|
-| **F0** | Andamiaje: repos, workspaces, ramas, despliegue verde | en curso |
-| **F1** | Landing: backfill 2024-01 → hoy y cron quincenal | |
+| **F0** | Andamiaje: repos, workspaces, ramas, despliegue verde | hecha |
+| **F1** | Landing: backfill 2024-01 → hoy y cron quincenal | en curso |
 | **F2** | Bronze: ingesta idempotente | |
 | **F3** | Silver: tipado, MERGE, SCD2, cuarentena, calidad | |
 | **F4** | Gold: estrella, Direct Lake y copia pública | |
@@ -62,4 +64,4 @@ en producción y se hacen así aquí por ser un portafolio.
 ## Fuente
 
 Profeco, *Quién es Quién en los Precios*, vía `repodatos.atdt.gob.mx`.
-CSV quincenales de unos 155 MB cada uno.
+CSV quincenales de entre 140 y 225 MB cada uno.
