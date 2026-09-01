@@ -1,7 +1,8 @@
 name: ci
 
 # Sólo cubre el Python que corre en Actions. El que corre en Fabric se prueba en
-# nb_90_pruebas, dentro del notebook: ver decisión #7.
+# nb_90_pruebas, dentro del notebook: ver decisión #7. De `fabric/` aquí no se revisa
+# el código sino la metadata: que ningún notebook traiga lakehouse por defecto.
 
 on:
   push:
@@ -9,6 +10,7 @@ on:
     paths: &python
       - 'scripts/**'
       - 'tests/**'
+      - 'fabric/**'
       - 'objetivo.yml'
       - 'pyproject.toml'
       - '.github/workflows/ci.yml'
@@ -22,10 +24,10 @@ jobs:
   probar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Instala uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
 

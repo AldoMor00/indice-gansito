@@ -23,6 +23,9 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 96
 target-version = "py311"
+# El Python de los notebooks corre en Fabric, donde `spark` y `notebookutils` son
+# globales del runtime: linteado aquí es puro F821. Ver decisión #7.
+extend-exclude = ["fabric"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
