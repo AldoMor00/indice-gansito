@@ -45,3 +45,9 @@ resultó ser cierto. Lo de las fuentes se mide en `fuentes.md` y aquí se resume
 - **`fab` se instala con `uv tool install --python 3.12`**; con 3.14 truena con pyyaml.
 - **Los workflows sólo se registran desde la rama por defecto**: `workflow_dispatch` y
   `schedule` no existen mientras el archivo viva sólo en `dev`.
+- **El manifiesto es el estado del pipeline, y `main` es lo que corre.** Un pipeline
+  idempotente respecto de su manifiesto deja de serlo cuando el manifiesto cambia de
+  dirección: `datos#2` movió la zona raw bajo `profeco/` mientras el script de `main` seguía
+  leyendo el de la raíz, así que el cron lo encontró vacío y rehizo cinco quincenas en el
+  layout viejo antes de que nadie lo viera ([datos#3](https://github.com/AldoMor00/indice-gansito-datos/pull/3)).
+  Mover el estado de una fuente y su productor va junto, y en el mismo merge a `main`.
