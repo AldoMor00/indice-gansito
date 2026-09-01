@@ -1,14 +1,13 @@
 """Pruebas de los cortes y del recorrido de quincenas.
 
-No tocan la red: `descarga` es lo único que sale, y lo que importa de ella —que un
-error de HTTP se lea como "no publicada"— se prueba contra un error inyectado.
+No tocan la red: lo único que sale es `descarga`, que ya no vive aquí —se comparte con
+la ingesta de CONASAMI— y se prueba en `test_fuente.py`.
 """
 
 from datetime import date
 from pathlib import Path
-from urllib.error import HTTPError
 
-import ingesta
+import ingesta_profeco as ingesta
 import polars as pl
 import pytest
 
@@ -98,18 +97,14 @@ def test_los_cortes_son_deterministas():
     assert ingesta.corte_tiendas(revuelta).equals(ingesta.corte_tiendas(MUESTRA))
 
 
-def test_rutas_versionan_el_reintento():
+def test_rutas_cuelgan_de_la_fuente_y_versionan_el_reintento():
     q = ingesta.Quincena(2025, 11, 2)
     precios, tiendas = ingesta.rutas(Path("datos"), q, 1)
-    assert precios == Path("datos/precios/anio=2025/qqp_2025-11_q2.parquet")
-    assert tiendas == Path("datos/tiendas/anio=2025/tiendas_2025-11_q2.parquet")
+    assert precios == Path("datos/profeco/precios/anio=2025/qqp_2025-11_q2.parquet")
+    assert tiendas == Path("datos/profeco/tiendas/anio=2025/tiendas_2025-11_q2.parquet")
 
     reintento, _ = ingesta.rutas(Path("datos"), q, 2)
     assert reintento.name == "qqp_2025-11_q2_i2.parquet"
-
-
-def test_manifiesto_vacio_si_no_existe(tmp_path):
-    assert ingesta.leer_manifiesto(tmp_path / "no_existe.jsonl") == []
 
 
 def test_lee_csv_absorbe_bom_y_crlf(tmp_path):
@@ -119,31 +114,6 @@ def test_lee_csv_absorbe_bom_y_crlf(tmp_path):
     assert df.columns == ["producto", "precio"]
     assert df["precio"].dtype == pl.String  # bronze no castea
     assert df["producto"][0] == "Pastelillos y Pan Dulce Empaquetado"
-
-
-def _con_error(monkeypatch, codigo):
-    def truena(*_args, **_kwargs):
-        raise HTTPError("url", codigo, "vaya", {}, None)
-
-    monkeypatch.setattr(ingesta.urllib.request, "urlopen", truena)
-
-
-@pytest.mark.parametrize("codigo", ingesta.NO_PUBLICADA)
-def test_descarga_lee_503_y_404_como_no_publicada(tmp_path, monkeypatch, codigo):
-    _con_error(monkeypatch, codigo)
-    assert ingesta.descarga("https://ejemplo/x.csv", tmp_path / "x.csv") is None
-
-
-def test_descarga_no_se_traga_los_demas_errores(tmp_path, monkeypatch):
-    # Un 403 —lo que devuelve el CDN si falta `Accept`— leído como "no publicada"
-    # dejaría al pipeline sin bajar nada y sin quejarse.
-    _con_error(monkeypatch, 403)
-    with pytest.raises(HTTPError):
-        ingesta.descarga("https://ejemplo/x.csv", tmp_path / "x.csv")
-
-
-def test_descarga_pide_accept():
-    assert ingesta.CABECERAS["Accept"] == "*/*"
 
 
 def test_objetivo_yml_declara_el_corte():

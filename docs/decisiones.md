@@ -38,9 +38,7 @@ No es que pueda llevarse un lakehouse —eso está cubierto dos veces, por el al
 despliegue y por el feature flag `enable_lakehouse_unpublish`.
 
 `Lakehouse` está fuera del alcance por otra razón: los tres de prod se crean a mano y son
-los dueños de los datos; el CI no tiene por qué administrarlos. Los shortcuts no entran en
-esto —publicarlos es opt-in (`enable_shortcut_publish`), así que el de dev no viajaría a
-prod aunque el alcance incluyera `Lakehouse`.
+los dueños de los datos; el CI no tiene por qué administrarlos.
 
 El costo es que prod acumula huérfanos: un item borrado en dev sigue vivo en prod
 hasta que alguien lo borre a mano. Se prefiere limpiar basura manualmente a arriesgar
@@ -48,12 +46,17 @@ un borrado destructivo automático.
 
 ## 5. Dos ambientes, sin test
 
-Dev no ingesta: lee el `lh_bronze` de prod por un shortcut de sólo lectura y escribe en
-sus propios silver y gold. Así desarrolla contra datos reales, que es justo lo que un
-ambiente de test iría a comprobar.
+Dev clona los lakehouses de prod con `SHALLOW CLONE`: se copia el metadato, no los datos, y
+aun así el clon es escribible y aislado —lo que se le escribe crea archivos propios y no
+toca el origen—. Medido: 213,772 filas clonadas entre lakehouses y entre workspaces, sin un
+solo parquet propio y con el origen intacto después de escribirle.
 
-El costo lo paga la decisión #1: si se reconstruye prod, dev queda ciego hasta que el
-bronze se vuelva a ingestar. No se pierde historia, pero dev no trabaja mientras tanto.
+El clon es el estado inicial, no el destino: dev arranca igual que prod y re-corre sólo la
+capa que desarrolla, sin reconstruir lo que no está tocando. Como las tablas se llaman igual
+y viven en la misma ruta, el notebook no parametriza nada y el mismo código corre en los dos
+ambientes; un shortcut no daría eso, porque es de sólo lectura. A cambio, el clon es una
+foto —se refresca re-clonando— y un `VACUUM` en prod puede romperlo. Es la letra chica del
+clon zero-copy de Snowflake y del shallow clone de Databricks.
 
 ## 6. Dos modelos semánticos
 
@@ -70,3 +73,58 @@ notebooks comparten helpers con `%run nb_00_config`; las pruebas de código van 
 
 El Python que corre en GitHub Actions es caso aparte: nunca entra a Fabric, así que ahí
 sí hay `pytest` y `ruff` normales.
+
+El grueso del esfuerzo de pruebas va sobre **datos**, no sobre código. La lógica pura de
+un pipeline es poca y sus errores salen a la primera corrida; los incidentes de verdad
+vienen de la fuente —una columna que cambia, un lote a medias, un null donde nunca hubo—.
+Por eso `nb_90_pruebas` se queda chico y se corre a mano con `%run`, y lo sistemático es
+validar cada corrida.
+
+Cada tipo de fallo se trata distinto, y esa es la parte que no se improvisa:
+
+- **código roto** → no se commitea;
+- **carga incompleta** → truena el job. Bronze reconcilia su conteo por
+  `(quincena, intento)` contra `filas_filtradas` del manifiesto, y un descuadre es un
+  `raise`: no es un dato malo, es un pipeline roto;
+- **dato malo** → cuarentena, y el pipeline sigue (regla dura #3). Tirar un lote de 4,530
+  filas por 12 inválidas cuesta más de lo que evita.
+
+## 8. Bronze lee por HTTPS, no por shortcut
+
+Los shortcuts de OneLake hablan ADLS, S3, GCS, Blob, Dataverse y OneDrive; GitHub no está
+en la lista. El notebook baja los parquets de `raw.githubusercontent.com`, que sirve el
+repo anónimo, y no lista directorio: `profeco/manifiesto.jsonl` es el índice y las rutas
+se derivan de `(quincena, intento)`.
+
+Bronze aterriza en `Tables/dbo` como Delta y `Files` se queda vacío. La copia ya existe
+—bronze no castea, así que la tabla contiene lo mismo que el parquet— y una tercera en
+`Files` no podría ser fuente de verdad, porque vive en la capacidad que la decisión #1 da
+por desechable. Cómo llega ese bronze a dev es la decisión #5. Y se escribe con
+`mergeSchema` apagado: el esquema de los 46 parquets está medido y es idéntico, así que
+una columna nueva de la fuente es alarma de lote, no algo que se absorba.
+
+En producción esto sería un shortcut a ADLS y `Files` no sería copia sino ventana. Lo que
+falta sin él no es "cero copia" —bronze materializa igual— sino que un archivo nuevo
+aparezca sin correr nada.
+
+## 9. Cada fuente ingesta por su lado
+
+Un script y un manifiesto por fuente, y en el repo de datos todo cuelga de `profeco/` o de
+`conasami/`. Lo único compartido es `descarga()` y `leer_manifiesto()`, en
+`scripts/fuente.py`, porque es lo único que se repite.
+
+No se parecen. Profeco entrega lotes grandes e inmutables por quincena, que se cortan en
+la puerta (decisión #2). CONASAMI entrega dos archivos de ~20 KB que se reescriben en su
+lugar: no hay período, no hay corte, y lo que decide si hay algo que hacer es el `sha256`,
+no una etiqueta. Se baja siempre y se escribe sólo si cambió —justo lo que Profeco no
+puede hacer, porque serían 7 GB por corrida—. Una versión nueva entra con sufijo `_vN`,
+espejo del `_iN` de los reintentos.
+
+El CSV se guarda tal cual, sin convertir a parquet: son 40 KB, no hay nada que cortar ni
+que ahorrar, y un parquet no es reproducible byte a byte.
+
+El `sha256` del manifiesto es el de los bytes que sirvió el host, calculado al vuelo
+mientras se descarga. Eso es todo lo que necesita el versionado: cada corrida rehashea lo
+que baja y lo compara contra el del manifiesto, así que la comparación siempre es
+descarga contra descarga y git nunca entra en ese lazo. La copia del repo es para leerla,
+no para reverificarla contra ese hash.
