@@ -38,9 +38,7 @@ No es que pueda llevarse un lakehouse —eso está cubierto dos veces, por el al
 despliegue y por el feature flag `enable_lakehouse_unpublish`.
 
 `Lakehouse` está fuera del alcance por otra razón: los tres de prod se crean a mano y son
-los dueños de los datos; el CI no tiene por qué administrarlos. Los shortcuts no entran en
-esto —publicarlos es opt-in (`enable_shortcut_publish`), así que el de dev no viajaría a
-prod aunque el alcance incluyera `Lakehouse`.
+los dueños de los datos; el CI no tiene por qué administrarlos.
 
 El costo es que prod acumula huérfanos: un item borrado en dev sigue vivo en prod
 hasta que alguien lo borre a mano. Se prefiere limpiar basura manualmente a arriesgar
@@ -48,12 +46,17 @@ un borrado destructivo automático.
 
 ## 5. Dos ambientes, sin test
 
-Dev no ingesta: lee el `lh_bronze` de prod por un shortcut de sólo lectura y escribe en
-sus propios silver y gold. Así desarrolla contra datos reales, que es justo lo que un
-ambiente de test iría a comprobar.
+Dev clona los lakehouses de prod con `SHALLOW CLONE`: se copia el metadato, no los datos, y
+aun así el clon es escribible y aislado —lo que se le escribe crea archivos propios y no
+toca el origen—. Medido: 213,772 filas clonadas entre lakehouses y entre workspaces, sin un
+solo parquet propio y con el origen intacto después de escribirle.
 
-El costo lo paga la decisión #1: si se reconstruye prod, dev queda ciego hasta que el
-bronze se vuelva a ingestar. No se pierde historia, pero dev no trabaja mientras tanto.
+El clon es el estado inicial, no el destino: dev arranca igual que prod y re-corre sólo la
+capa que desarrolla, sin reconstruir lo que no está tocando. Como las tablas se llaman igual
+y viven en la misma ruta, el notebook no parametriza nada y el mismo código corre en los dos
+ambientes; un shortcut no daría eso, porque es de sólo lectura. A cambio, el clon es una
+foto —se refresca re-clonando— y un `VACUUM` en prod puede romperlo. Es la letra chica del
+clon zero-copy de Snowflake y del shallow clone de Databricks.
 
 ## 6. Dos modelos semánticos
 
@@ -96,10 +99,9 @@ se derivan de `(quincena, intento)`.
 Bronze aterriza en `Tables/dbo` como Delta y `Files` se queda vacío. La copia ya existe
 —bronze no castea, así que la tabla contiene lo mismo que el parquet— y una tercera en
 `Files` no podría ser fuente de verdad, porque vive en la capacidad que la decisión #1 da
-por desechable. El shortcut dev → prod va a nivel del esquema `dbo`, para que una tabla
-nueva aparezca en dev sin crear otro. Y se escribe con `mergeSchema` apagado: el esquema
-de los 46 parquets está medido y es idéntico, así que una columna nueva de la fuente es
-alarma de lote, no algo que se absorba.
+por desechable. Cómo llega ese bronze a dev es la decisión #5. Y se escribe con
+`mergeSchema` apagado: el esquema de los 46 parquets está medido y es idéntico, así que
+una columna nueva de la fuente es alarma de lote, no algo que se absorba.
 
 En producción esto sería un shortcut a ADLS y `Files` no sería copia sino ventana. Lo que
 falta sin él no es "cero copia" —bronze materializa igual— sino que un archivo nuevo

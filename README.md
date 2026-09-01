@@ -37,7 +37,7 @@ fabric/              items de Fabric, sincronizados por git integration
 scripts/             lo que corre en GitHub Actions, no en Fabric
 tests/               pruebas de scripts/, no de los notebooks
 objetivo.yml         qué productos entran al corte de precios
-docs/                decisiones, perfil de las fuentes, diagramas y capturas
+docs/                decisiones, hechos verificados, perfil de las fuentes y capturas
 ```
 
 Una ingesta por fuente (`ingesta_profeco.py`, `ingesta_conasami.py`) y un notebook de
