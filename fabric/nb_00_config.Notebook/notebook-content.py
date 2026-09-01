@@ -49,8 +49,9 @@ def ruta_tabla(tabla: str, lakehouse: str) -> str:
 
 def manifiesto_de(fuente: str) -> list[dict]:
     """El manifiesto de una fuente. Es el índice: el repo no lista directorio."""
-    texto = requests.get(f"{RAW}/{fuente}/manifiesto.jsonl", timeout=60).text
-    return [json.loads(l) for l in texto.splitlines() if l.strip()]
+    r = requests.get(f"{RAW}/{fuente}/manifiesto.jsonl", timeout=60)
+    r.raise_for_status()
+    return [json.loads(l) for l in r.text.splitlines() if l.strip()]
 
 
 def pendientes(ruta: str, manifiesto: list[dict], llaves: list[tuple[str, str]]) -> list[dict]:

@@ -65,9 +65,9 @@ def baja(e: dict) -> pd.DataFrame:
     return pdf.assign(_archivo=e["archivo"], _version=e["version"], _sha256=e["sha256"])
 
 
-def carga(archivo: str, lakehouse: str, prefijo: str = "") -> None:
+def carga(archivo: str, lakehouse: str) -> None:
     """Deja en su tabla las versiones de `archivo` que falten. Idempotente."""
-    tabla = f"{prefijo}{TABLAS[archivo]}"
+    tabla = TABLAS[archivo]
     ruta = ruta_tabla(tabla, lakehouse)
     delain = [e for e in manifiesto if e["archivo"] == archivo]
     falta = pendientes(ruta, delain, LLAVES)
@@ -85,10 +85,8 @@ def carga(archivo: str, lakehouse: str, prefijo: str = "") -> None:
     print(f"{archivo}: {sum(leidas.values()):,} filas cargadas y reconciliadas")
 
 
-# Igual que en nb_10_bronze: el prefijo `zz_prueba_` y `lh_silver` son el apaño mientras
-# se decide dónde escribe bronze en dev. Cambiar antes del PR de `dev` a `main`.
 for _archivo in TABLAS:
-    carga(_archivo, "lh_silver", prefijo="zz_prueba_")
+    carga(_archivo, "lh_bronze")
 
 # METADATA ********************
 

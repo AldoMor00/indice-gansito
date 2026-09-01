@@ -62,9 +62,9 @@ def baja(e: dict, zona: str) -> pd.DataFrame:
     return pdf.assign(_quincena=e["quincena"], _intento=e["intento"], _sha256=e["sha256"])
 
 
-def carga(zona: str, tabla: str, lakehouse: str) -> None:
-    """Deja en `tabla` las quincenas del manifiesto que falten. Idempotente."""
-    ruta = ruta_tabla(tabla, lakehouse)
+def carga(zona: str, lakehouse: str) -> None:
+    """Deja en la tabla `zona` las quincenas del manifiesto que falten. Idempotente."""
+    ruta = ruta_tabla(zona, lakehouse)
     falta = pendientes(ruta, manifiesto, LLAVES)
     print(f"{zona}: {len(falta)} pendientes de {len(manifiesto)}")
 
@@ -80,8 +80,8 @@ def carga(zona: str, tabla: str, lakehouse: str) -> None:
     print(f"{zona}: {sum(leidas.values()):,} filas cargadas y reconciliadas")
 
 
-carga("precios", "zz_prueba_precios", "lh_silver")
-carga("tiendas", "zz_prueba_tiendas", "lh_silver")
+carga("precios", "lh_bronze")
+carga("tiendas", "lh_bronze")
 
 # METADATA ********************
 
