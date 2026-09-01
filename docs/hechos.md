@@ -16,10 +16,27 @@ resultó ser cierto. Lo de las fuentes se mide en `fuentes.md` y aquí se resume
   que impide correr una utilidad de dev en prod está probado allá.
 - **La capacidad de trial no aguanta dos sesiones de Spark a la vez.** `pl_bronze` disparó
   sus dos actividades en el mismo segundo: una consiguió sesión de Livy y la otra se fue con
-  `430 TooManyRequestsForCapacity`. El reintento a 30s tampoco alcanzó, porque la sesión de
-  la primera no se libera al terminar. Por eso las actividades del pipeline van encadenadas
+  `430 TooManyRequestsForCapacity`. Por eso las actividades del pipeline van encadenadas
   aunque las fuentes sean independientes, y por eso conviene cerrar las sesiones
   interactivas de dev antes de correr prod: las dos capacidades son la misma.
+- **El 430 entre dos notebooks encadenados es intermitente, no un rezago fijo.** Dos corridas
+  de `pl_bronze` con el mismo intervalo y distinto resultado: en una, `nb_11_conasami` pidió
+  sesión 18s después de que `nb_10_profeco` cerrara y se fue con 430 —entró en el reintento,
+  69s después—; en la otra pidió a los 19s y entró a la primera. No hay umbral que esperar:
+  depende de qué más esté consumiendo la capacidad. Por eso la red es el `retry` de la
+  actividad y no un `Wait` fijo, que no puede cubrir algo variable.
+- **El `sessionTag` no basta para compartir sesión: hace falta el switch del workspace.** El
+  tag viaja en el pipeline y sólo agrupa; quien convierte las sesiones disparadas por pipeline
+  en sesiones de alta concurrencia es *Spark settings → High concurrency → For pipeline running
+  multiple notebooks*. Con el tag y el switch apagado, `sessionId` distintos y
+  `highConcurrencyModeStatus` en `null`. Prendido, las dos actividades comparten `sessionId` y
+  el estado dice `"sessionSource": "created"` en la primera y `"attached"` en la segunda. Los
+  docs no dicen cuál es el estado inicial del switch; en estos workspaces venía apagado.
+- **Compartir sesión no acelera nada medible, pero elimina el 430.** Tres corridas de
+  `pl_bronze`: `nb_10_profeco` tardó 79s, 63s y 95s, así que la varianza se come cualquier
+  ahorro; `nb_11_conasami` quedó en 32s con y sin HC. Lo que cambia es que la segunda
+  actividad deja de pedir sesión —se engancha— y el 430 entre las dos pasa de intermitente a
+  imposible.
 - **Un workspace se resuelve por nombre con `sempy`, no con notebookutils**:
   `fabric.resolve_workspace_id(nombre)` da el GUID —verificado contra `currentWorkspaceId`—
   y truena con `WorkspaceNotFoundException` si el nombre no existe, así que no devuelve
