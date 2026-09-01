@@ -31,7 +31,35 @@
           "secureOutput": false
         },
         "name": "nb_11_conasami",
-        "dependsOn": []
+        "dependsOn": [
+          {
+            "activity": "nb_10_profeco",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Wait",
+        "typeProperties": {
+          "waitTimeInSeconds": 1
+        },
+        "name": "ambas_fuentes_ok",
+        "dependsOn": [
+          {
+            "activity": "nb_11_conasami",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "nb_10_profeco",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
       }
     ]
   }

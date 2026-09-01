@@ -14,6 +14,21 @@ resultó ser cierto. Lo de las fuentes se mide en `fuentes.md` y aquí se resume
   propio y el origen intacto después de escribirle al clon. Es lo que sostiene la
   decisión #5. `currentWorkspaceName` existe en el context del notebook, así que el guard
   que impide correr una utilidad de dev en prod está probado allá.
+- **La capacidad de trial no aguanta dos sesiones de Spark a la vez.** `pl_bronze` disparó
+  sus dos actividades en el mismo segundo: una consiguió sesión de Livy y la otra se fue con
+  `430 TooManyRequestsForCapacity`. El reintento a 30s tampoco alcanzó, porque la sesión de
+  la primera no se libera al terminar. Por eso las actividades del pipeline van encadenadas
+  aunque las fuentes sean independientes, y por eso conviene cerrar las sesiones
+  interactivas de dev antes de correr prod: las dos capacidades son la misma.
+- **Un workspace se resuelve por nombre con `sempy`, no con notebookutils**:
+  `fabric.resolve_workspace_id(nombre)` da el GUID —verificado contra `currentWorkspaceId`—
+  y truena con `WorkspaceNotFoundException` si el nombre no existe, así que no devuelve
+  basura en silencio. Hace falta porque `notebookutils.lakehouse.get` sí acepta un segundo
+  workspace, pero por GUID.
+- **`notebookutils.fs.ls` distingue vacío de inexistente**: sobre `Tables/dbo` da una
+  entrada `isDir` por tabla, con el `name` sin diagonal; sobre una ruta que no existe
+  truena con 404. Por eso `nb_91_clona_bronze` enumera el bronze de prod en vez de llevar
+  una lista, y un cero es "prod está vacío", no "me equivoqué de ruta".
 - **`Optimize Write` viene prendido por defecto**; V-Order lo decide el *resource profile*
   del workspace, y los nuevos nacen en `writeHeavy`, que lo trae apagado. Lo que rompe un
   clon es `OPTIMIZE` seguido de `VACUUM` —el primero deja huérfanos los archivos que el clon
@@ -41,9 +56,13 @@ resultó ser cierto. Lo de las fuentes se mide en `fuentes.md` y aquí se resume
 ## CI y despliegue
 
 - **`parameter.yml` se queda vacío**: con el clon de la decisión #5, dev y prod comparten
-  rutas y no hay nada que sustituir al desplegar. Hará falta en F4, para las referencias
-  entre items, que la git integration guarda como `logicalId` y `fabric-cicd` resuelve al
-  publicar.
+  rutas y no hay nada que sustituir al desplegar. Las referencias entre items tampoco:
+  medido con `pl_bronze`, al commitear desde la UI la git integration reescribe el
+  `workspaceId` de la actividad al GUID nulo —"el workspace donde corro"— y el `notebookId`
+  al `logicalId` del notebook, y `fabric-cicd` los resuelve al publicar porque los notebooks
+  van en el mismo despliegue y antes que el pipeline. Verificado en el pipeline ya desplegado:
+  trae el GUID del notebook **de prod** y el workspace de prod. El JSON que muestra la UI
+  **no** es el que se despliega: ahí los dos campos son GUIDs literales del workspace vivo.
 - **`fab` se instala con `uv tool install --python 3.12`**; con 3.14 truena con pyyaml.
 - **Los workflows sólo se registran desde la rama por defecto**: `workflow_dispatch` y
   `schedule` no existen mientras el archivo viva sólo en `dev`.
