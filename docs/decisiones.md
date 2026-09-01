@@ -129,30 +129,24 @@ que baja y lo compara contra el del manifiesto, así que la comparación siempre
 descarga contra descarga y git nunca entra en ese lazo. La copia del repo es para leerla,
 no para reverificarla contra ese hash.
 
-## 10. `pl_bronze` va en serie, y un nodo de unión dice si salió bien
+## 10. `pl_bronze`: encadenado, con sesión compartida y un nodo de unión
 
-Las dos fuentes son independientes, así que el pipeline nació con las actividades sueltas
-para que fallaran por separado. No cabe: dispararon en el mismo segundo y una se fue con
-`430 TooManyRequestsForCapacity` —la capacidad de trial no da para dos sesiones de Spark, y
-dev y prod comparten la misma—. Van encadenadas.
+El pipeline nació con las dos actividades sueltas, para que las fuentes fallaran por separado.
+No cabe: dispararon en el mismo segundo y una se fue con `430 TooManyRequestsForCapacity`. La
+capacidad de trial no da para dos sesiones de Spark, y dev y prod comparten la misma.
 
-La arista entre las dos es `on completion`: encadena por capacidad, no por dependencia, y el
-fallo de una no tiene por qué impedir que la otra cargue. Por lo mismo el orden no carga
-peso: la segunda corre gane o pierda la primera.
+Van encadenadas con `on completion` —encadena por capacidad, no por dependencia, así que el
+fallo de una no impide que la otra cargue— y comparten sesión con el `sessionTag` `bronze`: la
+primera la crea, la segunda se engancha y nunca pide sesión, así que el 430 entre ellas deja de
+ser posible. Se adoptó por eso y no por velocidad: en tres corridas el tiempo no mejoró de
+forma medible. El reintento se queda para la primera, que sí pide sesión.
 
-Pero `on completion` sola miente. En ADF, una actividad que falla y sólo tiene camino de
-completion se da por manejada, y el pipeline reporta **éxito** con una fuente sin cargar. Por
-eso hay un tercer nodo, `ambas_fuentes_ok` —un `Wait` de un segundo, sin cómputo—, que depende
-de las dos con `on success`. Las dependencias múltiples se evalúan con AND, así que sólo corre
-si las dos cargaron; y cuando una falla, su camino de éxito queda sin tomar, que es justo lo
-que hace que el pipeline reporte fallo. El estado del pipeline vuelve a ser el AND de las dos
-fuentes, que es la regla de la decisión #7.
+`on completion` sola miente: en ADF una actividad que falla y sólo tiene camino de completion
+se da por manejada, y el pipeline reporta éxito con una fuente sin cargar. Por eso
+`ambas_fuentes_ok`, un `Wait` de un segundo que depende de las dos con `on success`. Las
+dependencias múltiples se evalúan con AND, así que un fallo deja su camino de éxito sin tomar y
+el pipeline truena, como manda la decisión #7.
 
-La alternativa era encadenar con `on success`, sin tercer nodo. Truena igual de fuerte, pero
-acopla las fuentes: un fallo de CONASAMI dejaría a Profeco en `Skipped` sin razón.
-
-Compartir sesión con el *session tag* de high concurrency resolvería el 430 sin encadenar
-—y el setup califica: sin default lakehouse y sin wheels, las condiciones se cumplen solas—.
-Se descartó porque prenderlo es un ajuste de workspace que vive fuera de git y habría que
-sostenerlo en dos workspaces, para ahorrar un arranque de sesión. Vale la pena revisarlo en
-F5, cuando un pipeline encadene cinco o seis notebooks.
+El costo es que el tag no basta solo: hay que prender *High concurrency* en los settings de
+cada workspace, y eso vive fuera de git. Queda en `fabric/README.md` como requisito de
+reconstrucción.
