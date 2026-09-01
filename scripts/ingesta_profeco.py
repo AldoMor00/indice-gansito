@@ -7,27 +7,28 @@ De cada CSV (~155 MB) sobreviven sólo las filas del catálogo de `objetivo.yml`
 tuplas distintas de tienda, estas del archivo completo. El original no se guarda; el
 `sha256` del manifiesto es lo que permite rehacer cualquier corte desde la fuente.
 
+Todo lo de esta fuente cuelga de `profeco/` en el repo de datos, manifiesto incluido.
 Ver docs/decisiones.md.
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
-import os
 import sys
 import tempfile
-import urllib.error
-import urllib.request
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import NamedTuple
 
 import polars as pl
 import yaml
+from fuente import descarga, leer_manifiesto, salida_actions
 
 BASE = "https://repodatos.atdt.gob.mx/api_update/profeco"
+
+# Todo lo que escribe esta fuente vive bajo este directorio del repo de datos.
+ZONA = "profeco"
 
 # La fuente no publica nada anterior: 01-2023 responde igual que el futuro.
 PRIMERA = (2024, 1, 1)
@@ -76,16 +77,6 @@ def quincenas(hasta: date) -> list[Quincena]:
     ]
 
 
-def leer_manifiesto(ruta: Path) -> list[dict]:
-    if not ruta.exists():
-        return []
-    return [
-        json.loads(linea)
-        for linea in ruta.read_text(encoding="utf-8").splitlines()
-        if linea.strip()
-    ]
-
-
 def pendientes(todas: list[Quincena], manifiesto: list[dict]) -> list[Quincena]:
     """Las que aún no tienen entrada en el manifiesto.
 
@@ -95,44 +86,6 @@ def pendientes(todas: list[Quincena], manifiesto: list[dict]) -> list[Quincena]:
     """
     hechas = {e["quincena"] for e in manifiesto}
     return [q for q in todas if q.etiqueta not in hechas]
-
-
-# El CDN de la fuente contesta 403 si la petición no trae `Accept`. urllib no lo manda
-# por su cuenta y curl sí, que es por qué lo mismo funciona en la terminal y aquí no.
-CABECERAS = {
-    "Accept": "*/*",
-    "User-Agent": "indice-gansito (+https://github.com/AldoMor00/indice-gansito)",
-}
-
-# Lo que la fuente devuelve por una quincena que no existe. Responde 503, no 404, y no
-# hay forma de distinguirlo de una caída real; el 404 va por si algún día lo arreglan.
-NO_PUBLICADA = (404, 503)
-
-
-def descarga(url: str, destino: Path) -> tuple[str, int] | None:
-    """Baja `url` a `destino`. Devuelve (sha256, bytes), o None si no está publicada.
-
-    Cualquier otro error se propaga: un 403 leído como "todavía no sale" dejaría al
-    pipeline sin bajar nada y sin quejarse. La tanda es reanudable, así que tronar es
-    barato —el manifiesto ya tiene lo que alcanzó a escribir.
-    """
-    digest = hashlib.sha256()
-    total = 0
-    peticion = urllib.request.Request(url, headers=CABECERAS)
-    try:
-        with (
-            urllib.request.urlopen(peticion, timeout=180) as respuesta,
-            destino.open("wb") as f,
-        ):
-            while trozo := respuesta.read(1 << 20):
-                digest.update(trozo)
-                f.write(trozo)
-                total += len(trozo)
-    except urllib.error.HTTPError as e:
-        if e.code in NO_PUBLICADA:
-            return None
-        raise
-    return digest.hexdigest(), total
 
 
 def lee_csv(ruta: Path) -> pl.DataFrame:
@@ -161,8 +114,8 @@ def rutas(destino: Path, q: Quincena, intento: int) -> tuple[Path, Path]:
     sufijo = "" if intento == 1 else f"_i{intento}"
     nombre = f"{q.anio}-{q.mes:02d}_q{q.q}{sufijo}.parquet"
     return (
-        destino / "precios" / f"anio={q.anio}" / f"qqp_{nombre}",
-        destino / "tiendas" / f"anio={q.anio}" / f"tiendas_{nombre}",
+        destino / ZONA / "precios" / f"anio={q.anio}" / f"qqp_{nombre}",
+        destino / ZONA / "tiendas" / f"anio={q.anio}" / f"tiendas_{nombre}",
     )
 
 
@@ -220,7 +173,7 @@ def main() -> int:
     args = cli.parse_args()
 
     productos = yaml.safe_load(args.objetivo.read_text(encoding="utf-8"))["producto"]
-    manifiesto_ruta = args.destino / "manifiesto.jsonl"
+    manifiesto_ruta = args.destino / ZONA / "manifiesto.jsonl"
     manifiesto = leer_manifiesto(manifiesto_ruta)
 
     todas = quincenas(date.today())
@@ -250,6 +203,7 @@ def main() -> int:
     # petición que muere en el 503, y saltárselas es lo que evita que un hueco
     # permanente en la fuente deje al cron atorado antes de llegar a lo que sí salió.
     hechas = []
+    manifiesto_ruta.parent.mkdir(parents=True, exist_ok=True)
     with manifiesto_ruta.open("a", encoding="utf-8") as f:
         for q in cola:
             if len(hechas) >= tope:
@@ -262,9 +216,7 @@ def main() -> int:
             hechas.append(q.etiqueta)
 
     print(f"procesadas: {len(hechas)} {hechas}")
-    if salida := os.environ.get("GITHUB_OUTPUT"):
-        with Path(salida).open("a", encoding="utf-8") as f:
-            f.write(f"procesadas={' '.join(hechas)}\n")
+    salida_actions(procesadas=" ".join(hechas))
     return 0
 
 
