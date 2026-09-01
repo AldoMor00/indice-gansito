@@ -31,7 +31,9 @@ resultó ser cierto. Lo de las fuentes se mide en `fuentes.md` y aquí se resume
 ## Las fuentes
 
 - **El estado estable del cron es no hacer nada**, y se sabe por qué: el programa de Profeco
-  dejó de publicar, no cambió de ruta. Medido en [`fuentes.md`](fuentes.md).
+  dejó de publicar, no cambió de ruta. Al 2026-09-01 son 20 quincenas pendientes de
+  calendario, de `2025-12_q1` en adelante, y las 20 responden "no publicada": nueve meses de
+  silencio sin un solo error. Medido en [`fuentes.md`](fuentes.md).
 - **El esquema de la zona raw es estable**: 15 columnas en los 46 parquets de precios, 8 en
   los 46 de tiendas, todas `String`. Por eso bronze escribe con `mergeSchema` apagado.
 - **No hay PII** en lo que se persiste, y bronze cabe de sobra en la capacidad.
