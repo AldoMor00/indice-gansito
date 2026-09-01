@@ -48,7 +48,7 @@ jobs:
           path: datos
 
       - name: Instala uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
 
@@ -83,7 +83,7 @@ jobs:
           path: datos
 
       - name: Instala uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
 
