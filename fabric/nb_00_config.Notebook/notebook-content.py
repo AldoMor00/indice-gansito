@@ -38,12 +38,16 @@ CORRIDA = _runt_ctx["activityId"]
 RAW = "https://raw.githubusercontent.com/AldoMor00/indice-gansito-datos/main"
 
 
-def ruta_tabla(tabla: str, lakehouse: str) -> str:
+def ruta_tabla(tabla: str, lakehouse: str, workspace_id: str | None = None) -> str:
     """Ruta OneLake de una tabla. GUIDs en los dos segmentos: mezclarlos con nombres da
     400, y los nombres se renombran. Nada hardcodeado: se pide por nombre y se resuelve
-    en vivo, así el mismo código corre en dev y en prod."""
-    ws = notebookutils.runtime.context["currentWorkspaceId"]
-    lh = notebookutils.lakehouse.get(lakehouse)["id"]
+    en vivo, así el mismo código corre en dev y en prod.
+
+    Sin `workspace_id` es el workspace de la corrida, que es lo que quieren nb_10 y
+    nb_11. Lo pasa nb_91_clona_bronze, el único que mira a otro workspace.
+    """
+    ws = workspace_id or notebookutils.runtime.context["currentWorkspaceId"]
+    lh = notebookutils.lakehouse.get(lakehouse, ws)["id"]
     return f"abfss://{ws}@onelake.dfs.fabric.microsoft.com/{lh}/Tables/dbo/{tabla}"
 
 
