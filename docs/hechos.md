@@ -31,7 +31,9 @@ resultó ser cierto. Lo de las fuentes se mide en `fuentes.md` y aquí se resume
 ## Las fuentes
 
 - **El estado estable del cron es no hacer nada**, y se sabe por qué: el programa de Profeco
-  dejó de publicar, no cambió de ruta. Medido en [`fuentes.md`](fuentes.md).
+  dejó de publicar, no cambió de ruta. Al 2026-09-01 son 20 quincenas pendientes de
+  calendario, de `2025-12_q1` en adelante, y las 20 responden "no publicada": nueve meses de
+  silencio sin un solo error. Medido en [`fuentes.md`](fuentes.md).
 - **El esquema de la zona raw es estable**: 15 columnas en los 46 parquets de precios, 8 en
   los 46 de tiendas, todas `String`. Por eso bronze escribe con `mergeSchema` apagado.
 - **No hay PII** en lo que se persiste, y bronze cabe de sobra en la capacidad.
@@ -45,3 +47,9 @@ resultó ser cierto. Lo de las fuentes se mide en `fuentes.md` y aquí se resume
 - **`fab` se instala con `uv tool install --python 3.12`**; con 3.14 truena con pyyaml.
 - **Los workflows sólo se registran desde la rama por defecto**: `workflow_dispatch` y
   `schedule` no existen mientras el archivo viva sólo en `dev`.
+- **El manifiesto es el estado del pipeline, y `main` es lo que corre.** Un pipeline
+  idempotente respecto de su manifiesto deja de serlo cuando el manifiesto cambia de
+  dirección: `datos#2` movió la zona raw bajo `profeco/` mientras el script de `main` seguía
+  leyendo el de la raíz, así que el cron lo encontró vacío y rehizo cinco quincenas en el
+  layout viejo antes de que nadie lo viera ([datos#3](https://github.com/AldoMor00/indice-gansito-datos/pull/3)).
+  Mover el estado de una fuente y su productor va junto, y en el mismo merge a `main`.
