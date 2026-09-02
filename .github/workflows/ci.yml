@@ -31,6 +31,6 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv run --python 3.11 ruff check .
-      - run: uv run --python 3.11 ruff format --check .
-      - run: uv run --python 3.11 pytest -q
+      - run: uv run --python 3.13 ruff check .
+      - run: uv run --python 3.13 ruff format --check .
+      - run: uv run --python 3.13 pytest -q

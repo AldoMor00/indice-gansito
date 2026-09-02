@@ -150,3 +150,13 @@ el pipeline truena, como manda la decisión #7.
 El costo es que el tag no basta solo: hay que prender *High concurrency* en los settings de
 cada workspace, y eso vive fuera de git. Queda en `fabric/README.md` como requisito de
 reconstrucción.
+
+## 11. Los dos workspaces van en la misma versión de runtime
+
+Las tablas nacen en el protocolo (3,7) con `deletionVectors`, y un runtime más viejo no puede
+leerlas. Como el `SHALLOW CLONE` de la decisión #5 es lo que pone el bronze de prod en dev, un
+workspace rezagado dejaría de poder clonar al otro. El switch del runtime es reversible; el
+protocolo de una tabla no, así que el desempate es obvio: se suben los dos o no se sube
+ninguno.
+
+El requisito queda en `fabric/README.md` junto a High concurrency, porque vive fuera de git.

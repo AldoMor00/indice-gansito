@@ -54,7 +54,7 @@ jobs:
 
       - name: Procesa la tanda
         id: ingesta
-        run: uv run --python 3.11 scripts/ingesta_profeco.py --destino datos --max "${{ inputs.max || 5 }}"
+        run: uv run --python 3.13 scripts/ingesta_profeco.py --destino datos --max "${{ inputs.max || 5 }}"
 
       - name: Commitea los cortes
         if: steps.ingesta.outputs.procesadas != ''
@@ -89,7 +89,7 @@ jobs:
 
       - name: Revisa si cambiaron los archivos
         id: ingesta
-        run: uv run --python 3.11 scripts/ingesta_conasami.py --destino datos
+        run: uv run --python 3.13 scripts/ingesta_conasami.py --destino datos
 
       - name: Commitea las versiones nuevas
         if: steps.ingesta.outputs.actualizados != ''
