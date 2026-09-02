@@ -57,8 +57,8 @@ embebidas entre comillas.
   local —hasta 20 tiendas bajo el punto de Ecatepec, y el 10.1% de las filas cae en una
   coordenada compartida—. A cambio, las 2,392 tiendas conservan su coordenada exacta las 46
   quincenas: es atributo geográfico para gold, no identidad.
-- **Una visita no es una quincena.** Las 213,772 filas caen en 126,493 celdas
-  tienda-SKU-quincena y sólo 49,179 traen una sola observación: Profeco visita la misma
+- **Una visita no es una quincena.** Las 213,772 filas caen en 126,963 celdas
+  tienda-SKU-quincena y sólo 49,411 traen una sola observación: Profeco visita la misma
   tienda hasta cinco veces por quincena. `catalogo` no desempata —separa 82 filas de 86,809—
   y `fecha_registro` es `yyyy/MM/dd` sin hora, así que las visitas de un mismo día no se
   pueden ordenar.
