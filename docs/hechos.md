@@ -20,6 +20,10 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   tiendas, 685 y 42 de CONASAMI. Un solo `append` creó cada una, así que **el camino
   incremental de `pl_bronze` nunca ha corrido en prod**: lo que F2 verificó es la
   idempotencia del no-op.
+- **En dev sí corrió, y da lo que dice.** Se le borraron `2025-11_q1` y `q2` al clon y
+  `nb_10_profeco` las repuso solo: 2 pendientes de 46, 6,271 filas de precios y 3,262 de
+  tiendas, reconciliadas contra el manifiesto, v2 en las dos tablas y los totales de vuelta
+  en 213,772 y 74,180. El `DELETE` sobre el clon es escritura de dev y prod no se enteró.
 - **El `SHALLOW CLONE` de Fabric es zero copy de verdad, y sirve para lo que lo queremos**:
   funciona por ruta `abfss` sin lakehouse por defecto, entre lakehouses y **entre
   workspaces**. Medido con las 213,772 filas de precios: `_delta_log` sin un solo parquet
@@ -27,6 +31,15 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   origen, así que dev sigue a prod sin administrarlo aparte. Es lo que sostiene la
   decisión #5. `currentWorkspaceName` existe en el context del notebook, así que el guard
   que impide correr una utilidad de dev en prod está probado allá.
+- **El clon por ruta no reemplaza: hay que borrar el destino.** `CREATE OR REPLACE TABLE` con
+  `SHALLOW CLONE` truena con `DELTA_UNSUPPORTED_NON_EMPTY_CLONE` en cuanto el destino tiene
+  filas —sobre tablas por ruta el `OR REPLACE` no engancha la semántica de reemplazo—, así que
+  `nb_91_clona_bronze` sólo servía sobre bronze vacío y el resto de las veces había que borrar
+  las tablas a mano. Se borra el directorio con `notebookutils.fs.rm` y se clona limpio, que
+  además es lo que se quiere: dev arranca en la v0 de prod en vez de arrastrar el historial de
+  sus propias corridas. Verificado con las cuatro tablas, dos de ellas en v2 y con parquets
+  propios, que volvieron a v0. `notebookutils.fs.exists` distingue existe de no existe sin
+  tronar, así que la primera corrida sobre bronze vacío no necesita caso aparte.
 - **La capacidad de trial no aguanta dos sesiones de Spark a la vez.** `pl_bronze` disparó
   sus dos actividades en el mismo segundo: una consiguió sesión de Livy y la otra se fue con
   `430 TooManyRequestsForCapacity`. Por eso las actividades del pipeline van encadenadas
