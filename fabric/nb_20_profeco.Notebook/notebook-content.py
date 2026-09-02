@@ -26,9 +26,9 @@
 # intento vigente de cada quincena y recalcula sólo lo pendiente, así que el backfill y
 # la corrida del cron son el mismo código. Decisiones #12 y #13.
 #
-# El guard de lakehouse por defecto, `ruta_tabla`, `CORRIDA` y `DeltaTable` vienen de
-# nb_00_config. CONASAMI va aparte, en nb_21: su dimensión se mueve una vez al año y no
-# cuelga de este lote.
+# El guard de lakehouse por defecto, `ruta_tabla`, `CORRIDA`, `DeltaTable` y el trío del
+# resumen —`apunta`, `termina`, `version_de`— vienen de nb_00_config. CONASAMI va aparte,
+# en nb_21: su dimensión se mueve una vez al año y no cuelga de este lote.
 
 BRONZE, SILVER = "lh_bronze", "lh_silver"
 
@@ -45,21 +45,6 @@ EXCLUIDOS = [
     "Paquete con 2 Barritas. Fresa (67 Gr.)",
     "Paquete con 2 Barritas. Piña (67 Gr.)",
 ]
-
-RESUMEN = {}
-
-
-def apunta(paso: str, **datos) -> None:
-    """Un solo lugar por donde sale un número: al log del notebook y al resumen que se
-    devuelve. El `print` se queda en el snapshot; lo que el pipeline recibe y puede
-    encadenar es el exit value."""
-    RESUMEN[paso] = datos
-    legible = ", ".join(
-        # `type` y no `isinstance`: un bool es int en Python y saldría como 1.
-        f"{k}={v:,}" if type(v) is int else f"{k}={v}"
-        for k, v in datos.items()
-    )
-    print(f"{paso:<14}: {legible}")
 
 
 def de_bronze(tabla: str):
@@ -356,9 +341,7 @@ hechos = (
 reemplaza_quincenas(cuarentena, TABLA_CUARENTENA, quincenas_pendientes)
 reemplaza_quincenas(hechos, TABLA_HECHOS, quincenas_pendientes)
 
-# `exit` corta el notebook, así que va al final y nada se pone después. El pipeline lo
-# lee en @activity('nb_20_profeco').output.result.exitValue.
-notebookutils.notebook.exit(json.dumps({"corrida": CORRIDA, **RESUMEN}, ensure_ascii=False))
+termina()
 
 # METADATA ********************
 

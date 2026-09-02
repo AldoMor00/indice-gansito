@@ -23,14 +23,13 @@
 # CELL ********************
 
 # Bronze de Profeco: deja en Delta los parquets de indice-gansito-datos, sin castear,
-# filtrar ni deduplicar. Lo compartido con nb_11_conasami vive en nb_00_config.
+# filtrar ni deduplicar (regla dura #2). Lo compartido con nb_11_conasami vive en
+# nb_00_config. Aquí no corre nada: la corrida es la celda de abajo.
 
 FUENTE = "profeco"
 
 # Cómo se llavea esta fuente: campo del manifiesto -> columna de linaje.
 LLAVES = [("quincena", "_quincena"), ("intento", "_intento")]
-
-manifiesto = manifiesto_de(FUENTE)
 
 
 def url_de(e: dict, zona: str) -> str:
@@ -62,14 +61,21 @@ def baja(e: dict, zona: str) -> pd.DataFrame:
     return pdf.assign(_quincena=e["quincena"], _intento=e["intento"], _sha256=e["sha256"])
 
 
-def carga(zona: str, tabla: str, lakehouse: str) -> None:
-    """Deja en `tabla` las quincenas del manifiesto que falten. Idempotente."""
-    ruta = ruta_tabla(tabla, lakehouse)
-    falta = pendientes(ruta, manifiesto, LLAVES)
-    print(f"{zona}: {len(falta)} pendientes de {len(manifiesto)}")
+def carga(zona: str, manifiesto: list[dict], lakehouse: str) -> None:
+    """Deja en la tabla `zona` las quincenas del manifiesto que falten.
 
-    # El estado estable del cron es no hacer nada. No es un fallo.
+    `zona` nombra tres cosas a la vez —el directorio del repo de datos, el prefijo del
+    parquet y la tabla de bronze— y se llaman igual a propósito: un argumento aparte para
+    la tabla sólo serviría para escribir bronze en otro lado, que es justo lo que no debe
+    poder pasarse por accidente.
+    """
+    ruta = ruta_tabla(zona, lakehouse)
+    falta = pendientes(ruta, manifiesto, LLAVES)
+
+    # El estado estable del cron es no hacer nada, y no es un fallo. Se apunta igual: el
+    # cero explícito es lo único que hace visible el no-op.
     if not falta:
+        apunta(zona, pendientes=0, de=len(manifiesto), filas=0)
         return
 
     trozos = [baja(e, zona) for e in falta]
@@ -77,11 +83,33 @@ def carga(zona: str, tabla: str, lakehouse: str) -> None:
 
     leidas = {(e["quincena"], e["intento"]): len(t) for e, t in zip(falta, trozos)}
     reconcilia(ruta, leidas, LLAVES)
-    print(f"{zona}: {sum(leidas.values()):,} filas cargadas y reconciliadas")
+    apunta(
+        zona,
+        pendientes=len(falta),
+        de=len(manifiesto),
+        filas=sum(leidas.values()),
+        version=version_de(ruta),
+    )
 
+# METADATA ********************
 
-carga("precios", "zz_prueba_precios", "lh_silver")
-carga("tiendas", "zz_prueba_tiendas", "lh_silver")
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# El manifiesto es el índice de la zona raw —el repo no lista directorio— y el estado
+# contra el que se decide qué falta. Las dos zonas lo comparten, pero cada una tiene su
+# tabla y su conteo, así que van por separado.
+
+manifiesto = manifiesto_de(FUENTE)
+
+carga("precios", manifiesto, "lh_bronze")
+carga("tiendas", manifiesto, "lh_bronze")
+
+termina()
 
 # METADATA ********************
 

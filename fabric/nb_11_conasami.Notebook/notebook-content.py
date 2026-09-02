@@ -24,7 +24,7 @@
 
 # Bronze de CONASAMI. Misma regla que Profeco —no castea, no filtra, no deduplica— y la
 # misma mecánica de nb_00_config, pero llaveada por (archivo, version): esta fuente no
-# tiene período, se versiona por sha256. Ver decisión #9.
+# tiene período, se versiona por sha256 (decisión #9). Aquí no corre nada.
 
 FUENTE = "conasami"
 
@@ -35,8 +35,6 @@ TABLAS = {
     "sm_real_indice": "salario_indice",
     "sm_general_profesionales_zonas": "salario_zonas",
 }
-
-manifiesto = manifiesto_de(FUENTE)
 
 
 def url_de(e: dict) -> str:
@@ -65,16 +63,20 @@ def baja(e: dict) -> pd.DataFrame:
     return pdf.assign(_archivo=e["archivo"], _version=e["version"], _sha256=e["sha256"])
 
 
-def carga(archivo: str, lakehouse: str) -> None:
-    """Deja en su tabla las versiones de `archivo` que falten. Idempotente."""
+def carga(archivo: str, manifiesto: list[dict], lakehouse: str) -> None:
+    """Deja en su tabla las versiones de `archivo` que falten. Idempotente.
+
+    El manifiesto trae los dos archivos revueltos y se acota antes de comparar: cada uno
+    tiene su tabla, y `pendientes` compara contra una sola.
+    """
     tabla = TABLAS[archivo]
     ruta = ruta_tabla(tabla, lakehouse)
-    delain = [e for e in manifiesto if e["archivo"] == archivo]
-    falta = pendientes(ruta, delain, LLAVES)
-    print(f"{archivo}: {len(falta)} pendientes de {len(delain)}")
+    suyas = [e for e in manifiesto if e["archivo"] == archivo]
+    falta = pendientes(ruta, suyas, LLAVES)
 
     # El estado estable es no hacer nada: el archivo sólo cambia una vez al año.
     if not falta:
+        apunta(tabla, pendientes=0, de=len(suyas), filas=0)
         return
 
     trozos = [baja(e) for e in falta]
@@ -82,11 +84,29 @@ def carga(archivo: str, lakehouse: str) -> None:
 
     leidas = {(e["archivo"], e["version"]): len(t) for e, t in zip(falta, trozos)}
     reconcilia(ruta, leidas, LLAVES)
-    print(f"{archivo}: {sum(leidas.values()):,} filas cargadas y reconciliadas")
+    apunta(
+        tabla,
+        pendientes=len(falta),
+        de=len(suyas),
+        filas=sum(leidas.values()),
+        version=version_de(ruta),
+    )
 
+# METADATA ********************
 
-for _archivo in TABLAS:
-    carga(_archivo, "lh_bronze")
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+manifiesto = manifiesto_de(FUENTE)
+
+for archivo in TABLAS:
+    carga(archivo, manifiesto, "lh_bronze")
+
+termina()
 
 # METADATA ********************
 

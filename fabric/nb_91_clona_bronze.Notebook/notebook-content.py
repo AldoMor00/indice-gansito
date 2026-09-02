@@ -70,12 +70,17 @@ if not tablas:
 print(f"bronze de prod: {len(tablas)} tablas {tablas}")
 
 for tabla in tablas:
-    # OR REPLACE: el clon es el estado inicial de dev, no un merge. Lo que dev le haya
-    # escrito a esta tabla se pierde, que es justo para lo que se corre esto.
-    spark.sql(
-        f"CREATE OR REPLACE TABLE delta.`{DIR_DEV}{tabla}` "
-        f"SHALLOW CLONE delta.`{DIR_PROD}{tabla}`"
-    )
+    destino = f"{DIR_DEV}{tabla}"
+
+    # `CREATE OR REPLACE ... SHALLOW CLONE` por ruta no reemplaza: con el destino escrito
+    # truena con DELTA_UNSUPPORTED_NON_EMPTY_CLONE. Se borra el directorio y el clon nace
+    # limpio, que además es lo que se quiere —dev arranca en la v0 de prod y no arrastra
+    # el historial de sus propias corridas—. Sólo desaparece lo que dev escribió: los
+    # parquets son de prod y el clon nunca los tuvo.
+    if notebookutils.fs.exists(destino):
+        notebookutils.fs.rm(destino, True)
+
+    spark.sql(f"CREATE TABLE delta.`{destino}` SHALLOW CLONE delta.`{DIR_PROD}{tabla}`")
     print(f"{tabla}: clonada")
 
 # METADATA ********************

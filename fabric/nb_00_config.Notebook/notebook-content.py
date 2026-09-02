@@ -38,6 +38,35 @@ CORRIDA = _runt_ctx["activityId"]
 RAW = "https://raw.githubusercontent.com/AldoMor00/indice-gansito-datos/main"
 
 
+# El resumen de la corrida: un solo lugar por donde sale un número. El `print` se queda en
+# el snapshot del notebook; lo que el pipeline recibe y puede encadenar es el exit value,
+# así que todo lo que importe pasa por aquí y sale al final.
+RESUMEN = {}
+
+
+def apunta(paso: str, **datos) -> None:
+    """Al log del notebook y al resumen que se devuelve, de una sola escritura."""
+    RESUMEN[paso] = datos
+    legible = ", ".join(
+        # `type` y no `isinstance`: un bool es int en Python y saldría como 1.
+        f"{k}={v:,}" if type(v) is int else f"{k}={v}"
+        for k, v in datos.items()
+    )
+    print(f"{paso:<18}: {legible}")
+
+
+def termina() -> None:
+    """Último renglón del notebook: `exit` corta la ejecución, así que nada va después.
+    El pipeline lo lee en @activity('<notebook>').output.result.exitValue."""
+    notebookutils.notebook.exit(json.dumps({"corrida": CORRIDA, **RESUMEN}, ensure_ascii=False))
+
+
+def version_de(ruta: str) -> int:
+    """La versión que esta corrida dejó en la tabla. Es lo que empata el resumen con
+    DESCRIBE HISTORY, que ya es la bitácora de escrituras y no hay que duplicar."""
+    return DeltaTable.forPath(spark, ruta).history(1).first()["version"]
+
+
 def ruta_tabla(tabla: str, lakehouse: str, workspace_id: str | None = None) -> str:
     """Ruta OneLake de una tabla. GUIDs en los dos segmentos: mezclarlos con nombres da
     400, y los nombres se renombran. Nada hardcodeado: se pide por nombre y se resuelve
