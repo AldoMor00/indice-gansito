@@ -20,3 +20,6 @@ y en prod:
   Es lo que habilita que el `sessionTag` de `pl_bronze` agrupe; el tag solo no basta. Sin
   esto las actividades corren en sesiones separadas y la segunda se topa con 430. No
   miente en verde: el pipeline sale rojo. Ver decision #10.
+- **Spark settings > Runtime version > 2.0**, la misma en los dos workspaces. Las tablas
+  que crea Delta 4.2 nacen en un protocolo que un Delta 3.x no lee, asi que un workspace
+  rezagado no podria clonar el bronze del otro. Ver decision #11.

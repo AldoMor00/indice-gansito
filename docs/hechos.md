@@ -8,10 +8,23 @@ resultó ser cierto. Lo de las fuentes se mide en `fuentes.md` y aquí se resume
 
 ## Fabric y OneLake
 
+Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 4.2—.
+
+- **Fabric deja ANSI apagado**, contra el default de Spark 4, que lo trae prendido. Un cast
+  fallido da null en vez de tronar, así que silver elige en vez de heredar.
+- **Las deletion vectors vienen prendidas por defecto**
+  (`spark.databricks.delta.properties.defaults.enableDeletionVectors`), así que una tabla
+  nueva nace en el protocolo (3,7), con `deletionVectors` y `delta.targetFileSize.adaptive`.
+  Es lo que sostiene la decisión #11: un workspace en un runtime más viejo no podría leerlas.
+- **El bronze de prod está en (3,7)**, las cuatro tablas parejas: 213,772 precios, 74,180
+  tiendas, 685 y 42 de CONASAMI. Un solo `append` creó cada una, así que **el camino
+  incremental de `pl_bronze` nunca ha corrido en prod**: lo que F2 verificó es la
+  idempotencia del no-op.
 - **El `SHALLOW CLONE` de Fabric es zero copy de verdad, y sirve para lo que lo queremos**:
   funciona por ruta `abfss` sin lakehouse por defecto, entre lakehouses y **entre
   workspaces**. Medido con las 213,772 filas de precios: `_delta_log` sin un solo parquet
-  propio y el origen intacto después de escribirle al clon. Es lo que sostiene la
+  propio y el origen intacto después de escribirle al clon. El clon hereda el protocolo del
+  origen, así que dev sigue a prod sin administrarlo aparte. Es lo que sostiene la
   decisión #5. `currentWorkspaceName` existe en el context del notebook, así que el guard
   que impide correr una utilidad de dev en prod está probado allá.
 - **La capacidad de trial no aguanta dos sesiones de Spark a la vez.** `pl_bronze` disparó
@@ -46,10 +59,15 @@ resultó ser cierto. Lo de las fuentes se mide en `fuentes.md` y aquí se resume
   entrada `isDir` por tabla, con el `name` sin diagonal; sobre una ruta que no existe
   truena con 404. Por eso `nb_91_clona_bronze` enumera el bronze de prod en vez de llevar
   una lista, y un cero es "prod está vacío", no "me equivoqué de ruta".
-- **`Optimize Write` viene prendido por defecto**; V-Order lo decide el *resource profile*
-  del workspace, y los nuevos nacen en `writeHeavy`, que lo trae apagado. Lo que rompe un
-  clon es `OPTIMIZE` seguido de `VACUUM` —el primero deja huérfanos los archivos que el clon
-  referencia y el segundo los borra—, no `VACUUM` solo.
+- **El *resource profile* del workspace decide V-Order y Optimize Write, y los workspaces
+  corren `writeHeavy`.** Ese perfil trae V-Order apagado —`spark.sql.parquet.vorder.default`
+  en `false`— y fija los parámetros de Optimize Write —`binSize` 128, `partitioned.enabled`—
+  pero **no** su interruptor: `optimizeWrite.enabled` no queda puesto en la sesión, y son los
+  perfiles `readHeavy*` los que sí lo prenden explícitamente. O sea que prender V-Order sobre
+  gold, que es lo que lee Direct Lake, es cambiar de perfil o ponerlo a mano; no es algo que
+  ya esté pasando.
+- **Lo que rompe un clon es `OPTIMIZE` seguido de `VACUUM`** —el primero deja huérfanos los
+  archivos que el clon referencia y el segundo los borra—, no `VACUUM` solo.
 - **Fabric escribe `.platform` sin salto de línea final.** Con uno de más, el item sale
   `uncommitted` al sincronizar aunque el contenido sea idéntico. El `notebook-content.py`
   escrito a mano **sí** sobrevive el round-trip, celda `%run` incluida.

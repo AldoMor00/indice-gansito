@@ -20,7 +20,9 @@
 - **Siempre a través de `uv`.** Nunca `pip`, `python -m venv` ni `python` a secas.
   - script suelto con dependencias: `uv run --with fabric-cicd scripts/deploy.py`
   - cuando haya proyecto: `uv sync`, `uv add`, `uv run pytest`
-- Versión de Python: **3.11**, para igualar el runtime de Spark en Fabric.
+- Versión de Python: **3.13**, para igualar el runtime de Spark en Fabric. La excepción
+  es `deploy.yml`, que corre `fabric-cicd` y no entra a Fabric: ahí manda lo que esa
+  herramienta soporte.
 
 ## Documentación
 
