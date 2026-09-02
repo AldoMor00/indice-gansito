@@ -160,3 +160,37 @@ protocolo de una tabla no, así que el desempate es obvio: se suben los dos o no
 ninguno.
 
 El requisito queda en `fabric/README.md` junto a High concurrency, porque vive fuera de git.
+
+## 12. El grano de silver es la quincena, y el precio es un promedio
+
+Silver lee de bronze el `intento` máximo de cada quincena y agrega a tienda-SKU-quincena.
+Promediar varias visitas ya es el caso normal —de 126,493 celdas, sólo 49,179 traen una sola
+observación—, así que los 177 grupos con dos precios distintos el mismo día dejan de ser un
+caso especial en cuanto el grano deja de intentar ser diario. No fallan ninguna regla de
+calidad: son promociones, alzas cruzadas y precios transitorios, medidos en
+[`fuentes.md`](fuentes.md), y ninguno se tira. Cuál de los dos se tome es inmaterial: el bajo,
+el alto o el promedio mueven el cambio del Gansito entre la primera y la última quincena 0.07
+puntos porcentuales. Se promedia porque conserva las dos observaciones en vez de escoger una
+sin criterio.
+
+La columna se llama `precio_promedio`, no `precio`, y va con `observaciones`, `precio_min` y
+`precio_max` de la misma agregación. Con eso quien consuma silver sabe si el número se observó
+de verdad —`precio_min = precio_max`, cierto en el 92.65% de las celdas— sin una bandera
+booleana, que sería derivable de columnas que ya están ahí y habría que mantener al día. Las
+observaciones exactas nunca se pierden: viven en bronze, que no filtra ni deduplica, para
+quien necesite la serie diaria en vez de la quincenal.
+
+## 13. La identidad sale de la fuente
+
+Una tienda es `(nombre_comercial, direccion)` y un SKU es `(presentacion, marca)`: las únicas
+claves mínimas de las 46 quincenas, medidas en [`fuentes.md`](fuentes.md). `producto` y
+`categoria` son constantes en las 213,772 filas, y la coordenada no identifica aunque nunca se
+mueva. De `presentacion` se parsean piezas y gramaje, que entran como atributos —
+`precio_por_gramo` es lo que hace comparable un Gansito de 50 Gr. contra un Panqué de 280—, no
+como clave: `(piezas, gramos)` colisiona en los dos Panqués y en las dos Barritas. Que los 11
+SKUs parseen es regla de DQ.
+
+La canasta son 9 SKUs en las 46 quincenas: las Barritas Fresa y Piña se excluyen de toda la
+serie, porque Profeco las reclasificó a Galletas Dulces y salen del corte en `2025-03_q2`.
+La exclusión va en silver y no en `objetivo.yml`, porque el filtro de ingesta es por `producto`
+y ahí comparten valor con el resto.
