@@ -86,6 +86,10 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   silencio sin un solo error. Medido en [`fuentes.md`](fuentes.md).
 - **El esquema de la zona raw es estable**: 15 columnas en los 46 parquets de precios, 8 en
   los 46 de tiendas, todas `String`. Por eso bronze escribe con `mergeSchema` apagado.
+- **La clave de una tienda es `(nombre_comercial, direccion)`**, la única mínima de los 255
+  subconjuntos probados: lat/long no identifica —el 10.1% de las filas comparte coordenada—
+  pero es constante, y bajo la clave no cambia ningún atributo en 46 quincenas, así que
+  `dim_tienda` no tiene hoy qué versionar. Medido en [`fuentes.md`](fuentes.md).
 - **No hay PII** en lo que se persiste, y bronze cabe de sobra en la capacidad.
 
 ## CI y despliegue

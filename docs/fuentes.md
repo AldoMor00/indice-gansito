@@ -45,8 +45,35 @@ embebidas entre comillas.
   recorta gramajes: las Barritas Marinela pasaron de Pastelillos a Galletas Dulces entre
   2024 y 2025, y el Oreo bajó de 273.6 a 252 Gr. Para silver son productos nuevos, no el
   mismo con otro empaque.
-- **`(latitud, longitud, nombre_comercial)` no identifica una tienda.** Dos locales de la
-  Central de Abasto comparten la tupla y sólo difieren en `direccion`.
+- **La clave de una tienda es `(nombre_comercial, direccion)`, y es la única.** Búsqueda
+  exhaustiva de los 255 subconjuntos de los 8 campos sobre las 46 quincenas: ese par no
+  colisiona una sola vez, y es el único mínimo que lo logra. `direccion` es la del inmueble
+  —Sears y Liverpool comparten la de la plaza, Benavides y Elektra la de la esquina— y
+  `nombre_comercial` distingue al inquilino: las 11 direcciones con varios nombres se solapan
+  en el tiempo, así que son vecinos y no renombres. Ninguno de los dos alcanza solo.
+- **`(latitud, longitud)` no identifica, pero nunca se mueve.** Solas dan 5,352 colisiones
+  dentro de quincena, y con `nombre_comercial` 45: dos locales de La Molinera en la Central
+  de Abasto de Iztapalapa que sólo `direccion` separa. Profeco geocodifica el mercado, no el
+  local —hasta 20 tiendas bajo el punto de Ecatepec, y el 10.1% de las filas cae en una
+  coordenada compartida—. A cambio, las 2,392 tiendas conservan su coordenada exacta las 46
+  quincenas: es atributo geográfico para gold, no identidad.
+- **Una visita no es una quincena.** Las 213,772 filas caen en 126,493 celdas
+  tienda-SKU-quincena y sólo 49,179 traen una sola observación: Profeco visita la misma
+  tienda hasta cinco veces por quincena. `catalogo` no desempata —separa 82 filas de 86,809—
+  y `fecha_registro` es `yyyy/MM/dd` sin hora, así que las visitas de un mismo día no se
+  pueden ordenar.
+- **177 veces el mismo día, tienda y SKU traen dos precios distintos**, el 0.17% de las
+  filas, siempre exactamente dos y siempre distintos como número, no como formato. No es
+  error de captura: en 169 de 177 al menos uno de los dos valores es un precio que esa
+  tienda cobra en su propia serie, y en 26 lo son los dos. Se descomponen en tres fenómenos
+  —57 con el precio bajo estable de los dos lados, 35 con el alto estable, que es la
+  promoción clásica, y 26 de cambio de precio que las dos capturas cruzan—. Los 17 con firma
+  de alza, el bajo empatando con el vecino previo y el alto con el siguiente, la confirman
+  **17 de 17** con `previo < siguiente`.
+- **Bajo esa clave no cambia nada.** Cadena, giro, estado, municipio y coordenada son
+  constantes en las 2,392 tiendas por 46 quincenas, y normalizar —trim, mayúsculas, espacios
+  colapsados— no fusiona ni una clave ni deja nulos. Lo que sí rota es el panel: sólo 581
+  tiendas (24.3%) aparecen en las 46, con una media de 31.
 
 ## El programa dejó de publicar
 
