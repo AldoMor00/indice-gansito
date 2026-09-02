@@ -164,9 +164,9 @@ El requisito queda en `fabric/README.md` junto a High concurrency, porque vive f
 ## 12. El grano de silver es la quincena, y el precio es un promedio
 
 Silver lee de bronze el `intento` máximo de cada quincena y agrega a tienda-SKU-quincena.
-Promediar varias visitas ya es el caso normal —de 126,493 celdas, sólo 49,179 traen una sola
-observación—, así que los 177 grupos con dos precios distintos el mismo día dejan de ser un
-caso especial en cuanto el grano deja de intentar ser diario. No fallan ninguna regla de
+Promediar varias visitas ya es el caso normal —de las 126,493 celdas de la canasta, sólo 49,179
+traen una sola observación—, así que los 177 grupos con dos precios distintos el mismo día
+dejan de ser un caso especial en cuanto el grano deja de intentar ser diario. No fallan ninguna regla de
 calidad: son promociones, alzas cruzadas y precios transitorios, medidos en
 [`fuentes.md`](fuentes.md), y ninguno se tira. Cuál de los dos se tome es inmaterial: el bajo,
 el alto o el promedio mueven el cambio del Gansito entre la primera y la última quincena 0.07
@@ -194,3 +194,25 @@ La canasta son 9 SKUs en las 46 quincenas: las Barritas Fresa y Piña se excluye
 serie, porque Profeco las reclasificó a Galletas Dulces y salen del corte en `2025-03_q2`.
 La exclusión va en silver y no en `objetivo.yml`, porque el filtro de ingesta es por `producto`
 y ahí comparten valor con el resto.
+
+## 14. Un patrón de escritura por tipo de tabla, y nunca `overwrite`
+
+El patrón lo decide la tabla, no el tamaño del dato. A esta escala reconstruir `hechos_precios`
+entero tardaría lo mismo que actualizarlo, así que se elige el que se usaría en producción: el
+volumen de la muestra es un accidente del dataset público, no el caso que se está resolviendo.
+
+| tabla | patrón | por qué |
+|---|---|---|
+| bronze | `append`, `mergeSchema` apagado | no castea ni deduplica, y una columna nueva es alarma de lote (decisión #8) |
+| dimensión | `MERGE` por clave, con condición de cambio | es acumulativa: una tienda que salió del panel no deja de existir y los hechos viejos la siguen apuntando |
+| dimensión SCD2 | `MERGE`, cerrando vigencias con `LEAD` | CONASAMI reexpide la historia completa cada año, así que la vigencia se deriva del lote y el mismo MERGE la cierra |
+| hecho | `replaceWhere` sobre las quincenas recalculadas | la quincena está completa o no está; un MERGE leería la tabla entera buscando filas que por construcción no existen |
+
+`overwrite` de la tabla completa no se usa en ninguna. Reescribirlo todo esconde justo lo que
+hay que ver —qué cambió en esta corrida— y deja el historial de la tabla sin nada que comparar.
+
+La condición de cambio del MERGE —`NOT (d.col <=> n.col)` sobre los atributos— es la mitad que
+carga peso. Sin ella la corrida sin novedades reescribe archivos y el log deja de distinguir
+"no pasó nada" de "se recalculó todo"; con ella un MERGE que no cambia nada no commitea versión.
+`precios_cuarentena` se reescribe con el mismo `replaceWhere` que el hecho, para que las dos
+tablas nunca queden de corridas distintas (regla dura #3).
