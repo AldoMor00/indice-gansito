@@ -115,6 +115,10 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   van en el mismo despliegue y antes que el pipeline. Verificado en el pipeline ya desplegado:
   trae el GUID del notebook **de prod** y el workspace de prod. El JSON que muestra la UI
   **no** es el que se despliega: ahí los dos campos son GUIDs literales del workspace vivo.
+- **La git integration de Fabric corta el mensaje del commit.** Cabe el asunto y poco más:
+  un mensaje de 302 caracteres se truncó a media palabra, sin avisar. Los commits que salen
+  del UI se escriben de una línea y el porqué se deja en los comentarios del notebook o en
+  estos documentos, que es donde de todos modos se busca.
 - **`fab` se instala con `uv tool install --python 3.12`**; con 3.14 truena con pyyaml.
 - **Los workflows sólo se registran desde la rama por defecto**: `workflow_dispatch` y
   `schedule` no existen mientras el archivo viva sólo en `dev`.
