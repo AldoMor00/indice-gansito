@@ -1,0 +1,68 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "dbc2e41c-e793-afba-45db-dceef99dce17",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "sessionTag": "silver"
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_20_profeco",
+        "dependsOn": []
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "31d4547b-31f8-9923-4859-e047f6e02b80",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "sessionTag": "silver"
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_21_conasami",
+        "dependsOn": [
+          {
+            "activity": "nb_20_profeco",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Wait",
+        "typeProperties": {
+          "waitTimeInSeconds": 1
+        },
+        "name": "ambas_fuentes_ok",
+        "dependsOn": [
+          {
+            "activity": "nb_20_profeco",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "nb_21_conasami",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
