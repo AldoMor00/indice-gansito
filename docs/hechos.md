@@ -95,12 +95,15 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   `FriendlyNameSupportDisabled`. Los dos van por GUID; ver `ruta_tabla` en `nb_00_config`.
 - **Spark no habla HTTPS**: los bytes bajan con `requests` al driver. La capacidad **sí**
   sale a `raw.githubusercontent.com`, probado con texto y con binario.
-- **`activityId` sirve de id de corrida** y `DESCRIBE HISTORY` ya es la bitácora de
-  escrituras. Una tabla de runs propia las duplicaría.
-- **Pero interactivamente `activityId` es de la sesión, no de la ejecución**: dos corridas
-  seguidas de `nb_21` en la misma sesión salieron con el mismo `corrida` en el exit value.
-  Falta ver qué hace disparado por pipeline —ahí cada actividad debería traer el suyo— antes
-  de que la tabla de corridas de F5 lo use de llave; si no, dos ejecuciones se pisan.
+- **`activityId` correlaciona el exit value con el snapshot** y `DESCRIBE HISTORY` ya es la
+  bitácora de escrituras. Una tabla de runs propia las duplicaría.
+- **Pero `activityId` es de la sesión, no de la ejecución**, interactivamente y por pipeline.
+  Dos corridas seguidas de `nb_21` en la misma sesión interactiva salieron con el mismo
+  `corrida` en el exit value, y las dos actividades de `pl_silver` también, con el `sessionId`
+  que compartieron. La alta concurrencia lo garantiza en vez de evitarlo: cada actividad se
+  engancha a la sesión de la primera. Así que no sirve de llave para la tabla de corridas de
+  F5 —dos ejecuciones se pisan siempre, no a veces—. El id por ejecución existe del lado del
+  pipeline: el `runId` de cada actividad salió distinto.
 
 ## Las fuentes
 
