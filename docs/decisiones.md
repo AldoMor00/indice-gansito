@@ -86,8 +86,8 @@ Cada tipo de fallo se trata distinto, y esa es la parte que no se improvisa:
 - **carga incompleta** → truena el job. Bronze reconcilia su conteo por
   `(quincena, intento)` contra `filas_filtradas` del manifiesto, y un descuadre es un
   `raise`: no es un dato malo, es un pipeline roto;
-- **dato malo** → cuarentena, y el pipeline sigue (regla dura #3). Tirar un lote de 4,530
-  filas por 12 inválidas cuesta más de lo que evita.
+- **dato malo** → se marca y se cuenta, y el pipeline sigue (regla dura #3, decisión #15).
+  Tirar un lote de 4,530 filas por 12 inválidas cuesta más de lo que evita.
 
 ## 8. Bronze lee por HTTPS, no por shortcut
 
@@ -214,5 +214,23 @@ hay que ver —qué cambió en esta corrida— y deja el historial de la tabla s
 La condición de cambio del MERGE —`NOT (d.col <=> n.col)` sobre los atributos— es la mitad que
 carga peso. Sin ella la corrida sin novedades reescribe archivos y el log deja de distinguir
 "no pasó nada" de "se recalculó todo"; con ella un MERGE que no cambia nada no commitea versión.
-`precios_cuarentena` se reescribe con el mismo `replaceWhere` que el hecho, para que las dos
-tablas nunca queden de corridas distintas (regla dura #3).
+
+## 15. La observación inválida se cuenta en el hecho, no en una tabla aparte
+
+`precios_cuarentena` copiaba a silver lo que ya estaba en bronze —llaves naturales,
+`fecha_registro`, el `precio` original, `(_quincena, _intento)`— y agregaba sólo `regla`, que es
+derivable: o `precio` es nulo o el `try_cast` falló. Es el argumento de la decisión #12 —las
+observaciones exactas viven en bronze, que no filtra ni deduplica— aplicado a la que no promedia.
+En su lugar `hechos_precios` lleva `observaciones_invalidas` junto a `observaciones`, y la celda
+cuyas observaciones fallan todas se emite con `precio_promedio` nulo, en vez de desaparecer del
+hecho y reaparecer en una tabla que nadie une. Se va también el segundo `replaceWhere`, que
+existía sólo para que las dos tablas no quedaran de corridas distintas.
+
+La regla dura #3 no se debilita por dejar de ser una tabla separada: `avg`, `count(col)`, `min` y
+`max` ignoran nulos, así que el valor inválido no entra a una medida aunque nadie escriba un
+`WHERE`. Lo que sí cambia es el diagnóstico —"qué cadena traía ese precio" ahora es una consulta
+a bronze por `(_quincena, _intento)`, contra la tabla que es fuente de verdad— y la
+observabilidad, que mejora: la tasa deja de ser una tabla que nadie lee y pasa a ser
+`sum(observaciones_invalidas) / sum(observaciones + observaciones_invalidas)` sobre el hecho,
+evaluable contra umbral por `nb_40_dq` y mostrable en gold. Si bronze dejara de retenerse el
+argumento se cae y la tabla aparte vuelve; con la decisión #8 no pasa.

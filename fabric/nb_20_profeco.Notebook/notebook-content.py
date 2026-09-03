@@ -35,7 +35,6 @@ BRONZE, SILVER = "lh_bronze", "lh_silver"
 # `hechos_precios` es el estado de silver: qué quincenas ya se procesaron y con qué
 # intento. Si no existe —primera corrida— todo sale pendiente y el backfill es esta misma.
 TABLA_HECHOS = "hechos_precios"
-TABLA_CUARENTENA = "precios_cuarentena"
 
 # La canasta son 9 SKUs, no 11: las Barritas Fresa y Piña salen de toda la serie porque
 # Profeco las reclasificó a Galletas Dulces y desaparecen del corte en 2025-03_q2. La
@@ -258,7 +257,8 @@ dim_tienda = (
         # Decimal y no double: la coordenada no identifica —el 10.1% de las filas comparte
         # una, porque Profeco geocodifica el mercado y no el local— pero es exacta y no se
         # mueve en 46 quincenas. Es atributo geográfico para gold, y un cast fallido deja
-        # nulo: la cuarentena es del hecho, una coordenada ilegible no invalida la tienda.
+        # nulo y lo reporta nb_40_dq: el conteo de inválidas es del hecho (decisión #15),
+        # y una coordenada ilegible no invalida a la tienda.
         F.col("latitud").try_cast("decimal(9,6)").alias("latitud"),
         F.col("longitud").try_cast("decimal(9,6)").alias("longitud"),
     )
@@ -266,56 +266,37 @@ dim_tienda = (
 
 upsert(dim_tienda, "dim_tienda", ["id_tienda"])
 
-# El tipado y las dos puertas. `precio` es lo único que se castea a número en el camino
-# del hecho, así que es lo único que puede caer en cuarentena: `fecha_registro` viene en
-# `yyyy/MM/dd` sin ambigüedad y las llaves son texto que no se convierte.
+# El tipado. `precio` es lo único que se castea a número en el camino del hecho, así que
+# es lo único que puede resultar inválido: `fecha_registro` viene en `yyyy/MM/dd` sin
+# ambigüedad y las llaves son texto que no se convierte.
 con_precio = lote.withColumns({
     "id_tienda": clave("nombre_comercial", "direccion"),
     "id_producto": clave("presentacion", "marca"),
     # `try_cast` explícito y no `cast`: Fabric deja ANSI apagado, así que un cast fallido
     # daría null de todos modos. Silver elige en vez de heredar.
     "precio_tipado": F.col("precio").try_cast("decimal(10,2)"),
-}).cache()
-
-# Una sola condición separa las dos puertas —no hay número usable— y `regla` dice cuál de
-# los dos motivos fue. Ninguna fila se pierde: la que no promedia queda apartada con su
-# valor original y su llave natural, para poder diagnosticarla sin volver a bronze.
-cuarentena = (
-    con_precio.filter(F.col("precio_tipado").isNull())
-    .withColumn(
-        "regla",
-        F.when(F.col("precio").isNull(), "precio nulo en la fuente")
-        .otherwise("precio no castea a decimal"),
-    )
-    .select(
-        "id_tienda",
-        "id_producto",
-        "nombre_comercial",
-        "direccion",
-        "presentacion",
-        "marca",
-        "fecha_registro",
-        "precio",
-        "regla",
-        "_quincena",
-        "_intento",
-    )
-)
-
-validas = con_precio.filter(F.col("precio_tipado").isNotNull())
+})
 
 # El grano es tienda-SKU-quincena, no la visita: Profeco visita la misma tienda hasta
 # cinco veces por quincena y `fecha_registro` no trae hora, así que las capturas del mismo
 # día no se pueden ordenar. Promediar conserva las dos observaciones en vez de escoger una
 # sin criterio, y `observaciones`, `precio_min` y `precio_max` dejan ver si el número se
 # observó de verdad sin una bandera derivable (decisión #12).
+#
+# Se agrega sobre `con_precio` y no sobre las válidas, para que la celda cuyas
+# observaciones fallaron todas exista con `precio_promedio` nulo en vez de desaparecer
+# (decisión #15). El inválido no puede contaminar una medida: `avg`, `count(col)`, `min` y
+# `max` ignoran nulos, así que sale de las cuatro solo.
 hechos = (
-    validas.groupBy("id_tienda", "id_producto", "_quincena")
+    con_precio.groupBy("id_tienda", "id_producto", "_quincena")
     .agg(
         # decimal(10,4) y no (10,2): el promedio de dos precios de dos decimales puede
         # tener tres, y redondearlo aquí metería un sesgo que no está en el dato.
         F.avg("precio_tipado").cast("decimal(10,4)").alias("precio_promedio"),
-        F.count("*").alias("observaciones"),
+        F.count("precio_tipado").alias("observaciones"),
+        # El motivo —nulo en la fuente o cadena que no castea— no se guarda aquí: se lee en
+        # bronze filtrando por `(_quincena, _intento)`, que es donde vive la fila original.
+        F.count_if(F.col("precio_tipado").isNull()).alias("observaciones_invalidas"),
         F.min("precio_tipado").alias("precio_min"),
         F.max("precio_tipado").alias("precio_max"),
         F.max("_intento").alias("_intento"),
@@ -332,13 +313,25 @@ hechos = (
             )
         ),
     )
+    # Se consume tres veces —el conteo de inválidas, la escritura y el `count` del resumen—
+    # y cada una rearmaría la agregación desde bronze. Antes el cache estaba río arriba,
+    # sobre las filas sin agrupar, porque de ahí colgaban el hecho y la cuarentena.
+    .cache()
 )
 
-# La cuarentena se escribe primero y el hecho al final, porque el hecho es el punto de
-# commit: `pendientes_silver` lo lee para saber qué quincenas ya están hechas. Al revés,
-# una corrida que muriera entre las dos dejaría la quincena marcada como lista con su
-# cuarentena de otra corrida.
-reemplaza_quincenas(cuarentena, TABLA_CUARENTENA, quincenas_pendientes)
+# Lo inválido sale por el resumen y no por una tabla paralela: es la cifra que nb_40_dq
+# compara contra umbral, y la única que hace visible que un lote llegó sucio. Con el lote
+# vacío `sum` da nulo, no cero.
+invalidas = hechos.agg(
+    F.sum("observaciones_invalidas").alias("observaciones"),
+    F.count_if(F.col("observaciones") == 0).alias("celdas_sin_precio"),
+).first()
+apunta(
+    "invalidas",
+    observaciones=int(invalidas["observaciones"] or 0),
+    celdas_sin_precio=int(invalidas["celdas_sin_precio"]),
+)
+
 reemplaza_quincenas(hechos, TABLA_HECHOS, quincenas_pendientes)
 
 termina()

@@ -57,7 +57,7 @@ Prod no está conectado a git: se le despliega, no se le sincroniza.
 | **F0** | Andamiaje: repos, workspaces, ramas, despliegue verde | hecha |
 | **F1** | Landing: backfill 2024-01 → 2025-11, CONASAMI y cron | hecha |
 | **F2** | Bronze: ingesta idempotente | en curso |
-| **F3** | Silver: tipado, MERGE, SCD2, cuarentena, calidad | |
+| **F3** | Silver: tipado, MERGE, SCD2, calidad | |
 | **F4** | Gold: estrella, Direct Lake y copia pública | |
 | **F5** | Documentación y página del portafolio | |
 
