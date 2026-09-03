@@ -36,6 +36,7 @@ if _runt_ctx["defaultLakehouseId"] is not None:
 
 CORRIDA = _runt_ctx["activityId"]
 RAW = "https://raw.githubusercontent.com/AldoMor00/indice-gansito-datos/main"
+BRONZE, SILVER = "lh_bronze", "lh_silver"
 
 # ANSI encendido. Fabric lo trae apagado, así que un `cast` fallido daría nulo en silencio;
 # con esto truena. Es lo que vuelve a `cast` y `try_cast` dos decisiones distintas y
@@ -238,6 +239,72 @@ def exige_llave_unica(sdf, llave: str) -> None:
     filas, distintas = sdf.count(), sdf.select(llave).distinct().count()
     if filas != distintas:
         raise RuntimeError(f"{llave}: {filas:,} filas y {distintas:,} llaves distintas")
+
+
+def de_bronze(tabla: str):
+    """Lee la tabla delta de bronze."""
+    return spark.read.format("delta").load(ruta_tabla(tabla, BRONZE))
+
+
+def clave(*cols):
+    """Clave sustituta determinista sobre la clave natural. Es lo que deja que el MERGE
+    junte por un `bigint` en vez de por un par de cadenas largas, y que la clave se
+    calcule sin consultar la dimensión: no hace falta un paso previo que reparta ids.
+    Silver se recalcula sola y los ids no pueden cambiar bajo gold."""
+    return F.xxhash64(*cols)
+
+
+def upsert(nuevas, tabla: str, llaves: list[str]) -> None:
+    """Dimensión: MERGE por clave. Inserta lo nuevo y actualiza sólo lo que de verdad
+    cambió —de ahí la condición sobre los atributos—, para que la corrida sin novedades
+    no reescriba un solo archivo. No se sobrescribe la tabla porque una dimensión es
+    acumulativa: una tienda que salió del panel no deja de existir, y los hechos
+    históricos la siguen apuntando.
+
+    Un MERGE que no cambia nada no commitea versión, así que el rastro se lee comparando
+    la versión de antes contra la de después y no mirando la última entrada del log, que
+    en ese caso sería de otra operación.
+    """
+    ruta = ruta_tabla(tabla, SILVER)
+    if not DeltaTable.isDeltaTable(spark, ruta):
+        filas = nuevas.count()
+        # Crear la dimensión vacía es un estado roto que se lee como éxito. Pasa si se dropea
+        # la dimensión sin dropear el hecho —entonces no hay quincenas pendientes y el lote
+        # viene vacío— y también si bronze está vacío.
+        if not filas:
+            raise RuntimeError(f"{tabla} no existe y el lote viene vacío: no hay qué crear")
+        nuevas.write.format("delta").save(ruta)
+        apunta(tabla, creada=True, insertadas=filas, actualizadas=0)
+        return
+
+    dt = DeltaTable.forPath(spark, ruta)
+    antes = dt.history(1).first()["version"]
+    atributos = [c for c in nuevas.columns if c not in llaves]
+    (
+        dt.alias("d")
+        # Condición de join: "d.id_producto = n.id_producto". Con varias llaves, unidas
+        # por AND. `d` es lo que ya está en la tabla, `n` lo que trae esta corrida.
+        .merge(nuevas.alias("n"), " AND ".join(f"d.{k} = n.{k}" for k in llaves))
+        # Condición de update: "NOT (d.marca <=> n.marca) OR NOT (d.gramos <=> n.gramos)".
+        # O sea, actualiza sólo si algún atributo difiere. `<=>` es igualdad nula-segura:
+        # `null <=> null` da cierto, `null = null` daría null y el cambio pasaría de largo.
+        .whenMatchedUpdateAll(" OR ".join(f"NOT (d.{c} <=> n.{c})" for c in atributos))
+        .whenNotMatchedInsertAll()
+        .execute()
+    )
+
+    despues = DeltaTable.forPath(spark, ruta).history(1).first()
+    if despues["version"] == antes:
+        apunta(tabla, insertadas=0, actualizadas=0, version=antes)
+        return
+
+    metricas = despues["operationMetrics"]
+    apunta(
+        tabla,
+        insertadas=int(metricas["numTargetRowsInserted"]),
+        actualizadas=int(metricas["numTargetRowsUpdated"]),
+        version=despues["version"],
+    )
 
 # METADATA ********************
 

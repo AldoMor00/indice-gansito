@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_21_conasami"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "31d4547b-31f8-9923-4859-e047f6e02b80"
+  }
+}
