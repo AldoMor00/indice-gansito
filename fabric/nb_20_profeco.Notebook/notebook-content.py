@@ -26,9 +26,12 @@
 # intento vigente de cada quincena y recalcula sólo lo pendiente, así que el backfill y
 # la corrida del cron son el mismo código. Decisiones #12 y #13.
 #
-# El guard de lakehouse por defecto, `ruta_tabla`, `CORRIDA`, `DeltaTable` y el trío del
-# resumen —`apunta`, `termina`, `version_de`— vienen de nb_00_config. CONASAMI va aparte,
-# en nb_21: su dimensión se mueve una vez al año y no cuelga de este lote.
+# Nada se escribe hasta que pasan todas las compuertas: lo que no cumple detiene la corrida
+# (decisión #15). El tipado no lleva compuerta propia porque nb_00_config enciende ANSI.
+#
+# El guard de lakehouse por defecto, `ruta_tabla`, `CORRIDA`, `DeltaTable`, el trío del
+# resumen y las compuertas vienen de nb_00_config. CONASAMI va aparte, en nb_21: su
+# dimensión se mueve una vez al año y no cuelga de este lote.
 
 BRONZE, SILVER = "lh_bronze", "lh_silver"
 
@@ -44,6 +47,12 @@ EXCLUIDOS = [
     "Paquete con 2 Barritas. Fresa (67 Gr.)",
     "Paquete con 2 Barritas. Piña (67 Gr.)",
 ]
+
+# Cuántas presentaciones puede traer el lote una vez excluidas esas dos (decisión #13).
+SKUS_CANASTA = 9
+
+LLAVE_PRODUCTO = ["presentacion", "marca"]
+ATRIBUTOS_PRODUCTO = ["producto", "categoria"]
 
 
 def de_bronze(tabla: str):
@@ -162,11 +171,9 @@ def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
 
 # CELL ********************
 
-# `canasta` son las 46 quincenas al intento vigente sin los SKUs excluidos; `lote` es
-# sólo lo que falta recalcular. Las dimensiones se escriben antes que el hecho a
-# propósito: el hecho es el punto de commit. Si algo truena a media corrida, la dimensión
-# quedó con filas de más —que el upsert vuelve a poner igual— y la quincena sigue
-# pendiente.
+# `canasta` son las 46 quincenas al intento vigente sin los SKUs excluidos; `lote` es sólo
+# lo que falta recalcular. Armar, validar, escribir, en ese orden y con las tres escrituras
+# hasta el final.
 
 bronze_precios = de_bronze("precios")
 canasta = (
@@ -186,40 +193,62 @@ apunta("pendiente", quincenas=len(quincenas_pendientes), filas=lote.count())
 # no encuentra nada que insertar y no commitea versión. No hace falta cortar aquí, y un
 # solo punto de salida se lee mejor.
 
+# Compuertas de entrada. Lo vacío se ataja aquí y no con un `NOT NULL` sobre el id: las
+# llaves no se castean, se hashean, y `xxhash64` salta los nulos en vez de propagarlos — una
+# `direccion` vacía da una llave válida y equivocada, fusionada con otra tienda.
+exige_completo(
+    lote,
+    LLAVE_PRODUCTO + ATRIBUTOS_PRODUCTO + ["nombre_comercial", "direccion", "precio"],
+)
+exige_uno_por_clave(lote, LLAVE_PRODUCTO, ATRIBUTOS_PRODUCTO)
+
 # Los dos formatos de `presentacion` y lo que saca cada regex:
 #   "Paquete con 6 Mantecadas. Vainilla (188 Gr.)"  ->  piezas=6,    gramos=188
 #   "Paquete 280 Gr. Panqué Nuez"                   ->  piezas=nada, gramos=280
-# Que los 9 SKUs parseen es regla de nb_40_dq, no un assert aquí.
 PIEZAS = r"Paquete con (\d+)\s"     # "Paquete con", el número, y el espacio que lo cierra
 GRAMOS = r"(\d+(?:\.\d+)?) Gr\."    # el número —con decimales opcionales— antes de " Gr."
+FORMATO = r"^Paquete (con \d+\s|\d+(\.\d+)? Gr\.)"   # uno de los dos y ninguno más
+
+# Sobre el formato y no sobre `piezas`: ahí un regex roto ya no se distingue de la
+# presentación que legítimamente no declara piezas.
+presentaciones = lote.select("presentacion").distinct()
+desconocidas = presentaciones.filter(
+    ~(F.col("presentacion").rlike(FORMATO) & F.col("presentacion").rlike(GRAMOS))
+).collect()
+if desconocidas:
+    raise RuntimeError(
+        "`presentacion` con formato desconocido — "
+        + ", ".join(f["presentacion"] for f in desconocidas)
+    )
+
+# Una décima presentación es un renombre —y EXCLUIDOS que dejó de excluir— o un producto
+# nuevo en la canasta. Las dos se deciden.
+skus = presentaciones.count()
+if skus > SKUS_CANASTA:
+    raise RuntimeError(f"{skus} presentaciones en el lote y la canasta son {SKUS_CANASTA}")
 
 dim_producto = (
-    lote.groupBy("presentacion", "marca")
-    # `producto` y `categoria` son constantes bajo la clave en las 46 quincenas, pero el
-    # MERGE truena si el origen trae dos filas con el mismo id. `max_by` desempata por
-    # quincena más reciente; que alguna vez haya habido dos valores lo reporta nb_40_dq.
-    .agg(
-        F.max_by("producto", "_quincena").alias("producto"),
-        F.max_by("categoria", "_quincena").alias("categoria"),
-    )
+    lote.groupBy(*LLAVE_PRODUCTO)
+    # Cualquier agregado sirve tras `exige_uno_por_clave`; `max` porque es determinista.
+    .agg(*[F.max(c).alias(c) for c in ATRIBUTOS_PRODUCTO])
     .select(
         clave("presentacion", "marca").alias("id_producto"),
         "marca",
         "presentacion",
         F.coalesce(
+            # El único `try_cast` del notebook: aquí el "" del regex es la presentación sin
+            # piezas, no un regex roto —de eso responde la compuerta de formato—.
             F.regexp_extract("presentacion", PIEZAS, 1).try_cast("int"),
             F.lit(1),  # "Paquete 280 Gr. Panqué Nuez" no declara piezas: es uno
         ).alias("piezas"),
         # `gramos` y no `precio_por_gramo`: el precio vive en el hecho, así que la
         # división es de gold. Materializarla aquí sería guardar una columna derivable de
         # otras dos, justo lo que la decisión #12 descartó para la bandera booleana.
-        F.regexp_extract("presentacion", GRAMOS, 1).try_cast("decimal(7,2)").alias("gramos"),
+        F.regexp_extract("presentacion", GRAMOS, 1).cast("decimal(7,2)").alias("gramos"),
         "producto",
         "categoria",
     )
 )
-
-upsert(dim_producto, "dim_producto", ["id_producto"])
 
 # Las tiendas salen del corte completo del archivo, no del de precios: si salieran de ahí
 # la dimensión quedaría sesgada a las que venden pastelillos (decisión #2). Por eso este
@@ -239,13 +268,15 @@ apunta("bronze_tiendas", filas=bronze_tiendas.count())
 LLAVE_TIENDA = ["nombre_comercial", "direccion"]
 ATRIBUTOS_TIENDA = ["cadena_comercial", "giro", "estado", "municipio", "latitud", "longitud"]
 
+exige_completo(tiendas_lote, LLAVE_TIENDA + ATRIBUTOS_TIENDA)
+
+# Ningún atributo cambia bajo la clave en 46 quincenas, y por eso dim_tienda no lleva SCD2.
+# Que empiece a cambiar es lo que haría falsa esa decisión: se mira, no se desempata.
+exige_uno_por_clave(tiendas_lote, LLAVE_TIENDA, ATRIBUTOS_TIENDA)
+
 dim_tienda = (
     tiendas_lote.groupBy(*LLAVE_TIENDA)
-    # Bajo la clave no cambia un solo atributo en 46 quincenas, así que dim_tienda no
-    # lleva SCD2: no hay nada que versionar. El `max_by` no está por si cambian, sino
-    # porque el MERGE truena si el origen trae dos filas con el mismo id; si algún día
-    # difieren gana la quincena más reciente y nb_40_dq lo reporta.
-    .agg(*[F.max_by(col, "_quincena").alias(col) for col in ATRIBUTOS_TIENDA])
+    .agg(*[F.max(c).alias(c) for c in ATRIBUTOS_TIENDA])
     .select(
         clave(*LLAVE_TIENDA).alias("id_tienda"),
         "nombre_comercial",
@@ -256,25 +287,21 @@ dim_tienda = (
         "municipio",
         # Decimal y no double: la coordenada no identifica —el 10.1% de las filas comparte
         # una, porque Profeco geocodifica el mercado y no el local— pero es exacta y no se
-        # mueve en 46 quincenas. Es atributo geográfico para gold, y un cast fallido deja
-        # nulo y lo reporta nb_40_dq: el conteo de inválidas es del hecho (decisión #15),
-        # y una coordenada ilegible no invalida a la tienda.
-        F.col("latitud").try_cast("decimal(9,6)").alias("latitud"),
-        F.col("longitud").try_cast("decimal(9,6)").alias("longitud"),
+        # mueve en 46 quincenas. Es atributo geográfico para gold, y una coordenada ilegible
+        # detiene la corrida como cualquier otro casteo: con ANSI el `cast` truena solo.
+        F.col("latitud").cast("decimal(9,6)").alias("latitud"),
+        F.col("longitud").cast("decimal(9,6)").alias("longitud"),
     )
 )
 
-upsert(dim_tienda, "dim_tienda", ["id_tienda"])
-
-# El tipado. `precio` es lo único que se castea a número en el camino del hecho, así que
-# es lo único que puede resultar inválido: `fecha_registro` viene en `yyyy/MM/dd` sin
-# ambigüedad y las llaves son texto que no se convierte.
+# `precio` es lo único que se castea a número en el camino del hecho: `fecha_registro` viene
+# en `yyyy/MM/dd` sin ambigüedad y las llaves son texto que no se convierte.
 con_precio = lote.withColumns({
     "id_tienda": clave("nombre_comercial", "direccion"),
     "id_producto": clave("presentacion", "marca"),
-    # `try_cast` explícito y no `cast`: Fabric deja ANSI apagado, así que un cast fallido
-    # daría null de todos modos. Silver elige en vez de heredar.
-    "precio_tipado": F.col("precio").try_cast("decimal(10,2)"),
+    # `cast` y no `try_cast`: con ANSI un precio ilegible truena aquí. El vacío, que el cast
+    # dejaría pasar como nulo, ya lo atajó `exige_completo`.
+    "precio_tipado": F.col("precio").cast("decimal(10,2)"),
 })
 
 # El grano es tienda-SKU-quincena, no la visita: Profeco visita la misma tienda hasta
@@ -282,21 +309,13 @@ con_precio = lote.withColumns({
 # día no se pueden ordenar. Promediar conserva las dos observaciones en vez de escoger una
 # sin criterio, y `observaciones`, `precio_min` y `precio_max` dejan ver si el número se
 # observó de verdad sin una bandera derivable (decisión #12).
-#
-# Se agrega sobre `con_precio` y no sobre las válidas, para que la celda cuyas
-# observaciones fallaron todas exista con `precio_promedio` nulo en vez de desaparecer
-# (decisión #15). El inválido no puede contaminar una medida: `avg`, `count(col)`, `min` y
-# `max` ignoran nulos, así que sale de las cuatro solo.
 hechos = (
     con_precio.groupBy("id_tienda", "id_producto", "_quincena")
     .agg(
         # decimal(10,4) y no (10,2): el promedio de dos precios de dos decimales puede
         # tener tres, y redondearlo aquí metería un sesgo que no está en el dato.
         F.avg("precio_tipado").cast("decimal(10,4)").alias("precio_promedio"),
-        F.count("precio_tipado").alias("observaciones"),
-        # El motivo —nulo en la fuente o cadena que no castea— no se guarda aquí: se lee en
-        # bronze filtrando por `(_quincena, _intento)`, que es donde vive la fila original.
-        F.count_if(F.col("precio_tipado").isNull()).alias("observaciones_invalidas"),
+        F.count("*").alias("observaciones"),
         F.min("precio_tipado").alias("precio_min"),
         F.max("precio_tipado").alias("precio_max"),
         F.max("_intento").alias("_intento"),
@@ -313,26 +332,28 @@ hechos = (
             )
         ),
     )
-    # Se consume tres veces —el conteo de inválidas, la escritura y el `count` del resumen—
-    # y cada una rearmaría la agregación desde bronze. Antes el cache estaba río arriba,
-    # sobre las filas sin agrupar, porque de ahí colgaban el hecho y la cuarentena.
-    .cache()
 )
 
-# Lo inválido sale por el resumen y no por una tabla paralela: es la cifra que nb_40_dq
-# compara contra umbral, y la única que hace visible que un lote llegó sucio. Con el lote
-# vacío `sum` da nulo, no cero.
-invalidas = hechos.agg(
-    F.sum("observaciones_invalidas").alias("observaciones"),
-    F.count_if(F.col("observaciones") == 0).alias("celdas_sin_precio"),
-).first()
-apunta(
-    "invalidas",
-    observaciones=int(invalidas["observaciones"] or 0),
-    celdas_sin_precio=int(invalidas["celdas_sin_precio"]),
-)
+# Compuertas de salida. Un `id` repetido sólo puede ser colisión de `xxhash64`, y basta
+# revisarlo en las dimensiones: el hecho apunta a esas mismas llaves.
+exige_llave_unica(dim_producto, "id_producto")
+exige_llave_unica(dim_tienda, "id_tienda")
 
+# Las dimensiones antes que el hecho porque el hecho es el punto de commit:
+# `pendientes_silver` lo lee para saber qué quincenas ya están hechas, así que una corrida
+# que muriera entre medias deja la dimensión con filas de más —que el upsert vuelve a poner
+# igual— y la quincena pendiente.
+upsert(dim_producto, "dim_producto", ["id_producto"])
+upsert(dim_tienda, "dim_tienda", ["id_tienda"])
 reemplaza_quincenas(hechos, TABLA_HECHOS, quincenas_pendientes)
+
+# Un precio de cero o negativo castea perfecto y ANSI no lo ve; `gramos` es el divisor de
+# `precio_por_gramo` en gold.
+exige_invariantes(ruta_tabla(TABLA_HECHOS, SILVER), {"precio_positivo": "precio_min > 0"})
+exige_invariantes(
+    ruta_tabla("dim_producto", SILVER),
+    {"gramos_positivo": "gramos > 0", "piezas_positivo": "piezas > 0"},
+)
 
 termina()
 
