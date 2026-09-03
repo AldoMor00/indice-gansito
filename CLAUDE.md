@@ -62,9 +62,9 @@ Capas en inglés (`bronze`/`silver`/`gold`); tablas y columnas en español, como
    workspace en tiempo de ejecución, para que el mismo código corra igual en dev y
    en prod sin reasignar nada.
 2. **Bronze no castea, no filtra, no deduplica.**
-3. **Nada llega a gold sin pasar por las reglas de calidad.** La observación que falla
-   no entra a la medida y tampoco se tira: se cuenta en el hecho y su fila original se
-   queda en bronze (decisión #15).
+3. **Nada llega a gold sin pasar por las reglas de calidad**, y no hay término medio: lo
+   que no cumple detiene la corrida antes de escribir. Nada se cuarentena, se marca ni se
+   tira, porque nada aterriza (decisiones #15 y #16).
 4. **`unpublish_orphans` se queda apagado** en el despliegue: borraría cualquier
    `Report` o `SemanticModel` creado a mano en prod. No es una protección contra
    perder un lakehouse; de eso se encarga el alcance del despliegue.

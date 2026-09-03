@@ -10,8 +10,15 @@ resultó ser cierto. Lo de las fuentes se mide en `fuentes.md` y aquí se resume
 
 Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 4.2—.
 
-- **Fabric deja ANSI apagado**, contra el default de Spark 4, que lo trae prendido. Un cast
-  fallido da null en vez de tronar, así que silver elige en vez de heredar.
+- **Fabric deja ANSI apagado**, contra el default de Spark 4, que lo trae prendido. **Se puede
+  prender por sesión** con `spark.conf.set("spark.sql.ansi.enabled", "true")` desde
+  `nb_00_config`, y con eso `cast` truena y `try_cast` sigue dando nulo: son dos decisiones
+  distintas en vez de la misma (decisión #16). Bronze corrió con ANSI sin cambiar nada.
+- **Las constraints CHECK de Delta funcionan sobre tabla por ruta.**
+  `ALTER TABLE delta.\`abfss://...\` ADD CONSTRAINT` engancha sin lakehouse por defecto, y las
+  puestas salen en `DeltaTable.forPath(...).detail()["properties"]` como `delta.constraints.<nombre>`,
+  que es lo que las hace idempotentes. Probado con las tres de `nb_20` sobre tablas ya pobladas:
+  el `ADD` valida lo que ya está.
 - **Las deletion vectors vienen prendidas por defecto**
   (`spark.databricks.delta.properties.defaults.enableDeletionVectors`), así que una tabla
   nueva nace en el protocolo (3,7), con `deletionVectors` y `delta.targetFileSize.adaptive`.
@@ -103,6 +110,20 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   subconjuntos probados: lat/long no identifica —el 10.1% de las filas comparte coordenada—
   pero es constante, y bajo la clave no cambia ningún atributo en 46 quincenas, así que
   `dim_tienda` no tiene hoy qué versionar. Medido en [`fuentes.md`](fuentes.md).
+- **Ninguna columna que silver necesita viene vacía, en ninguna de las 46 quincenas.**
+  Verificado por las compuertas de `nb_20` sobre las 213,041 filas de la canasta y las 74,180
+  de tiendas: `presentacion`, `marca`, `producto`, `categoria`, `nombre_comercial`,
+  `direccion`, `precio`, `cadena_comercial`, `giro`, `estado`, `municipio`, `latitud` y
+  `longitud`, ni nulas ni cadena vacía. Es lo que deja que las llaves se hasheen sin riesgo:
+  `xxhash64` salta los nulos, así que una clave vacía daría una llave válida y equivocada en
+  vez de una nula.
+- **Las 213,772 filas castean.** `precio` a `decimal(10,2)`, la coordenada a `decimal(9,6)`,
+  el gramaje a `decimal(7,2)`, con ANSI prendido y sin un solo fallo. Lo que sostiene la
+  decisión #15: el dato sucio nunca ha existido en esta fuente.
+- **La identidad y el parseo resisten una prueba más estricta que la que los eligió.** Ningún
+  atributo trae dos valores bajo su clave natural —ni en productos ni en tiendas—, las 9
+  presentaciones matchean los dos formatos conocidos, y `xxhash64` no colisiona en 2,392
+  tiendas ni en 9 SKUs. Antes esto lo tapaba un `max_by`; ahora truena.
 - **No hay PII** en lo que se persiste, y bronze cabe de sobra en la capacidad.
 
 ## CI y despliegue

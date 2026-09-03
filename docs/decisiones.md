@@ -67,9 +67,9 @@ exportados a CSV por URL anónima. El costo es que el DAX vive duplicado.
 ## 7. Nada de wheels: `%run` y pruebas en notebook
 
 Publicar una wheel a un Environment de Fabric toma minutos y mata la iteración. Los
-notebooks comparten helpers con `%run nb_00_config`; las pruebas de código van en
-`nb_90_pruebas` y las de datos en `nb_40_dq`, que escribe su veredicto en
-`dq_resultados` en vez de tronar con un assert suelto.
+notebooks comparten helpers con `%run nb_00_config` y las pruebas de código van en
+`nb_90_pruebas`. Las de datos son las compuertas de la decisión #16, dentro del notebook que
+escribe la tabla: son precondiciones de esa escritura y por eso viven junto a ella.
 
 El Python que corre en GitHub Actions es caso aparte: nunca entra a Fabric, así que ahí
 sí hay `pytest` y `ruff` normales.
@@ -78,7 +78,8 @@ El grueso del esfuerzo de pruebas va sobre **datos**, no sobre código. La lógi
 un pipeline es poca y sus errores salen a la primera corrida; los incidentes de verdad
 vienen de la fuente —una columna que cambia, un lote a medias, un null donde nunca hubo—.
 Por eso `nb_90_pruebas` se queda chico y se corre a mano con `%run`, y lo sistemático es
-validar cada corrida.
+validar cada corrida. Lo que sí queda para un notebook aparte es la observabilidad —tasas,
+deriva, los conflictos de mismo día—: reglas que se miden y no bloquean.
 
 Cada tipo de fallo se trata distinto, y esa es la parte que no se improvisa:
 
@@ -86,8 +87,9 @@ Cada tipo de fallo se trata distinto, y esa es la parte que no se improvisa:
 - **carga incompleta** → truena el job. Bronze reconcilia su conteo por
   `(quincena, intento)` contra `filas_filtradas` del manifiesto, y un descuadre es un
   `raise`: no es un dato malo, es un pipeline roto;
-- **dato malo** → se marca y se cuenta, y el pipeline sigue (regla dura #3, decisión #15).
-  Tirar un lote de 4,530 filas por 12 inválidas cuesta más de lo que evita.
+- **dato malo** → no existe como categoría propia: truena igual que una carga incompleta
+  (decisión #15). El pipeline no distingue entre "la fuente cambió" y "el pipeline se rompió",
+  porque el arreglo es el mismo en los dos casos y lo hace la misma persona.
 
 ## 8. Bronze lee por HTTPS, no por shortcut
 
@@ -215,22 +217,61 @@ La condición de cambio del MERGE —`NOT (d.col <=> n.col)` sobre los atributos
 carga peso. Sin ella la corrida sin novedades reescribe archivos y el log deja de distinguir
 "no pasó nada" de "se recalculó todo"; con ella un MERGE que no cambia nada no commitea versión.
 
-## 15. La observación inválida se cuenta en el hecho, no en una tabla aparte
+## 15. Silver es fail fast: pasa o truena, sin cuarentena ni bandera
 
-`precios_cuarentena` copiaba a silver lo que ya estaba en bronze —llaves naturales,
-`fecha_registro`, el `precio` original, `(_quincena, _intento)`— y agregaba sólo `regla`, que es
-derivable: o `precio` es nulo o el `try_cast` falló. Es el argumento de la decisión #12 —las
-observaciones exactas viven en bronze, que no filtra ni deduplica— aplicado a la que no promedia.
-En su lugar `hechos_precios` lleva `observaciones_invalidas` junto a `observaciones`, y la celda
-cuyas observaciones fallan todas se emite con `precio_promedio` nulo, en vez de desaparecer del
-hecho y reaparecer en una tabla que nadie une. Se va también el segundo `replaceWhere`, que
-existía sólo para que las dos tablas no quedaran de corridas distintas.
+El proyecto nació con `precios_cuarentena` —la fila que no casteaba se apartaba a una tabla
+paralela y el pipeline seguía— y se probaron en el camino las dos alternativas intermedias: un
+contador de inválidas en el hecho, y una bandera de válido con su motivo en la propia fila. Las
+tres comparten el defecto: dejan aterrizar dato que todavía no se confía, y a partir de ahí todo
+conteo depende de que alguien se acuerde del `WHERE`. Números que no cuadran es exactamente lo
+que este proyecto no puede permitirse, porque lo único que publica son números.
 
-La regla dura #3 no se debilita por dejar de ser una tabla separada: `avg`, `count(col)`, `min` y
-`max` ignoran nulos, así que el valor inválido no entra a una medida aunque nadie escriba un
-`WHERE`. Lo que sí cambia es el diagnóstico —"qué cadena traía ese precio" ahora es una consulta
-a bronze por `(_quincena, _intento)`, contra la tabla que es fuente de verdad— y la
-observabilidad, que mejora: la tasa deja de ser una tabla que nadie lee y pasa a ser
-`sum(observaciones_invalidas) / sum(observaciones + observaciones_invalidas)` sobre el hecho,
-evaluable contra umbral por `nb_40_dq` y mostrable en gold. Si bronze dejara de retenerse el
-argumento se cae y la tabla aparte vuelve; con la decisión #8 no pasa.
+El tradeoff real no es "datos contra nada". `replaceWhere` sólo toca las quincenas pendientes, así
+que una corrida que truena deja las anteriores intactas: es **viejo pero cuadrado** contra
+**fresco pero descuadrado**, y con un solo consumidor —el índice— y una sola tolerancia, la
+bandera no le sirve a nadie. Una bandera gana cuando hay varios consumidores con tolerancias
+distintas, o un SLA que hace que el dato parcial valga más que ninguno. Aquí no hay ni uno ni
+otro: un operador, y la fuente lleva nueve meses sin publicar.
+
+Lo que se pierde es el registro persistente de qué falló, y se compensa solo: con cuarentena las
+filas malas se acumulan calladas durante meses y hacen falta una tabla y una consulta para
+encontrarlas; con fail fast la corrida se detiene ahí, en un notebook, sobre un lote conocido y
+con la columna nombrada en el error. No hay que buscar porque no te moviste del lugar. Y como
+nada se escribió, la quincena sigue pendiente: se arregla el notebook, se vuelve a correr y entra
+sola, sin dropear tablas ni parámetro de backfill.
+
+Tampoco hay tier de aviso. La prueba es "¿publicarías el dato con esto sin resolver?": si la
+respuesta es no, es un error diferido y es peor que un error; si es sí, entonces no era un aviso
+sino un atributo del dato o una métrica del lote, y las dos ya tienen dónde vivir.
+
+Las mediciones respaldan la elección más de lo que la inspiraron: 27.2 millones de filas leídas,
+213,772 al corte, y ni un solo valor que no castee. Construir maquinaria para el caso sucio era
+construir para algo que no ha pasado nunca.
+
+## 16. Dónde vive cada compuerta, y por qué ninguna se repite
+
+`nb_00_config` enciende ANSI —Fabric lo trae apagado, contra el default de Spark 4—, así que un
+`cast` fallido truena y `try_cast` sigue dando nulo. Con eso los dos dejan de ser sinónimos y
+pasan a ser una decisión visible por columna: `cast` es "esto tiene que pasar", `try_cast` es
+"esto puede faltar". En `nb_20` sobrevive un solo `try_cast`, en `piezas`, donde la ausencia es
+legítima. El tipado deja de necesitar compuerta propia.
+
+Lo demás se reparte por lo que cada mecanismo alcanza a ver, y nada se valida en dos:
+
+| compuerta | qué revisa | por qué ahí |
+|---|---|---|
+| ANSI | que el valor castee | es el cast mismo; no hay nada que escribir |
+| entrada, sobre el lote crudo | obligatoria vacía, un atributo por clave, formato del que cuelga un regex | es sobre la **fuente**, y el mensaje —"`direccion`: 12 filas vacías"— es lo que se repara |
+| salida, sobre el DataFrame armado | llave sin colisión | sólo existe después de transformar |
+| constraint CHECK de Delta | `precio_min > 0`, `gramos > 0`, `piezas > 0` | es predicado de **una fila del resultado**, lo único que Delta sabe expresar |
+
+La corrida va en tres tiempos —armar, validar, escribir— con las escrituras al final. Spark es
+perezoso, así que mientras nadie llame `.write` los DataFrames son la etapa de staging: se
+validan con sus llaves ya calculadas y una compuerta que truena no deja nada a medias. Es
+Write-Audit-Publish sin la tabla intermedia ni el swap.
+
+Las constraints las aplica el notebook y no un DDL a mano, porque una constraint puesta fuera
+desaparece al recrear la tabla y una protección que crees tener y no tienes es peor que ninguna.
+Se descartaron a propósito las que no pueden fallar: `NOT NULL` sobre un `id` es teatro —
+`xxhash64` nunca devuelve nulo, y el riesgo real de esa llave es que sea válida y **equivocada**
+cuando la clave natural viene vacía, que es cosa de la compuerta de entrada.

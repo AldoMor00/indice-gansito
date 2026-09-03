@@ -102,8 +102,14 @@ def upsert(nuevas, tabla: str, llaves: list[str]) -> None:
     """
     ruta = ruta_tabla(tabla, SILVER)
     if not DeltaTable.isDeltaTable(spark, ruta):
+        filas = nuevas.count()
+        # Crear la dimensión vacía es un estado roto que se lee como éxito. Pasa si se dropea
+        # la dimensión sin dropear el hecho —entonces no hay quincenas pendientes y el lote
+        # viene vacío— y también si bronze está vacío.
+        if not filas:
+            raise RuntimeError(f"{tabla} no existe y el lote viene vacío: no hay qué crear")
         nuevas.write.format("delta").save(ruta)
-        apunta(tabla, creada=True, insertadas=nuevas.count(), actualizadas=0)
+        apunta(tabla, creada=True, insertadas=filas, actualizadas=0)
         return
 
     dt = DeltaTable.forPath(spark, ruta)
