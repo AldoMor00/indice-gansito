@@ -275,3 +275,21 @@ desaparece al recrear la tabla y una protección que crees tener y no tienes es 
 Se descartaron a propósito las que no pueden fallar: `NOT NULL` sobre un `id` es teatro —
 `xxhash64` nunca devuelve nulo, y el riesgo real de esa llave es que sea válida y **equivocada**
 cuando la clave natural viene vacía, que es cosa de la compuerta de entrada.
+
+## 17. La zona del salario mínimo son 6 identidades de 7 literales, y su vigencia se cierra global
+
+`resto del pais` (2019-2024) y `general` (2025-) son la misma zona renombrada, medido en
+[`fuentes.md`](fuentes.md), así que la identidad va sobre el nombre normalizado y el literal se
+queda de atributo: es justo lo que la SCD2 versiona. `unica` (2015-2018) **no** se fusiona con
+ellas aunque cubriera el mismo país: al crearse la ZLFN en 2019 se le recortó territorio, y eso
+es cambio real y no cambio de nombre. `a`, `b`, `c` son zonas históricas propias.
+
+El cierre de vigencias es **global y no por zona** porque CONASAMI reexpide el tabulador
+completo: una vigencia termina cuando entra el siguiente, no cuando esa zona cambia de salario.
+Partido por zona, `a`, `b`, `c` y `unica` quedarían abiertas para siempre —su último renglón no
+tiene siguiente— y una quincena de 2024 haría match con las seis. El punto ciego es la zona que
+sale de un tabulador y vuelve en el siguiente, que abriría un hueco sin salario; en las 42 filas
+no pasa nunca ([`hechos.md`](hechos.md)) y una compuerta de `nb_21` truena si empieza a pasar.
+
+La vigencia abierta se cierra con `9999-12-31` y no con nulo: `es_vigente` sale de comparar
+contra el centinela, y el `BETWEEN` de gold no tiene que arrastrar un `OR IS NULL`.

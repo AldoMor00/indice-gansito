@@ -97,6 +97,10 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   sale a `raw.githubusercontent.com`, probado con texto y con binario.
 - **`activityId` sirve de id de corrida** y `DESCRIBE HISTORY` ya es la bitácora de
   escrituras. Una tabla de runs propia las duplicaría.
+- **Pero interactivamente `activityId` es de la sesión, no de la ejecución**: dos corridas
+  seguidas de `nb_21` en la misma sesión salieron con el mismo `corrida` en el exit value.
+  Falta ver qué hace disparado por pipeline —ahí cada actividad debería traer el suyo— antes
+  de que la tabla de corridas de F5 lo use de llave; si no, dos ejecuciones se pisan.
 
 ## Las fuentes
 
@@ -124,6 +128,12 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   atributo trae dos valores bajo su clave natural —ni en productos ni en tiendas—, las 9
   presentaciones matchean los dos formatos conocidos, y `xxhash64` no colisiona en 2,392
   tiendas ni en 9 SKUs. Antes esto lo tapaba un `max_by`; ahora truena.
+- **El tabulador de CONASAMI no deja huecos: cada zona que sale del archivo es una fusión y
+  ninguna vuelve.** Las 42 filas son 21 `inicio_vigencia` distintos y 6 zonas de 7 literales,
+  y las tres salidas son `c` en `2012-11-27`, `a` y `b` en `2015-10-01` —entra `unica`— y
+  `unica` en `2019-01-01`, cuando se crea la ZLFN. Por eso el cierre de vigencias puede ser
+  global: verificado por la compuerta de `nb_21`, que truena si una zona reaparece después de
+  haberse cerrado. Las 727 filas de las dos tablas castean con ANSI prendido.
 - **No hay PII** en lo que se persiste, y bronze cabe de sobra en la capacidad.
 
 ## CI y despliegue
