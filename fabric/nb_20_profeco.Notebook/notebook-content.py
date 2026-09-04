@@ -20,11 +20,29 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# PARAMETERS CELL ********************
+
+# Qué quincenas recalcula la corrida. Vacío —el 99%— lo deriva de `pendientes_silver`.
+# Con valores fuerza esas quincenas aunque `(_quincena, _intento)` no haya cambiado: un
+# cambio de reglas del hecho no toca el linaje, así que la comparación de estados no puede
+# verlo. `todas` es el uso normal de esa rama y evita transcribir las 46.
+#
+# Cadena y no lista: los base parameters de la actividad de notebook sólo llevan string,
+# int, float y bool, y una lista literal se rompería al cablearla desde `pl_silver`.
+quincenas_pedidas = ""
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
 
 # Silver de Profeco: tipa, resuelve identidad y agrega a quincena. Lee de bronze el
-# intento vigente de cada quincena y recalcula sólo lo pendiente, así que el backfill y
-# la corrida del cron son el mismo código. Decisiones #12 y #13.
+# intento vigente de cada quincena y recalcula lo pendiente, o lo que diga el parámetro,
+# así que el backfill y la corrida del cron son el mismo código. Decisiones #12 y #13.
 #
 # Nada se escribe hasta que pasan todas las compuertas: lo que no cumple detiene la corrida
 # (decisión #15). El tipado no lleva compuerta propia porque nb_00_config enciende ANSI.
@@ -101,6 +119,29 @@ def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
     )
     apunta(tabla, filas=nuevas.count(), quincenas=len(quincenas))
 
+
+def a_recalcular(canasta, parametro: str) -> list[str]:
+    """Qué quincenas recorre esta corrida: el parámetro si lo hay, y si no el estado.
+
+    Sustituye al drop de la tabla. `reemplaza_quincenas` con las 46 es esa misma
+    reconstrucción, atómica y sin la ventana sin tabla que el drop abre —si el rerun
+    truena, ahí no queda nada, lo contrario de lo que compró la decisión #15—.
+    """
+    pedidas = [q.strip() for q in parametro.split(",") if q.strip()]
+    if not pedidas:
+        return pendientes_silver(canasta)
+
+    todas = [fila["_quincena"] for fila in canasta.select("_quincena").distinct().collect()]
+    if pedidas == ["todas"]:
+        return todas
+
+    # Una quincena mal escrita dejaría el lote vacío y la corrida saldría no-op y verde,
+    # que es peor que tronar: el rerun se daría por hecho sin haber recalculado nada.
+    desconocidas = sorted(set(pedidas) - set(todas))
+    if desconocidas:
+        raise RuntimeError("quincenas que bronze no tiene — " + ", ".join(desconocidas))
+    return pedidas
+
 # METADATA ********************
 
 # META {
@@ -110,9 +151,9 @@ def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
 
 # CELL ********************
 
-# `canasta` son las 46 quincenas al intento vigente sin los SKUs excluidos; `lote` es sólo
-# lo que falta recalcular. Armar, validar, escribir, en ese orden y con las tres escrituras
-# hasta el final.
+# `canasta` son las 46 quincenas al intento vigente sin los SKUs excluidos; `lote` es lo
+# que esta corrida recalcula. Armar, validar, escribir, en ese orden y con las tres
+# escrituras hasta el final.
 
 bronze_precios = de_bronze("precios")
 canasta = (
@@ -121,12 +162,17 @@ canasta = (
     .cache()
 )
 
-quincenas_pendientes = sorted(pendientes_silver(canasta))
-lote = canasta.filter(F.col("_quincena").isin(quincenas_pendientes))
+quincenas_lote = sorted(a_recalcular(canasta, quincenas_pedidas))
+lote = canasta.filter(F.col("_quincena").isin(quincenas_lote))
 
 apunta("bronze_precios", filas=bronze_precios.count())
 apunta("canasta", filas=canasta.count(), excluidos=len(EXCLUIDOS))
-apunta("pendiente", quincenas=len(quincenas_pendientes), filas=lote.count())
+apunta(
+    "lote",
+    origen=quincenas_pedidas.strip() or "pendientes",
+    quincenas=len(quincenas_lote),
+    filas=lote.count(),
+)
 
 # Con el lote vacío —el estado estable del cron— todo lo que sigue es un no-op: el MERGE
 # no encuentra nada que insertar y no commitea versión. No hace falta cortar aquí, y un
@@ -191,11 +237,11 @@ dim_producto = (
 
 # Las tiendas salen del corte completo del archivo, no del de precios: si salieran de ahí
 # la dimensión quedaría sesgada a las que venden pastelillos (decisión #2). Por eso este
-# bloque no lee `lote` sino su propia tabla, acotada a las mismas quincenas pendientes.
+# bloque no lee `lote` sino su propia tabla, acotada a las mismas quincenas del lote.
 bronze_tiendas = de_bronze("tiendas")
 tiendas_lote = (
     ultimo_intento(bronze_tiendas)
-    .filter(F.col("_quincena").isin(quincenas_pendientes))
+    .filter(F.col("_quincena").isin(quincenas_lote))
 )
 
 apunta("bronze_tiendas", filas=bronze_tiendas.count())
@@ -284,7 +330,7 @@ exige_llave_unica(dim_tienda, "id_tienda")
 # igual— y la quincena pendiente.
 upsert(dim_producto, "dim_producto", ["id_producto"])
 upsert(dim_tienda, "dim_tienda", ["id_tienda"])
-reemplaza_quincenas(hechos, TABLA_HECHOS, quincenas_pendientes)
+reemplaza_quincenas(hechos, TABLA_HECHOS, quincenas_lote)
 
 # Un precio de cero o negativo castea perfecto y ANSI no lo ve; `gramos` es el divisor de
 # `precio_por_gramo` en gold.
