@@ -78,8 +78,10 @@ El grueso del esfuerzo de pruebas va sobre **datos**, no sobre código. La lógi
 un pipeline es poca y sus errores salen a la primera corrida; los incidentes de verdad
 vienen de la fuente —una columna que cambia, un lote a medias, un null donde nunca hubo—.
 Por eso `nb_90_pruebas` se queda chico y se corre a mano con `%run`, y lo sistemático es
-validar cada corrida. Lo que sí queda para un notebook aparte es la observabilidad —tasas,
-deriva, los conflictos de mismo día—: reglas que se miden y no bloquean.
+validar cada corrida. La observabilidad —tasas, deriva, los conflictos de mismo día— **no
+lleva notebook propio**: son métricas del lote que el notebook que escribe ya tiene en
+memoria, y salen por `apunta()` al resumen de la corrida. Uno aparte tendría que releer
+bronze entero para recalcular lo que aquí ya está calculado.
 
 Cada tipo de fallo se trata distinto, y esa es la parte que no se improvisa:
 

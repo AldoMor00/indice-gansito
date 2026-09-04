@@ -127,6 +127,11 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
 - **Las 213,772 filas castean.** `precio` a `decimal(10,2)`, la coordenada a `decimal(9,6)`,
   el gramaje a `decimal(7,2)`, con ANSI prendido y sin un solo fallo. Lo que sostiene la
   decisión #15: el dato sucio nunca ha existido en esta fuente.
+- **Y cuando se inyecta, truena.** Un `precio = "N/D"` metido al lote sale como
+  `CAST_INVALID_INPUT` en la agregación del hecho, no como nulo. `exige_completo` lo deja
+  pasar —no viene vacío— y lo ataja el `cast`, que es justo el reparto de la decisión #16, y
+  `hechos_precios` no avanzó de versión. Es el único camino de fail fast que la fuente no
+  ejerce sola, y hasta esta prueba sólo lo respaldaba un comentario.
 - **La identidad y el parseo resisten una prueba más estricta que la que los eligió.** Ningún
   atributo trae dos valores bajo su clave natural —ni en productos ni en tiendas—, las 9
   presentaciones matchean los dos formatos conocidos, y `xxhash64` no colisiona en 2,392
