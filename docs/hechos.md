@@ -98,6 +98,11 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
 - **Fabric escribe `.platform` sin salto de línea final.** Con uno de más, el item sale
   `uncommitted` al sincronizar aunque el contenido sea idéntico. El `notebook-content.py`
   escrito a mano **sí** sobrevive el round-trip, celda `%run` incluida.
+- **Los base parameters de la actividad de notebook sólo llevan escalares** —`int`, `float`,
+  `bool`, `string`—, y `list` y `dict` no están soportados: la doc recomienda serializar a JSON
+  y deserializar dentro del notebook
+  ([doc](https://learn.microsoft.com/fabric/data-engineering/author-execute-notebook#integrate-a-notebook)).
+  Es lo que sostiene que `quincenas_pedidas` de `nb_20` sea una cadena y no una lista.
 - **OneLake no acepta mezclar GUID y nombre** en `abfss://`: 400
   `FriendlyNameSupportDisabled`. Los dos van por GUID; ver `ruta_tabla` en `nb_00_config`.
 - **Spark no habla HTTPS**: los bytes bajan con `requests` al driver. La capacidad **sí**
@@ -111,6 +116,29 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   engancha a la sesión de la primera. Así que no sirve de llave para la tabla de corridas de
   F5 —dos ejecuciones se pisan siempre, no a veces—. El id por ejecución existe del lado del
   pipeline: el `runId` de cada actividad salió distinto.
+
+## La CLI de Fabric
+
+`fab` 1.7.0, autenticada contra `app.fabric.microsoft.com`. Probado creando, actualizando y
+borrando un `nb_99_prueba_cli` desechable en dev, que quedó como estaba.
+
+- **`--format .py` no es opcional, y va en los dos sentidos.** Sin él, `fab export` baja un
+  `notebook-content.ipynb` y `fab import` espera JSON: subir la plantilla de la skill falla con
+  `InvalidNotebookContent`. Con él, el archivo es el mismo `notebook-content.py` de git.
+- **El round-trip es fiel.** Lo que `fab export --format .py` baja de `nb_00_config` es
+  byte por byte lo que la git integration tiene commiteado. Fabric normaliza los finales de
+  línea a CRLF: un archivo escrito a mano con LF sube igual, pero baja con CRLF.
+- **`fab import` crea y actualiza con el mismo comando.** El segundo import sobre el mismo item
+  reemplaza la definición; `-f` sólo se salta la confirmación.
+- **El `.platform` que baja la CLI no es el de git**: trae `logicalId` en ceros y otra sangría.
+  Es la definición de la API, no la representación de git —la git integration asigna el
+  `logicalId`—, así que ese archivo no se copia al repo. El `notebook-content.py` sí.
+- El directorio de salida de `fab export` tiene que existir; si no, `InvalidPath`.
+- **Un import contra un notebook abierto en el UI no se pierde ni pisa en silencio.** La
+  pestaña abierta no se entera sola, pero al guardar avisa —"Another user has saved changes to
+  this notebook", con *View changes* y la elección de versión—, así que el conflicto se resuelve
+  a la vista. Aun así conviene refrescar antes de editar: elegir versión es todo o nada, no un
+  merge por celda.
 
 ## Las fuentes
 
