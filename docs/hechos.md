@@ -116,6 +116,18 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   engancha a la sesión de la primera. Así que no sirve de llave para la tabla de corridas de
   F5 —dos ejecuciones se pisan siempre, no a veces—. El id por ejecución existe del lado del
   pipeline: el `runId` de cada actividad salió distinto.
+- **La variable library no tiene tipo arreglo y su value set activo no viaja en el item.** Los
+  tipos son String, Integer, Number, Boolean, DateTime, Guid y las dos referencias —item y
+  connection—; cuál value set está activo lo guarda el workspace aparte de la definición, así
+  que el despliegue no lo lleva
+  ([doc](https://learn.microsoft.com/fabric/cicd/variable-library/variable-library-overview),
+  [value sets](https://learn.microsoft.com/fabric/cicd/variable-library/value-sets)).
+- **Una user data function es Python 3.11.9 serverless sin Spark**, invocable por REST desde
+  notebook, pipeline, Activator y translytical. Publicar tiene cooldown de dos minutos y sólo
+  el dueño del item edita el código
+  ([doc](https://learn.microsoft.com/fabric/data-engineering/user-data-functions/user-data-functions-overview),
+  [límites](https://learn.microsoft.com/fabric/data-engineering/user-data-functions/user-data-functions-service-limits)).
+  Es lo que sostiene la decisión #18.
 
 ## La CLI de Fabric
 
