@@ -295,3 +295,15 @@ no pasa nunca ([`hechos.md`](hechos.md)) y una compuerta de `nb_21` truena si em
 
 La vigencia abierta se cierra con `9999-12-31` y no con nulo: `es_vigente` sale de comparar
 contra el centinela, y el `BETWEEN` de gold no tiene que arrastrar un `OR IS NULL`.
+
+## 18. Ni variable library ni user data functions
+
+`fabric-cicd` soporta los dos tipos, así que el descarte es de diseño. La variable library
+parametriza lo que cambia entre ambientes, y aquí no cambia nada: mismos nombres y mismas rutas
+en los dos workspaces, resueltos en vivo por `ruta_tabla` (regla #1, decisión #5). Encima
+cobraría, porque el value set activo es setting del workspace y no viaja en el item.
+
+La user data function centraliza lógica reutilizable, que es lo que hace `nb_00_config`, pero
+sin sesión de Spark y por REST, y los helpers toman y devuelven DataFrames: sólo `manifiesto_de`
+cruzaría. Paga con write-back translytical o consumidores externos, y no hay ninguno. Lo medido,
+en [`hechos.md`](hechos.md).
