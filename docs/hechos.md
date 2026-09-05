@@ -145,6 +145,10 @@ borrando un `nb_99_prueba_cli` desechable en dev, que quedó como estaba.
 - **El `.platform` que baja la CLI no es el de git**: trae `logicalId` en ceros y otra sangría.
   Es la definición de la API, no la representación de git —la git integration asigna el
   `logicalId`—, así que ese archivo no se copia al repo. El `notebook-content.py` sí.
+- **Y el `logicalId` que se sube tampoco importa.** Al importar `nb_90_pruebas` con un GUID
+  inventado en su `.platform`, el item nació en dev y al commitear desde la UI la git
+  integration escribió otro. O sea que crear un notebook por CLI no obliga a acertarle: hay
+  que poner uno bien formado, no uno en particular.
 - El directorio de salida de `fab export` tiene que existir; si no, `InvalidPath`.
 - **Un import contra un notebook abierto en el UI no se pierde ni pisa en silencio.** La
   pestaña abierta no se entera sola, pero al guardar avisa —"Another user has saved changes to
@@ -178,11 +182,20 @@ borrando un `nb_99_prueba_cli` desechable en dev, que quedó como estaba.
   `CAST_INVALID_INPUT` en la agregación del hecho, no como nulo. `exige_completo` lo deja
   pasar —no viene vacío— y lo ataja el `cast`, que es justo el reparto de la decisión #16, y
   `hechos_precios` no avanzó de versión. Es el único camino de fail fast que la fuente no
-  ejerce sola, y hasta esta prueba sólo lo respaldaba un comentario.
+  ejerce sola, y hasta esta prueba sólo lo respaldaba un comentario. El núcleo quedó en
+  `nb_90_pruebas`; lo que no se repite ahí es la parte extremo a extremo.
 - **La identidad y el parseo resisten una prueba más estricta que la que los eligió.** Ningún
   atributo trae dos valores bajo su clave natural —ni en productos ni en tiendas—, las 9
   presentaciones matchean los dos formatos conocidos, y `xxhash64` no colisiona en 2,392
   tiendas ni en 9 SKUs. Antes esto lo tapaba un `max_by`; ahora truena.
+- **La llave válida y equivocada tiene número.** `clave("nombre_comercial", "direccion")` da
+  `8554209004007291361` tanto para `("Oxxo", null)` como para `(null, "Oxxo")`: dos claves
+  naturales distintas, una sola llave, y ninguna nula. Es lo que obliga a atajar lo vacío en
+  la entrada con `exige_completo` y no con un `NOT NULL` sobre el `id`, que no dispararía
+  nunca. Probado en `nb_90_pruebas` junto con los otros dos caminos de fail fast, los que la
+  corrida sana no ejerce. Ese notebook saca un ERROR rojo con stack de Py4J por cada prueba
+  que **pasa** —Spark loguea la excepción aunque se capture—, así que lo que dice si algo
+  falló es el exit value.
 - **El tabulador de CONASAMI no deja huecos: cada zona que sale del archivo es una fusión y
   ninguna vuelve.** Las 42 filas son 21 `inicio_vigencia` distintos y 6 zonas de 7 literales,
   y las tres salidas son `c` en `2012-11-27`, `a` y `b` en `2015-10-01` —entra `unica`— y
