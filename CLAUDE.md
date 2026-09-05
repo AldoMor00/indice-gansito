@@ -36,11 +36,25 @@
 - No agregar andamiaje que todavía no tiene nada que hacer. Linters, suites de
   pruebas y paquetes entran cuando exista el código que justifican, no antes.
 
+## Fabric
+
+- **Nada de la plataforma se afirma de memoria.** Antes de escribir código que dependa de
+  un comportamiento de Fabric —qué acepta un parámetro, qué devuelve una API, qué hace un
+  setting— se verifica con el MCP de Microsoft Learn. Lo que sostenga una decisión se cita
+  por URL en `docs/hechos.md`.
+- Los items de `ws-gansito-dev` se escriben por uno de dos caminos, y **antes de cada
+  escritura —crear o modificar— se pregunta cuál**: el UI de Fabric, o `fab import` desde
+  local. Se acuerda por item; dentro del mismo bloque no se vuelve a preguntar por el mismo
+  item. En los dos casos el commit sale del panel de control de código fuente del UI: la CLI
+  deja el workspace con cambios sin commitear, igual que editar a mano.
+- **La CLI toca `ws-gansito-dev` y nada más.** A prod no se le edita a mano, y `fab del` se
+  pide antes, como `git commit`.
+
 ## Ramas
 
 - `feat/*` y `fix/*` para lo que se edita en local (`docs/`, `scripts/`, workflows).
 - `dev` está sincronizada por git integration con el workspace `ws-gansito-dev`.
-  Los notebooks y pipelines se editan en el UI de Fabric y se commitean desde ahí.
+  Los notebooks y pipelines se commitean desde el UI de Fabric.
 - `main` está protegida. Sólo entra por PR desde `dev`. Al mergear, se despliega a
   `ws-gansito-prod` con `fabric-cicd`. **A prod nunca se le edita a mano.**
 
