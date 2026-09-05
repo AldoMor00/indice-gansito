@@ -19,6 +19,13 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   puestas salen en `DeltaTable.forPath(...).detail()["properties"]` como `delta.constraints.<nombre>`,
   que es lo que las hace idempotentes. Probado con las tres de `nb_20` sobre tablas ya pobladas:
   el `ADD` valida lo que ya está.
+- **`replaceWhere` reescribe sólo sus particiones, y con las 46 es el full refresh.** Las cuatro
+  ramas del parámetro de `nb_20` sobre `hechos_precios`: vacío no commitea versión; dos quincenas
+  dejan `numFiles=2` y `numRemovedFiles=2`, con las otras 44 intactas; una quincena inventada
+  truena antes de escribir; `todas` deja **una sola** versión de 46 archivos y 126,493 filas.
+  Y la reescritura es determinista —byte por byte igual a la anterior, 53,636 bytes las dos
+  quincenas y 1,147,796 las 46—, así que reconstruir no mueve el dato. Es lo que vuelve
+  innecesario el drop de la tabla, que además abriría una ventana sin tabla.
 - **Las deletion vectors vienen prendidas por defecto**
   (`spark.databricks.delta.properties.defaults.enableDeletionVectors`), así que una tabla
   nueva nace en el protocolo (3,7), con `deletionVectors` y `delta.targetFileSize.adaptive`.
