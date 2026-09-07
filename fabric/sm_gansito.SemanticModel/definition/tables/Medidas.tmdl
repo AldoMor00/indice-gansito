@@ -20,10 +20,10 @@ table Medidas
 			RETURN
 			    IF(
 			        [Pareo mínimo] >= [Umbral de pareo Value],
-			        ( EXP( Suma ) - 1 ) * 100,
+			        EXP( Suma ) - 1,
 			        BLANK()
 			    )
-		formatString: #,##0.0%
+		formatString: #,##0.00%
 		lineageTag: 244c97c8-1df8-43f7-9daf-e5566e7647b1
 
 		annotation PBI_FormatHint = {"isCustom":true}
@@ -42,12 +42,13 @@ table Medidas
 			    )
 			RETURN
 			    IF( [Pareo mínimo] >= [Umbral de pareo Value], EXP( Suma ) * 100, BLANK() )
-		formatString: #,##0.0%
+		formatString: #,##0.00
 		lineageTag: 75e5ac05-f908-4d13-842b-633f733fc67d
 
 		annotation PBI_FormatHint = {"isCustom":true}
 
 	column Column
+		isHidden
 		formatString: 0
 		lineageTag: ea681015-6661-4101-95b5-a7f0597b9244
 		summarizeBy: none

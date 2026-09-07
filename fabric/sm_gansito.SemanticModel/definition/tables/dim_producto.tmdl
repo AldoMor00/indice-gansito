@@ -4,6 +4,7 @@ table dim_producto
 
 	column id_producto
 		dataType: int64
+		isKey
 		formatString: 0
 		lineageTag: 543715a8-351c-48c2-a515-d528762519ea
 		sourceLineageTag: id_producto

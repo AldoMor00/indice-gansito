@@ -27,7 +27,6 @@ relationship fd62f91b-aebb-23c3-9ed1-bdd0b556defa
 	toColumn: dim_mes.id_mes
 
 relationship 6a56f366-9b9e-49a7-8747-60bd6830dc3d
-	crossFilteringBehavior: bothDirections
 	fromColumn: dim_tiempo_quincena.id_mes
 	toColumn: dim_mes.id_mes
 

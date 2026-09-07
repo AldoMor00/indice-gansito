@@ -28,6 +28,7 @@ table dim_tiempo_quincena
 
 	column id_quincena
 		dataType: int64
+		isKey
 		formatString: 0
 		lineageTag: 0e8d2daf-970e-418c-a2ae-ce8021bedc0d
 		sourceLineageTag: id_quincena

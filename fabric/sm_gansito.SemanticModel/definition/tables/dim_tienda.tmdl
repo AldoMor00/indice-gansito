@@ -4,6 +4,7 @@ table dim_tienda
 
 	column id_tienda
 		dataType: int64
+		isKey
 		formatString: 0
 		lineageTag: ecb65b24-e050-45a4-a5f3-9be9ef819c09
 		sourceLineageTag: id_tienda
