@@ -137,9 +137,17 @@ borrando un `nb_99_prueba_cli` desechable en dev, que quedó como estaba.
 - **`--format .py` no es opcional, y va en los dos sentidos.** Sin él, `fab export` baja un
   `notebook-content.ipynb` y `fab import` espera JSON: subir la plantilla de la skill falla con
   `InvalidNotebookContent`. Con él, el archivo es el mismo `notebook-content.py` de git.
-- **El round-trip es fiel.** Lo que `fab export --format .py` baja de `nb_00_config` es
-  byte por byte lo que la git integration tiene commiteado. Fabric normaliza los finales de
-  línea a CRLF: un archivo escrito a mano con LF sube igual, pero baja con CRLF.
+- **Fabric normaliza los finales de línea a CRLF.** Un `notebook-content.py` escrito a mano
+  con LF sube igual y queda almacenado con CRLF, que es lo que la git integration commitea.
+  Por eso el archivo local se escribe **con CRLF**, como los que ya están en el repo: en LF
+  saldría modificado para siempre después del primer commit desde la UI, sin que el contenido
+  cambie —el fallo de sincronización que advierte la skill—.
+- **Pero `fab export` no es fiel byte por byte, y lo parece.** Si lo almacenado ya es CRLF, lo
+  que baja trae los CR **duplicados** —`CR CR LF`—, así que un `diff` contra el archivo local
+  marca el 100% de las líneas como cambiadas. Es artefacto de la bajada, no del almacenamiento:
+  con esos mismos items el panel de código fuente de la UI mostró sólo las líneas que de verdad
+  se tocaron. Medido sobre `nb_00_config` (296 CR de más) y `nb_21_conasami` (192); el que
+  había subido con LF baja limpio. Para verificar qué cambió, la UI y no el export.
 - **`fab import` crea y actualiza con el mismo comando.** El segundo import sobre el mismo item
   reemplaza la definición; `-f` sólo se salta la confirmación.
 - **El `.platform` que baja la CLI no es el de git**: trae `logicalId` en ceros y otra sangría.
@@ -203,6 +211,63 @@ borrando un `nb_99_prueba_cli` desechable en dev, que quedó como estaba.
   global: verificado por la compuerta de `nb_21`, que truena si una zona reaparece después de
   haberse cerrado. Las 727 filas de las dos tablas castean con ANSI prendido.
 - **No hay PII** en lo que se persiste, y bronze cabe de sobra en la capacidad.
+
+## El índice
+
+Medido sobre la zona raw con el mismo grano y las mismas llaves que `nb_20` —tienda por
+`(nombre_comercial, direccion)`, hecho promediado a tienda-SKU-quincena, la canasta de 9 SKUs—,
+así que `nb_30` reproduce estas cifras. El SKU es `Paquete con 1 Gansito (50 Gr.)`: 14,858
+celdas en 508 tiendas.
+
+- **El panel rota mucho más de lo que sugiere el agregado.** El 24.3% de `fuentes.md` es del
+  universo de tiendas; para la serie del Gansito sólo **31 de 508 tiendas (6.1%)** aparecen en
+  las 46 quincenas. Pero eslabón a eslabón el traslape es alto: la mediana es de **286 tiendas
+  pareadas** contra 332 observadas por quincena, o sea que el encadenamiento **retiene el 86%**
+  del n disponible. La rotación asusta en el agregado y es inofensiva entre quincenas vecinas.
+- **El sesgo de composición existe y es chico: 1.2 puntos.** Promedio simple de punta a punta
+  da **+25.63%**; el encadenado sobre tiendas pareadas, **+24.40%**. El precio del Gansito subió
+  de verdad, y el promedio simple no mentía mucho —pero mentía en dirección desconocida—.
+- **Las cuatro variantes, con bootstrap de 2,000 réplicas sobre tiendas:**
+
+  | variante | cambio | EE | IC 95% | n que usa |
+  |---|---|---|---|---|
+  | promedio simple | +25.63% | 1.11 | 23.48 – 27.76 | 100% |
+  | panel balanceado | +31.75% | 3.09 | 25.91 – 38.03 | 9% |
+  | pareo en las puntas | +29.55% | — | — | 46% |
+  | Jevons encadenado | +24.40% | 1.60 | 21.36 – 27.64 | 86% |
+
+  El panel balanceado es lo peor de los dos mundos: el más sesgado **y** el más impreciso. Su
+  cifra alta es sesgo de supervivencia —las tiendas que duran dos años son las formales—.
+- **Parear cuesta precisión, pero poco, y por dos razones medibles.** El EE sube de 1.11 a 1.60
+  pese a encadenar 45 eslabones, porque (a) el pareo cancela la dispersión que no importa —la
+  desviación de log-precios *entre* tiendas es 0.1344 y la del *cambio dentro* de una tienda es
+  0.0647, **2.1x menos**— y (b) las mismas tiendas reaparecen eslabón tras eslabón, así que sus
+  errores se telescopan: sumar varianzas a lo bruto da 2.62 pp y el bootstrap da 1.60.
+- **Carli sobreestima 12 puntos.** Media aritmética de relativos: **+37.06%**, contra +24.40%
+  de Jevons y **+23.90%** de Dutot. Dos tiendas que intercambian precios —+100% y −50%—
+  promedian +25% en Carli cuando en conjunto no pasó nada. Dutot y Jevons quedan a medio punto
+  entre sí porque el agregado elemental es un solo SKU homogéneo.
+- **El umbral de pareo decide la granularidad del corte, no el gusto.** Con el `giro` crudo de
+  Profeco sólo **una de cinco** categorías junta 30 tiendas pareadas en su peor eslabón
+  (Supermercado, 135). Colapsado a tres canales pasan dos: supermercado (135, **+29.84%**) y
+  conveniencia (31, **+11.35%**); tradicional se queda en 7.
+- **Los supermercados cerraron el 77% de la brecha contra el canal caro.** Arrancaron $4.16 más
+  baratos que conveniencia y terminaron $0.94 más baratos. El canal barato se encareció y el
+  caro casi no se movió.
+- **El deflactor sale de CONASAMI y da +6.81%** en la ventana: INPC 133.554 en `2024-01` y
+  142.643 en `2025-11`. El Gansito subió **+16.47% real**, más del doble de la inflación general.
+- **El bootstrap remuestrea tiendas como unidad de muestreo**, pero el diseño de Profeco no es
+  aleatorio: eligen a quién visitar. El intervalo aproxima la variabilidad, no es inferencia
+  sobre todas las tiendas de México. Va impreso junto al número.
+- **Gold reproduce las cifras, calculadas sobre `hechos_relativos` con la agregación que hará
+  la medida DAX** —promedio dentro del eslabón, suma entre eslabones, exponencial—: +24.40%
+  nominal, +16.47% real y +6.81% de inflación, los tres al centésimo contra lo medido en la
+  zona raw, y por canal +29.84% supermercado, +11.35% conveniencia y +5.16% tradicional. El
+  pareo mínimo por canal es 135, 31 y 7: **tradicional no alcanza el umbral de 30 y por eso no
+  publica índice**, que es la guarda funcionando sobre datos reales y no sobre un supuesto.
+- **El pareo cuesta 30 tiendas de 508.** `hechos_relativos` toca 478 tiendas y no las 508 que
+  venden Gansito alguna vez: las otras 30 nunca aparecen en dos quincenas consecutivas, así que
+  no forman ningún eslabón. Son 12,393 pares en 45 eslabones, 275 de media.
 
 ## CI y despliegue
 
