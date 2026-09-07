@@ -30,8 +30,8 @@ from pyspark.sql import Window  # sólo este notebook lo usa: el cierre de vigen
 # aterriza si una compuerta truena (decisiones #15 y #16).
 #
 # Dos tablas, una por archivo, porque los dos CSV no comparten una sola columna:
-#   dim_salario_minimo   SCD2 sobre `salario_zonas`: el salario por zona y su vigencia
-#   dim_salario_mensual  la serie mensual tipada, de donde gold saca el deflactor
+#   dim_salario_minimo      SCD2 sobre `salario_zonas`: el salario por zona y su vigencia
+#   hechos_salario_mensual  la serie mensual tipada, de donde gold saca el deflactor
 #
 # `de_bronze`, `clave`, `upsert` y las compuertas vienen de nb_00_config.
 
@@ -181,7 +181,7 @@ indice = ultima_version(indice_bronze)
 exige_completo(indice, COLUMNAS_INDICE)
 exige_uno_por_clave(indice, ["anio", "mes"], ["smg_nominal", "smg_real", "smgr_indice"])
 
-dim_salario_mensual = indice.select(
+hechos_salario_mensual = indice.select(
     clave("anio", "mes").alias("id_mes"),
     # `mes_inicio` es conversión, no derivación: la misma etiqueta en un tipo con el que se
     # puede unir. Gold pega aquí el `quincena_inicio` del hecho truncado al mes, porque el
@@ -197,19 +197,19 @@ dim_salario_mensual = indice.select(
     F.col("smgr_indice").cast("decimal(10,2)").alias("smgr_indice"),
 )
 
-apunta("bronze_indice", filas=indice_bronze.count(), meses=dim_salario_mensual.count())
+apunta("bronze_indice", filas=indice_bronze.count(), meses=hechos_salario_mensual.count())
 
 # Compuertas de salida: sólo lo que existe después de transformar.
 exige_llave_unica(dim_salario_minimo, "id_salario_zona")
 exige_vigencia_continua(dim_salario_minimo)
-exige_llave_unica(dim_salario_mensual, "id_mes")
+exige_llave_unica(hechos_salario_mensual, "id_mes")
 
 # El MERGE genérico basta para la SCD2 porque la fuente reexpide la historia completa: la
 # vigencia se deriva del lote, así que el renglón abierto del año pasado vuelve a llegar con
 # su `vigencia_hasta` ya cerrado y `whenMatchedUpdateAll` lo actualiza. Nada que expirar a
 # mano ni un update aparte (decisión #14).
 upsert(dim_salario_minimo, "dim_salario_minimo", ["id_salario_zona"])
-upsert(dim_salario_mensual, "dim_salario_mensual", ["id_mes"])
+upsert(hechos_salario_mensual, "hechos_salario_mensual", ["id_mes"])
 
 # Predicados de una fila: lo único que Delta sabe expresar. `smg_real` es el divisor del
 # deflactor en gold, como `gramos` lo es de `precio_por_gramo`.
@@ -221,7 +221,7 @@ exige_invariantes(
     },
 )
 exige_invariantes(
-    ruta_tabla("dim_salario_mensual", SILVER),
+    ruta_tabla("hechos_salario_mensual", SILVER),
     {"smg_real_positivo": "smg_real > 0"},
 )
 

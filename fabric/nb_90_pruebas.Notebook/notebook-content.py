@@ -30,10 +30,12 @@
 # referenciado al lugar de la llamada: viviendo allá, estas pruebas correrían en cada corrida de
 # bronze y de silver, y una prueba rota tumbaría la ingesta.
 #
-# Las tres cubren lo mismo: caminos de fail fast que la corrida sana no ejerce nunca. Ese es el
-# criterio para que algo entre aquí —si una corrida verde ya lo demuestra, no hace falta—, y
-# viene de que los dos bugs de bronze fueron de esa familia: un comentario que afirmaba un
-# comportamiento que ninguna corrida había probado.
+# El criterio para que algo entre aquí es que una corrida verde no lo demuestre. Eso cubre dos
+# familias. Las tres primeras son caminos de fail fast que la corrida sana no ejerce nunca, y
+# vienen de que los dos bugs de bronze fueron así: un comentario que afirmaba un comportamiento
+# que ninguna corrida había probado. La cuarta es lo contrario y por eso pertenece igual —un
+# error en el pareo de eslabones no truena: escribe gold entero, pasa las compuertas y publica
+# el número equivocado—.
 #
 # No escriben nada. Los DataFrames son sintéticos y de dos filas, así que correrlo no toca
 # ninguna tabla ni depende de que bronze esté poblado.
@@ -130,6 +132,57 @@ def prueba_clave_con_nulo() -> None:
     )
     apunta("clave_con_nulo", llave_compartida=llaves[0], atajada_por=error)
 
+
+def prueba_eslabones_encadenan() -> None:
+    """`eslabones` parea por período contiguo, y encadenado no es lo mismo que punta a punta.
+
+    Es la única de las cuatro que no prueba un fail fast, y entra por la razón hermana: un
+    error aquí **no truena**. Un `+ 1` que fuera `+ 2`, o el relativo al revés, dejarían las
+    siete tablas de gold escritas y las compuertas verdes, y el número equivocado saldría
+    publicado en el reporte. No hay corrida sana que lo delate.
+
+    El panel rota a propósito, que es el caso que obliga a encadenar (decisión #19):
+
+        q1   A=10  B=20
+        q2   A=12  B=20  C=30
+        q3         B=25  C=30
+
+    Eslabón de q2, sobre A y B: media geométrica de 1.2 y 1.0 = raíz de 1.2.
+    Eslabón de q3, sobre B y C: media geométrica de 1.25 y 1.0 = raíz de 1.25.
+    Encadenado: raíz de 1.5, o sea 1.224745.
+
+    Comparar las puntas daría 1.25 —sólo B está en q1 y en q3—, así que el número distingue
+    las dos cosas. Un `+ 2` en el join uniría q1 con q3 y daría ese mismo 1.25; el relativo
+    invertido daría 0.8165. Los tres errores plausibles caen en valores distintos.
+    """
+    precios = spark.createDataFrame(
+        [
+            ("A", "g", "q1", 1, 10.0), ("B", "g", "q1", 1, 20.0),
+            ("A", "g", "q2", 2, 12.0), ("B", "g", "q2", 2, 20.0), ("C", "g", "q2", 2, 30.0),
+            ("B", "g", "q3", 3, 25.0), ("C", "g", "q3", 3, 30.0),
+        ],
+        "id_tienda string, id_producto string, _quincena string, _orden int, "
+        "precio_promedio double",
+    )
+
+    pares = eslabones(precios)
+    if pares.count() != 4:
+        raise AssertionError(f"el pareo dio {pares.count()} filas y debían ser 4")
+
+    # El índice, tal como lo arma la medida DAX: promedio dentro del eslabón, suma entre
+    # eslabones, exponencial. Si esto y el reporte se separan, el reporte miente.
+    indice = (
+        pares.groupBy("_quincena")
+        .agg(F.avg("log_relativo").alias("media"))
+        .agg(F.exp(F.sum("media")).alias("indice"))
+        .first()["indice"]
+    )
+    esperado = 1.5 ** 0.5
+    if abs(indice - esperado) > 1e-9:
+        raise AssertionError(f"índice encadenado {indice} y se esperaba {esperado}")
+
+    apunta("eslabones", pares=4, indice=round(indice, 6), puntas=1.25)
+
 # METADATA ********************
 
 # META {
@@ -145,6 +198,7 @@ def prueba_clave_con_nulo() -> None:
 prueba_cast_ansi()
 prueba_uno_por_clave()
 prueba_clave_con_nulo()
+prueba_eslabones_encadenan()
 
 termina()
 

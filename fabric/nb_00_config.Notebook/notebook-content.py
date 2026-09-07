@@ -36,7 +36,7 @@ if _runt_ctx["defaultLakehouseId"] is not None:
 
 CORRIDA = _runt_ctx["activityId"]
 RAW = "https://raw.githubusercontent.com/AldoMor00/indice-gansito-datos/main"
-BRONZE, SILVER = "lh_bronze", "lh_silver"
+BRONZE, SILVER, GOLD = "lh_bronze", "lh_silver", "lh_gold"
 
 # ANSI encendido. Fabric lo trae apagado, así que un `cast` fallido daría nulo en silencio;
 # con esto truena. Es lo que vuelve a `cast` y `try_cast` dos decisiones distintas y
@@ -254,7 +254,41 @@ def clave(*cols):
     return F.xxhash64(*cols)
 
 
-def upsert(nuevas, tabla: str, llaves: list[str]) -> None:
+def eslabones(precios):
+    """Los relativos pareados de un hecho de precios: la misma tienda y el mismo SKU en dos
+    períodos consecutivos, con el logaritmo de su relativo.
+
+    El `join` **es** el pareo —quien no esté en los dos períodos no aporta— y por eso no hay
+    que filtrar después ni rellenar nada. Se une por `_orden`, el ordinal global del período,
+    y no por la etiqueta: es lo que define quién es el anterior cuando el panel rota.
+
+    El logaritmo y no el relativo porque Jevons es la media geométrica, que en logaritmos es
+    una media aritmética: el índice se arma promediando dentro del eslabón y **sumando** entre
+    eslabones, que es lo que DAX sabe hacer sobre cualquier corte (decisión #19).
+
+    Vive aquí y no en nb_30 para que nb_90 pruebe el código que corre y no una copia suya.
+    """
+    return (
+        precios.alias("act")
+        .join(
+            precios.alias("ant"),
+            (F.col("act.id_tienda") == F.col("ant.id_tienda"))
+            & (F.col("act.id_producto") == F.col("ant.id_producto"))
+            & (F.col("act._orden") == F.col("ant._orden") + 1),
+        )
+        .select(
+            F.col("act.id_tienda").alias("id_tienda"),
+            F.col("act.id_producto").alias("id_producto"),
+            F.col("act._quincena").alias("_quincena"),
+            F.col("ant._quincena").alias("_quincena_anterior"),
+            F.log(
+                F.col("act.precio_promedio") / F.col("ant.precio_promedio")
+            ).alias("log_relativo"),
+        )
+    )
+
+
+def upsert(nuevas, tabla: str, llaves: list[str], lakehouse: str = SILVER) -> None:
     """Dimensión: MERGE por clave. Inserta lo nuevo y actualiza sólo lo que de verdad
     cambió —de ahí la condición sobre los atributos—, para que la corrida sin novedades
     no reescriba un solo archivo. No se sobrescribe la tabla porque una dimensión es
@@ -264,8 +298,11 @@ def upsert(nuevas, tabla: str, llaves: list[str]) -> None:
     Un MERGE que no cambia nada no commitea versión, así que el rastro se lee comparando
     la versión de antes contra la de después y no mirando la última entrada del log, que
     en ese caso sería de otra operación.
+
+    `lakehouse` por defecto es silver, que es de donde salió: gold lo pasa explícito para
+    sus propias dimensiones, que se llenan con el mismo patrón.
     """
-    ruta = ruta_tabla(tabla, SILVER)
+    ruta = ruta_tabla(tabla, lakehouse)
     if not DeltaTable.isDeltaTable(spark, ruta):
         filas = nuevas.count()
         # Crear la dimensión vacía es un estado roto que se lee como éxito. Pasa si se dropea
