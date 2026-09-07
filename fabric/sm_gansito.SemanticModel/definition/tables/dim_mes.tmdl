@@ -1,0 +1,61 @@
+table dim_mes
+	lineageTag: f7803eaa-d002-490f-b9f5-39f08ab6d7f0
+	sourceLineageTag: [dbo].[dim_mes]
+	dataCategory: Time
+
+	column id_mes
+		dataType: int64
+		formatString: 0
+		lineageTag: 2946ada0-9c40-4875-bc69-f456172750ec
+		sourceLineageTag: id_mes
+		summarizeBy: none
+		sourceColumn: id_mes
+
+		annotation SummarizationSetBy = Automatic
+
+	column mes_inicio
+		dataType: dateTime
+		isKey
+		formatString: Long Date
+		lineageTag: 9eb17d63-f139-4051-9c93-f3588c832d0c
+		sourceLineageTag: mes_inicio
+		summarizeBy: none
+		sourceColumn: mes_inicio
+
+		changedProperty = DataType
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column anio
+		dataType: int64
+		formatString: 0
+		lineageTag: 7e870196-f8a4-4003-8e9c-03395c675bfb
+		sourceLineageTag: anio
+		summarizeBy: none
+		sourceColumn: anio
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+	column mes
+		dataType: int64
+		formatString: 0
+		lineageTag: 1c32a986-456e-41b0-9b8f-58e1650e738d
+		sourceLineageTag: mes
+		summarizeBy: none
+		sourceColumn: mes
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+	partition dim_mes = entity
+		mode: directLake
+		source
+			entityName: dim_mes
+			schemaName: dbo
+			expressionSource: 'DirectLake - lh_gold'
+

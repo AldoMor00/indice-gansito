@@ -1,0 +1,33 @@
+relationship 96baedc2-7371-7ecc-0ee0-24588f22a9c7
+	fromColumn: hechos_precios.id_producto
+	toColumn: dim_producto.id_producto
+
+relationship 63ac38e3-2e31-31b4-0424-f3e77dbde321
+	fromColumn: hechos_precios.id_tienda
+	toColumn: dim_tienda.id_tienda
+
+relationship fecdef0b-5d28-2163-df1b-2c647b3c0146
+	fromColumn: hechos_precios.id_quincena
+	toColumn: dim_tiempo_quincena.id_quincena
+
+relationship 0043759a-b67a-d52e-95f2-767caf09178b
+	fromColumn: hechos_relativos.id_producto
+	toColumn: dim_producto.id_producto
+
+relationship 6022b9be-0fc6-34a6-0bf0-add15b836522
+	fromColumn: hechos_relativos.id_tienda
+	toColumn: dim_tienda.id_tienda
+
+relationship 9621035a-655f-f5b1-9b2f-7070e4dae8aa
+	fromColumn: hechos_relativos.id_quincena
+	toColumn: dim_tiempo_quincena.id_quincena
+
+relationship fd62f91b-aebb-23c3-9ed1-bdd0b556defa
+	fromColumn: hechos_salario_mensual.id_mes
+	toColumn: dim_mes.id_mes
+
+relationship 6a56f366-9b9e-49a7-8747-60bd6830dc3d
+	crossFilteringBehavior: bothDirections
+	fromColumn: dim_tiempo_quincena.id_mes
+	toColumn: dim_mes.id_mes
+

@@ -1,0 +1,66 @@
+table Medidas
+	lineageTag: 157a869b-8aac-48d1-9561-35e43b512f68
+
+	measure 'Pareo mínimo' =
+			
+			MINX(
+			    VALUES( dim_tiempo_quincena[id_quincena] ),
+			    CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) )
+			)
+		formatString: #,0
+		lineageTag: 255e3938-6025-4559-a2d5-4b69fdb48d12
+
+	measure 'Cambio encadenado %' =
+			
+			VAR Suma =
+			    SUMX(
+			        VALUES( dim_tiempo_quincena[id_quincena] ),
+			        CALCULATE( AVERAGE( hechos_relativos[log_relativo] ) )
+			    )
+			RETURN
+			    IF(
+			        [Pareo mínimo] >= [Umbral de pareo Value],
+			        ( EXP( Suma ) - 1 ) * 100,
+			        BLANK()
+			    )
+		formatString: #,##0.0%
+		lineageTag: 244c97c8-1df8-43f7-9daf-e5566e7647b1
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
+	measure 'Índice encadenado' =
+			
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			VAR Suma =
+			    CALCULATE(
+			        SUMX(
+			            VALUES( dim_tiempo_quincena[id_quincena] ),
+			            CALCULATE( AVERAGE( hechos_relativos[log_relativo] ) )
+			        ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] <= Hasta
+			    )
+			RETURN
+			    IF( [Pareo mínimo] >= [Umbral de pareo Value], EXP( Suma ) * 100, BLANK() )
+		formatString: #,##0.0%
+		lineageTag: 75e5ac05-f908-4d13-842b-633f733fc67d
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
+	column Column
+		formatString: 0
+		lineageTag: ea681015-6661-4101-95b5-a7f0597b9244
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Column]
+
+		annotation SummarizationSetBy = User
+
+	partition Medidas = calculated
+		mode: import
+		source = Row("Column", BLANK())
+
+	annotation PBI_Id = 5a74387a25db496d8c035c6083cdea77
+
+	annotation 436ba87b-9c83-4389-a31b-ebd06a36be98 = {"Expression":""}
+

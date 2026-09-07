@@ -1,0 +1,125 @@
+table dim_tienda
+	lineageTag: 686a6e01-62c2-4bb1-8518-48bb2a0d260c
+	sourceLineageTag: [dbo].[dim_tienda]
+
+	column id_tienda
+		dataType: int64
+		formatString: 0
+		lineageTag: ecb65b24-e050-45a4-a5f3-9be9ef819c09
+		sourceLineageTag: id_tienda
+		summarizeBy: none
+		sourceColumn: id_tienda
+
+		annotation SummarizationSetBy = Automatic
+
+	column nombre_comercial
+		dataType: string
+		lineageTag: fc87508e-7115-405b-b034-021696c95854
+		sourceLineageTag: nombre_comercial
+		summarizeBy: none
+		sourceColumn: nombre_comercial
+
+		annotation SummarizationSetBy = Automatic
+
+	column direccion
+		dataType: string
+		lineageTag: 63192069-5f6e-404b-b898-d13c659420e3
+		sourceLineageTag: direccion
+		dataCategory: Address
+		summarizeBy: none
+		sourceColumn: direccion
+
+		changedProperty = DataCategory
+
+		annotation SummarizationSetBy = Automatic
+
+	column cadena_comercial
+		dataType: string
+		lineageTag: 64afd58c-c503-4c33-88d5-5a2a32847826
+		sourceLineageTag: cadena_comercial
+		summarizeBy: none
+		sourceColumn: cadena_comercial
+
+		annotation SummarizationSetBy = Automatic
+
+	column giro
+		dataType: string
+		lineageTag: 826fd6f7-b100-4b69-a5b1-53c46d3a2d64
+		sourceLineageTag: giro
+		summarizeBy: none
+		sourceColumn: giro
+
+		annotation SummarizationSetBy = Automatic
+
+	column estado
+		dataType: string
+		lineageTag: 9bd53ca6-d783-4224-ab7c-a642127bbf87
+		sourceLineageTag: estado
+		dataCategory: StateOrProvince
+		summarizeBy: none
+		sourceColumn: estado
+
+		changedProperty = DataCategory
+
+		annotation SummarizationSetBy = Automatic
+
+	column municipio
+		dataType: string
+		lineageTag: bc2d37a0-c770-409e-b9f8-c883421a673b
+		sourceLineageTag: municipio
+		dataCategory: County
+		summarizeBy: none
+		sourceColumn: municipio
+
+		changedProperty = DataCategory
+
+		annotation SummarizationSetBy = Automatic
+
+	column latitud
+		dataType: double
+		lineageTag: 4689d838-3400-499b-81da-9ce6510625f0
+		sourceLineageTag: latitud
+		dataCategory: Latitude
+		summarizeBy: none
+		sourceColumn: latitud
+
+		changedProperty = SummarizeBy
+
+		changedProperty = DataCategory
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column longitud
+		dataType: double
+		lineageTag: a54a9fdf-b407-47c0-830e-a0bc623a9cc1
+		sourceLineageTag: longitud
+		dataCategory: Longitude
+		summarizeBy: none
+		sourceColumn: longitud
+
+		changedProperty = SummarizeBy
+
+		changedProperty = DataCategory
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column canal
+		dataType: string
+		lineageTag: 953f5283-4f56-4879-be5a-e51e61117287
+		sourceLineageTag: canal
+		summarizeBy: none
+		sourceColumn: canal
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_tienda = entity
+		mode: directLake
+		source
+			entityName: dim_tienda
+			schemaName: dbo
+			expressionSource: 'DirectLake - lh_gold'
+

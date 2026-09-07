@@ -1,0 +1,83 @@
+table dim_producto
+	lineageTag: 9e9cbed3-181a-4b89-a000-749078fa12ff
+	sourceLineageTag: [dbo].[dim_producto]
+
+	column id_producto
+		dataType: int64
+		formatString: 0
+		lineageTag: 543715a8-351c-48c2-a515-d528762519ea
+		sourceLineageTag: id_producto
+		summarizeBy: none
+		sourceColumn: id_producto
+
+		annotation SummarizationSetBy = Automatic
+
+	column marca
+		dataType: string
+		lineageTag: dbba54ef-be17-4d52-a79b-c9cb17ca06b7
+		sourceLineageTag: marca
+		summarizeBy: none
+		sourceColumn: marca
+
+		annotation SummarizationSetBy = Automatic
+
+	column presentacion
+		dataType: string
+		lineageTag: 5be9790d-0fce-4cd5-8fba-96893b4c92f6
+		sourceLineageTag: presentacion
+		summarizeBy: none
+		sourceColumn: presentacion
+
+		annotation SummarizationSetBy = Automatic
+
+	column piezas
+		dataType: int64
+		formatString: 0
+		lineageTag: 1a65c484-d196-447f-b365-866bd8a33626
+		sourceLineageTag: piezas
+		summarizeBy: none
+		sourceColumn: piezas
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+	column gramos
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: 3f14efd7-b009-4ff9-b21a-7e737819137d
+		sourceLineageTag: gramos
+		summarizeBy: none
+		sourceColumn: gramos
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column producto
+		dataType: string
+		lineageTag: 45082efb-db6b-4c0a-932b-91cb939e6d46
+		sourceLineageTag: producto
+		summarizeBy: none
+		sourceColumn: producto
+
+		annotation SummarizationSetBy = Automatic
+
+	column categoria
+		dataType: string
+		lineageTag: bb90de8b-f2f8-4b0b-ba0f-54dcb3d1eb14
+		sourceLineageTag: categoria
+		summarizeBy: none
+		sourceColumn: categoria
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_producto = entity
+		mode: directLake
+		source
+			entityName: dim_producto
+			schemaName: dbo
+			expressionSource: 'DirectLake - lh_gold'
+

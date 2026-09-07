@@ -1,0 +1,26 @@
+table 'Umbral de pareo'
+	lineageTag: be4c46a5-c0be-4c03-8d9f-72325dfe6dab
+
+	measure 'Umbral de pareo Value' = SELECTEDVALUE('Umbral de pareo'[Umbral de pareo], 30)
+		formatString: #,0
+		lineageTag: a06a703c-5fc3-499b-a471-b7265ac7d2ee
+
+	column 'Umbral de pareo'
+		formatString: 0
+		lineageTag: f356c651-8fa0-4291-934f-b7cc4112b6b1
+		summarizeBy: none
+		sourceColumn: [Value]
+
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 0
+				}
+
+		annotation SummarizationSetBy = User
+
+	partition 'Umbral de pareo' = calculated
+		mode: import
+		source = GENERATESERIES(10, 200, 10)
+
+	annotation PBI_Id = 8a2509e8d27442ccb7d94480257d38a3
+

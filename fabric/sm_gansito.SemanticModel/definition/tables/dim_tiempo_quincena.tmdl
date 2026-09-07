@@ -1,0 +1,92 @@
+table dim_tiempo_quincena
+	lineageTag: c3e2f778-a3c9-4eaf-8f20-5fae8ea92ca8
+	sourceLineageTag: [dbo].[dim_tiempo_quincena]
+
+	column anio
+		dataType: int64
+		formatString: 0
+		lineageTag: b79b8477-c807-4f06-9543-752c92fe839b
+		sourceLineageTag: anio
+		summarizeBy: none
+		sourceColumn: anio
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+	column mes
+		dataType: int64
+		formatString: 0
+		lineageTag: 28b247b6-73b4-41da-ac81-f4b83f6443f9
+		sourceLineageTag: mes
+		summarizeBy: none
+		sourceColumn: mes
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+	column id_quincena
+		dataType: int64
+		formatString: 0
+		lineageTag: 0e8d2daf-970e-418c-a2ae-ce8021bedc0d
+		sourceLineageTag: id_quincena
+		summarizeBy: none
+		sourceColumn: id_quincena
+
+		annotation SummarizationSetBy = Automatic
+
+	column quincena
+		dataType: string
+		lineageTag: 59268f94-86fe-4da2-8224-cff24c51e80c
+		sourceLineageTag: quincena
+		summarizeBy: none
+		sourceColumn: quincena
+		sortByColumn: orden
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column quincena_inicio
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: b960f0c8-b8da-43d7-8f7e-b1019a7c21a9
+		sourceLineageTag: quincena_inicio
+		summarizeBy: none
+		sourceColumn: quincena_inicio
+
+		annotation SummarizationSetBy = Automatic
+
+	column orden
+		dataType: int64
+		formatString: 0
+		lineageTag: ba0d8877-99ad-41ac-a56c-df8efe7f29ab
+		sourceLineageTag: orden
+		summarizeBy: none
+		sourceColumn: orden
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+	column id_mes
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 13bcc003-cf49-4330-829c-0ec7d26eebb4
+		sourceLineageTag: id_mes
+		summarizeBy: none
+		sourceColumn: id_mes
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_tiempo_quincena = entity
+		mode: directLake
+		source
+			entityName: dim_tiempo_quincena
+			schemaName: dbo
+			expressionSource: 'DirectLake - lh_gold'
+

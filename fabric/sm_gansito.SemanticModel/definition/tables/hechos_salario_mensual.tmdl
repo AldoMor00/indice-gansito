@@ -1,0 +1,79 @@
+table hechos_salario_mensual
+	lineageTag: 14626c00-0269-4b62-89e7-26584020e7e4
+	sourceLineageTag: [dbo].[hechos_salario_mensual]
+
+	column id_mes
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 4f759745-7ef3-4cd9-91f8-fa66a049f711
+		sourceLineageTag: id_mes
+		summarizeBy: none
+		sourceColumn: id_mes
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column smg_nominal
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: b04204ef-438f-4586-8991-1cc83a54bbed
+		sourceLineageTag: smg_nominal
+		summarizeBy: none
+		sourceColumn: smg_nominal
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column smg_real
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: a503a104-3d9f-4d27-b4ef-8ad96b69f3d6
+		sourceLineageTag: smg_real
+		summarizeBy: none
+		sourceColumn: smg_real
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column smgr_indice
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: 54ee8623-331f-42a5-8911-f246341aa7d0
+		sourceLineageTag: smgr_indice
+		summarizeBy: none
+		sourceColumn: smgr_indice
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column inpc
+		dataType: double
+		lineageTag: e5dc26a4-72f3-453b-9611-f9f986de84e1
+		sourceLineageTag: inpc
+		summarizeBy: none
+		sourceColumn: inpc
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition hechos_salario_mensual = entity
+		mode: directLake
+		source
+			entityName: hechos_salario_mensual
+			schemaName: dbo
+			expressionSource: 'DirectLake - lh_gold'
+
