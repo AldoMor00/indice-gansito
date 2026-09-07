@@ -13,3 +13,10 @@
 # desde el UI, porque no pasa por un árbol de trabajo. Si vuelve a meter CRLF se verá en el
 # primer commit y se corrige con `git add --renormalize .`
 * text=auto
+
+# Los lm.settings.json de los lakehouses los reescribe Fabric en CRLF cada vez que
+# guarda, aunque el repo los tenga en LF: tras un *update from git* el item vuelve a salir
+# modificado sin una sola línea distinta. La normalización del 	ext=auto de arriba los
+# arrastró de más —venían consistentes en CRLF y no eran el problema; los mezclados eran
+# los notebooks—. Se exentan para que Fabric sea su dueño y la sincronización cierre.
+fabric/*.Lakehouse/alm.settings.json -text
