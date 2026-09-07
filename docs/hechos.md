@@ -137,17 +137,23 @@ borrando un `nb_99_prueba_cli` desechable en dev, que quedó como estaba.
 - **`--format .py` no es opcional, y va en los dos sentidos.** Sin él, `fab export` baja un
   `notebook-content.ipynb` y `fab import` espera JSON: subir la plantilla de la skill falla con
   `InvalidNotebookContent`. Con él, el archivo es el mismo `notebook-content.py` de git.
-- **Fabric normaliza los finales de línea a CRLF.** Un `notebook-content.py` escrito a mano
-  con LF sube igual y queda almacenado con CRLF, que es lo que la git integration commitea.
-  Por eso el archivo local se escribe **con CRLF**, como los que ya están en el repo: en LF
-  saldría modificado para siempre después del primer commit desde la UI, sin que el contenido
-  cambie —el fallo de sincronización que advierte la skill—.
-- **Pero `fab export` no es fiel byte por byte, y lo parece.** Si lo almacenado ya es CRLF, lo
-  que baja trae los CR **duplicados** —`CR CR LF`—, así que un `diff` contra el archivo local
-  marca el 100% de las líneas como cambiadas. Es artefacto de la bajada, no del almacenamiento:
-  con esos mismos items el panel de código fuente de la UI mostró sólo las líneas que de verdad
-  se tocaron. Medido sobre `nb_00_config` (296 CR de más) y `nb_21_conasami` (192); el que
-  había subido con LF baja limpio. Para verificar qué cambió, la UI y no el export.
+- **El índice de git guarda LF y el árbol de trabajo se ve en CRLF**, y quien convierte es
+  `core.autocrlf`, que en Windows viene en `true` desde `C:/Program Files/Git/etc/gitconfig`.
+  Se consulta con `--show-origin`: mirar sólo `--local` y `--global` lo da por no definido y
+  lleva a concluir, al revés, que el repo es CRLF y que git no convierte nada. Lo que dice la
+  verdad es `git ls-files --eol`, que reporta índice y árbol por separado.
+- **El fallo real es el blob con finales mezclados.** Editar línea a línea un archivo que en
+  el árbol está en CRLF mete líneas con LF solo, y esa mezcla llega al índice: tres notebooks
+  quedaron en `i/mixed` con 21, 43 y 43 líneas sueltas. Un blob mezclado envenena todos los
+  diffs siguientes —el commit de gold marcó 330 líneas en `nb_00_config` y sólo 40 eran
+  contenido, medido con `git diff --ignore-cr-at-eol`—. Se arregla con `.gitattributes` en
+  `* text=auto` y `git add --renormalize .`, que no toca una sola línea de contenido.
+- **`fab export` no es fiel byte por byte, y lo parece.** Cuando lo que Fabric tiene guardado
+  está en CRLF, lo que baja trae los CR **duplicados** —`CR CR LF`—, así que un `diff` contra
+  el archivo local marca el 100% de las líneas como cambiadas. Es artefacto de la bajada:
+  con esos mismos items el panel de código fuente de la UI mostró sólo las líneas que de
+  verdad se tocaron. Medido sobre `nb_00_config` (296 CR de más) y `nb_21_conasami` (192); el
+  que había subido con LF baja limpio. Para verificar qué cambió, la UI y no el export.
 - **`fab import` crea y actualiza con el mismo comando.** El segundo import sobre el mismo item
   reemplaza la definición; `-f` sólo se salta la confirmación.
 - **El `.platform` que baja la CLI no es el de git**: trae `logicalId` en ceros y otra sangría.

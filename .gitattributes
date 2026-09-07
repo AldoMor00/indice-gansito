@@ -1,0 +1,15 @@
+# El índice guarda LF y cada árbol de trabajo lo ve con los finales de su plataforma. Sin
+# este archivo eso depende de `core.autocrlf`, que en Windows viene en `true` desde el
+# gitconfig del sistema: funciona, pero por configuración de la máquina y no del repo, así
+# que un clon con otra configuración vería medio repo modificado nada más clonar.
+#
+# `text=auto` lo fija en el repo, y hizo falta: tres notebooks acabaron con finales
+# **mezclados dentro del índice** —`git ls-files --eol` los marcaba `i/mixed`— después de
+# pasar por ediciones en local y commits desde el UI de Fabric. Un blob mezclado hace que
+# el diff siguiente marque el archivo entero aunque cambien tres líneas, que es lo que pasó
+# en el commit de gold: 330 líneas cambiadas y sólo 40 reales.
+#
+# Lo que este archivo no puede garantizar es qué escribe la git integration al commitear
+# desde el UI, porque no pasa por un árbol de trabajo. Si vuelve a meter CRLF se verá en el
+# primer commit y se corrige con `git add --renormalize .`
+* text=auto
