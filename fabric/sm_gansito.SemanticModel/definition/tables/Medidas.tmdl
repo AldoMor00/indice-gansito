@@ -47,6 +47,127 @@ table Medidas
 
 		annotation PBI_FormatHint = {"isCustom":true}
 
+	/// Promedio de las celdas tienda-SKU-quincena. Transversal: no lleva guarda de pareo
+	/// porque no compara periodos, y es válido con cualquier tamaño de muestra.
+	measure 'Precio promedio' = AVERAGE( hechos_precios[precio_promedio] )
+		formatString: \$#,##0.00
+		lineageTag: 3f21c0a4-5d7e-42b1-9c33-8ab2d1e05f10
+
+	measure 'Precio mediano' = MEDIAN( hechos_precios[precio_promedio] )
+		formatString: \$#,##0.00
+		lineageTag: 8c4d19b6-71a2-4e58-bb07-2d9f3ca47e21
+
+	/// Razón entre el percentil 90 y el 10. Mide qué tan abierto está el abanico de precios
+	/// dentro del corte, que es la historia de la página de dispersión.
+	measure 'Dispersión p90/p10' =
+			DIVIDE(
+			    PERCENTILE.INC( hechos_precios[precio_promedio], 0.9 ),
+			    PERCENTILE.INC( hechos_precios[precio_promedio], 0.1 )
+			)
+		formatString: #,##0.00
+		lineageTag: b2e7f048-3ca9-4d16-89e5-6f01ab73c2d4
+
+	measure 'Tiendas observadas' = DISTINCTCOUNT( hechos_precios[id_tienda] )
+		formatString: #,0
+		lineageTag: 5a83d2c1-9e64-4b70-a1f8-70c25de91b83
+
+	/// Visitas, no celdas: Profeco visita la misma tienda hasta cinco veces por quincena y
+	/// el hecho las promedia. La diferencia contra el conteo de filas dice cuánto se promedió.
+	measure Observaciones = SUM( hechos_precios[observaciones] )
+		formatString: #,0
+		lineageTag: 1d60ba97-4f22-48ce-b3a5-c9e7d418206f
+
+	/// El INPC del mes que contiene a la quincena. Cruza el grano con TREATAS y no con una
+	/// relación bidireccional: el filtro pasa sólo donde esta medida lo pide.
+	measure INPC =
+			CALCULATE(
+			    AVERAGE( hechos_salario_mensual[inpc] ),
+			    TREATAS( VALUES( dim_tiempo_quincena[id_mes] ), dim_mes[id_mes] )
+			)
+		formatString: #,##0.000
+		lineageTag: 7e159c30-62db-4a85-90f1-3b4c8ad7e562
+
+	/// Inflación general entre la base de la serie y la quincena en curso. Se acumula desde
+	/// el inicio igual que el índice, para que las dos series sean comparables punto a punto.
+	measure 'Inflación acumulada %' =
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			VAR OrdenBase =
+			    CALCULATE( MIN( dim_tiempo_quincena[orden] ), REMOVEFILTERS( dim_tiempo_quincena ) )
+			VAR MesBase =
+			    CALCULATE(
+			        SELECTEDVALUE( dim_tiempo_quincena[id_mes] ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = OrdenBase
+			    )
+			VAR MesActual =
+			    CALCULATE(
+			        SELECTEDVALUE( dim_tiempo_quincena[id_mes] ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Hasta
+			    )
+			VAR Base =
+			    CALCULATE( AVERAGE( hechos_salario_mensual[inpc] ), TREATAS( { MesBase }, dim_mes[id_mes] ) )
+			VAR Actual =
+			    CALCULATE( AVERAGE( hechos_salario_mensual[inpc] ), TREATAS( { MesActual }, dim_mes[id_mes] ) )
+			RETURN
+			    DIVIDE( Actual, Base ) - 1
+		formatString: #,##0.00%
+		lineageTag: c81a4b73-05e9-4f26-8d47-1e2093bc6a58
+
+	/// Cambio del Gansito descontando la inflación general. Es el titular del proyecto: el
+	/// nominal dice cuánto subió el precio, éste dice cuánto subió de más.
+	measure 'Cambio real %' = DIVIDE( 1 + [Cambio encadenado %], 1 + [Inflación acumulada %] ) - 1
+		formatString: #,##0.00%
+		lineageTag: 4b09e6d5-8c31-4a72-b6e0-51fda372c904
+
+	measure 'Índice real' = DIVIDE( [Índice encadenado], 1 + [Inflación acumulada %] )
+		formatString: #,##0.00
+		lineageTag: 9f3c7e21-b048-4d95-83a6-2c60e51df7b3
+
+	/// El ponderado nacional de CONASAMI, no el de zona: sin padrón de municipios fronterizos
+	/// la ZLFN no se puede pegar contra el precio.
+	measure 'Salario mínimo diario' =
+			CALCULATE(
+			    AVERAGE( hechos_salario_mensual[smg_nominal] ),
+			    TREATAS( VALUES( dim_tiempo_quincena[id_mes] ), dim_mes[id_mes] )
+			)
+		formatString: \$#,##0.00
+		lineageTag: 6d2b850f-1a7c-46e3-9b84-f0537ac2e169
+
+	/// Cuántos Gansitos compra un día de trabajo al mínimo. Traduce el precio a algo que se
+	/// siente, y es la razón por la que CONASAMI entró al proyecto.
+	measure 'Gansitos por día' = DIVIDE( [Salario mínimo diario], [Precio promedio] )
+		formatString: #,##0.0
+		lineageTag: 2c948d16-7b53-4f80-a2d1-84e6b09f3527
+
+	measure Eslabones = DISTINCTCOUNT( hechos_relativos[id_quincena] )
+		formatString: #,0
+		lineageTag: e05f31a8-46d2-49b7-8c60-7a13e9b524fd
+
+	/// El pareo típico del corte, contra el mínimo que decide la guarda. Juntos dicen si un
+	/// corte quedó sin índice por un solo eslabón flaco o por muestra insuficiente en general.
+	measure 'Pareo mediano' =
+			MEDIANX(
+			    FILTER(
+			        VALUES( dim_tiempo_quincena[id_quincena] ),
+			        CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) ) > 0
+			    ),
+			    CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) )
+			)
+		formatString: #,0
+		lineageTag: a7361de4-9b02-4c85-b1e3-05d7248fa6b0
+
+	/// Explica el blanco que deja la guarda, en vez de dejar al lector adivinando por qué
+	/// una serie no se dibuja.
+	measure 'Nota de cobertura' =
+			IF(
+			    [Pareo mínimo] < [Umbral de pareo Value],
+			    "Muestra insuficiente para publicar índice: " & [Pareo mínimo]
+			        & " tiendas pareadas en el eslabón más flaco, contra un umbral de "
+			        & [Umbral de pareo Value] & "."
+			)
+		lineageTag: f4820ac7-3e61-4b09-95d2-6c8017ae3b45
+
 	column Column
 		isHidden
 		formatString: 0
