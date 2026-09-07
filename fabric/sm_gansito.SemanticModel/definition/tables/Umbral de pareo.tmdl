@@ -23,7 +23,7 @@ table 'Umbral de pareo'
 
 	partition 'Umbral de pareo' = calculated
 		mode: import
-		source = GENERATESERIES(10, 200, 10)
+		source = GENERATESERIES(5, 200, 5)
 
 	annotation PBI_Id = 8a2509e8d27442ccb7d94480257d38a3
 
