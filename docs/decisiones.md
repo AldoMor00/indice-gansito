@@ -307,3 +307,28 @@ La user data function centraliza lógica reutilizable, que es lo que hace `nb_00
 sin sesión de Spark y por REST, y los helpers toman y devuelven DataFrames: sólo `manifiesto_de`
 cruzaría. Paga con write-back translytical o consumidores externos, y no hay ninguno. Lo medido,
 en [`hechos.md`](hechos.md).
+
+## 19. El cambio de precio se publica con Jevons encadenado, no con un promedio
+
+El panel de Profeco rota, así que comparar el promedio de la primera quincena contra el de la
+última mezcla cambio de precio con cambio de muestra. El índice se arma pareando: cada quincena
+contra la inmediata anterior, sobre las tiendas presentes en ambas, y los 45 eslabones se
+encadenan. Ninguna tienda necesita sobrevivir dos años para aportar, y se retiene el 86% del n
+—el panel balanceado, que parece la corrección obvia, retiene el 9% y sale sesgado por
+supervivencia—. Las cuatro variantes con sus intervalos, en [`hechos.md`](hechos.md).
+
+Del par de medias que sobreviven —Dutot y Jevons quedan a medio punto, y Carli se descarta
+porque sobreestima 12— se elige **Jevons**: vive en logaritmos, y los logaritmos son aditivos.
+Eso es lo que deja que el índice sea una sola medida DAX en vez de una tabla pre-agregada. Y ahí
+está la razón de que `hechos_relativos` se materialice **al grano de tienda**: el encadenado no
+es aditivo entre cortes —el de «supermercados en Jalisco» no se deriva del de «supermercados»—,
+así que pre-agregar eslabones por corte congelaría los cortes para siempre. Al grano de tienda
+son ~13,000 filas y cualquier corte sale gratis.
+
+La muestra insuficiente se ataja en la medida y no filtrando gold: el dato entra completo
+—filtrarlo sería compuerta de silver en la capa equivocada, y rompería los cortes
+transversales, que no necesitan pareo— y el índice devuelve `BLANK()` cuando el eslabón más
+flaco del corte no junta el umbral, que arranca en 30 tiendas y se expone como parámetro. No es
+lista negra: se evalúa en el contexto de filtro, así que protege igual a una cadena chica, a un
+estado chico o a un subperiodo corto. Es lo que decide que el corte de canal sean tres
+categorías y no los cinco `giro` de la fuente, de los que sólo uno pasa el umbral.
