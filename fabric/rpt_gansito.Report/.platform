@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "rpt_gansito"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "dcf8f348-a507-9fb0-4dd3-3b112d08afa8"
+  }
+}
