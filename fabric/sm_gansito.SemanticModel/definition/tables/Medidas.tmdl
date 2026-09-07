@@ -168,6 +168,64 @@ table Medidas
 			)
 		lineageTag: f4820ac7-3e61-4b09-95d2-6c8017ae3b45
 
+	/// El bootstrap de `nb_30` está tabulado por SKU y remuestrea el padrón entero de tiendas
+	/// de ese SKU. Pide entonces un solo producto en contexto —entre SKUs no se agrega, y sin
+	/// filtro habría nueve intervalos distintos— y se apaga ante cualquier filtro de tienda,
+	/// que describiría una muestra que ya no es la del intervalo. Vive aparte para que las dos
+	/// puntas no puedan divergir.
+	measure 'Intervalo aplica' =
+			NOT ISCROSSFILTERED( dim_tienda )
+			    && HASONEVALUE( dim_producto[id_producto] )
+			    && [Pareo mínimo] >= [Umbral de pareo Value]
+		isHidden
+		lineageTag: 0d4f7b26-8a51-4c93-b7e0-46129df3a8c5
+
+	measure 'IC inferior' =
+			
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			RETURN
+			    IF(
+			        [Intervalo aplica],
+			        CALCULATE(
+			            MAX( hechos_ic_indice[ic_inferior] ),
+			            REMOVEFILTERS( dim_tiempo_quincena ),
+			            dim_tiempo_quincena[orden] = Hasta
+			        )
+			    )
+		formatString: #,##0.00
+		lineageTag: 2e86c1a4-9f37-40db-85a2-b71c04e9d635
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
+	measure 'IC superior' =
+			
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			RETURN
+			    IF(
+			        [Intervalo aplica],
+			        CALCULATE(
+			            MAX( hechos_ic_indice[ic_superior] ),
+			            REMOVEFILTERS( dim_tiempo_quincena ),
+			            dim_tiempo_quincena[orden] = Hasta
+			        )
+			    )
+		formatString: #,##0.00
+		lineageTag: b93e5a7f-1c48-4a06-9e35-8f2071dab4c9
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
+	/// El intervalo como texto, para el KPI de P1: publicar el número sin su incertidumbre al
+	/// lado es lo que separa un tablero de un análisis.
+	measure 'Intervalo del cambio' =
+			VAR Inferior = DIVIDE( [IC inferior], 100 ) - 1
+			VAR Superior = DIVIDE( [IC superior], 100 ) - 1
+			RETURN
+			    IF(
+			        NOT ISBLANK( Inferior ),
+			        FORMAT( Inferior, "+0.00%;-0.00%" ) & " a " & FORMAT( Superior, "+0.00%;-0.00%" )
+			    )
+		lineageTag: 41c7a0e8-52b6-4d19-8730-e6f9b2450a1d
+
 	column Column
 		isHidden
 		formatString: 0

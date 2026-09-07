@@ -30,3 +30,11 @@ relationship 6a56f366-9b9e-49a7-8747-60bd6830dc3d
 	fromColumn: dim_tiempo_quincena.id_mes
 	toColumn: dim_mes.id_mes
 
+relationship 7c4e0a91-3d68-4b52-9f07-e1a3562db8f4
+	fromColumn: hechos_ic_indice.id_quincena
+	toColumn: dim_tiempo_quincena.id_quincena
+
+relationship 2fb85d70-6c19-4e83-a24f-5017cbe93d6a
+	fromColumn: hechos_ic_indice.id_producto
+	toColumn: dim_producto.id_producto
+

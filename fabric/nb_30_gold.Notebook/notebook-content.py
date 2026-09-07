@@ -44,17 +44,31 @@ quincenas_pedidas = ""
 # compuertas ya garantizaron (decisión #16)— y agrega lo único que silver no da: los
 # relativos pareados de los que sale el índice encadenado (decisión #19).
 #
-# Siete tablas. Tres hechos y cuatro dimensiones; `dim_mes` concilia los dos granos de
+# Ocho tablas. Cuatro hechos y cuatro dimensiones; `dim_mes` concilia los dos granos de
 # tiempo —el precio es quincenal y el salario mensual— como shrunken conformed dimension,
 # así que ninguno de los dos hechos se desnaturaliza para caber en el otro.
 #
+# `hechos_ic_indice` es la excepción del patrón: no proyecta silver, resume la serie entera
+# con un bootstrap que DAX no puede hacer. Por eso se calcula al final y sobre gold escrito.
+#
 # `ruta_tabla`, `clave`, `upsert`, `exige_llave_unica` y el trío del resumen vienen de
 # nb_00_config. `upsert` recibe `GOLD` explícito: su default es silver, de donde salió.
+
+# numpy y Window no salen de nb_00_config —ningún otro notebook los necesita— y el bootstrap
+# sí: uno sortea las réplicas, el otro acumula la cadena dentro de cada una.
+import numpy as np
+from pyspark.sql import Window
 
 # `hechos_precios` es el estado de gold, igual que en silver: qué quincenas ya se
 # proyectaron. Si no existe —primera corrida— todo sale pendiente y el backfill es esta misma.
 TABLA_HECHOS = "hechos_precios"
 TABLA_RELATIVOS = "hechos_relativos"
+TABLA_IC = "hechos_ic_indice"
+
+# Réplicas y semilla del bootstrap. 2,000 es lo que midió la exploración, y la semilla fija
+# hace que dos corridas sobre los mismos datos publiquen el mismo intervalo: un IC que se
+# mueve solo entre refrescos no es publicable.
+REPLICAS, SEMILLA = 2_000, 20240101
 
 # El canal colapsa el `giro` que ya declara Profeco, en vez de mapear las 57 cadenas a mano:
 # una cadena nueva llega con su giro puesto y un diccionario de cadenas se rompería en la
@@ -141,6 +155,103 @@ def pendientes_gold(todas: list[str]) -> list[str]:
         for f in spark.read.format("delta").load(ruta).select("_quincena").distinct().collect()
     }
     return [q for q in todas if q not in ya]
+
+
+def intervalo_del_indice(relativos, calendario):
+    """El IC 95% del índice encadenado, quincena por quincena, por bootstrap de tiendas.
+
+    Remuestrea **tiendas** y no celdas porque la tienda es la unidad de muestreo de Profeco.
+    Las celdas de una misma tienda no son observaciones independientes —comparten dueño,
+    política de precios y visita—, así que remuestrearlas sueltas daría un intervalo
+    falsamente angosto.
+
+    No se puede calcular en DAX, y por eso esta tabla existe. El error del encadenado no es
+    función de los agregados del eslabón: las mismas tiendas reaparecen eslabón tras eslabón
+    y sus errores se telescopan, así que sumar varianzas en cuadratura da 2.62 pp contra los
+    1.60 que da el bootstrap (docs/hechos.md).
+
+    El grano es SKU × quincena porque el índice que se publica es el de un SKU —el titular es
+    el Gansito, no la canasta— y el intervalo de la canasta no se parece: promedia nueve
+    series y sale mucho más angosto. Entre SKUs no se agrega, así que la medida que lo lee
+    exige un solo producto en contexto, y se apaga ante cualquier filtro de tienda.
+    """
+    # Grano de la unidad de muestreo: lo que una tienda aporta a un eslabón de un SKU.
+    # Pre-agregar aquí es lo que vuelve viable el remuestreo —el join de abajo se lleva
+    # tienda × SKU × quincena y no las celdas— y no mueve el estimador: el peso multiplica
+    # suma y conteo por igual, así que la media ponderada es la que promedia la medida DAX.
+    por_tienda = (
+        relativos.join(calendario.select("id_quincena", "orden"), "id_quincena")
+        .groupBy("id_producto", "id_tienda", "orden")
+        .agg(F.sum("log_relativo").alias("suma"), F.count("log_relativo").alias("celdas"))
+    )
+
+    # Cada SKU se remuestrea contra **su propio** padrón de tiendas, no contra el global: las
+    # que no lo venden no son parte de su muestra, y meterlas cambiaría el n del que depende
+    # el ancho del intervalo. Por eso el sorteo se hace producto por producto.
+    padron = {}
+    for f in por_tienda.select("id_producto", "id_tienda").distinct().collect():
+        padron.setdefault(f["id_producto"], []).append(f["id_tienda"])
+
+    rng = np.random.default_rng(SEMILLA)
+    sorteos = []
+    for id_producto, tiendas in sorted(padron.items()):
+        # Multinomial y no un sorteo fila por fila: es el mismo bootstrap —n tiendas con
+        # reemplazo en cada réplica— escrito como cuántas veces salió cada una, que es lo que
+        # el join pide. Sólo viajan las que salieron: en cada réplica se queda fuera un 37%.
+        conteos = rng.multinomial(
+            len(tiendas), np.full(len(tiendas), 1 / len(tiendas)), size=REPLICAS
+        )
+        replica, columna = np.nonzero(conteos)
+        sorteos.append(
+            pd.DataFrame(
+                {
+                    "id_producto": id_producto,
+                    "replica": replica,
+                    "id_tienda": np.asarray(sorted(tiendas))[columna],
+                    "peso": conteos[replica, columna],
+                }
+            )
+        )
+
+    pesos = spark.createDataFrame(
+        pd.concat(sorteos, ignore_index=True),
+        "id_producto bigint, replica int, id_tienda bigint, peso int",
+    )
+
+    # Media ponderada dentro del eslabón y suma acumulada entre eslabones: la agregación de la
+    # medida DAX, repetida REPLICAS veces por SKU. La ventana va sobre `orden` porque el índice
+    # de una quincena es el producto de todos los eslabones hasta ella.
+    serie = (
+        por_tienda.join(pesos, ["id_producto", "id_tienda"])
+        .groupBy("id_producto", "replica", "orden")
+        .agg(
+            (
+                F.sum(F.col("peso") * F.col("suma"))
+                / F.sum(F.col("peso") * F.col("celdas"))
+            ).alias("media")
+        )
+        .withColumn(
+            "indice",
+            F.exp(
+                F.sum("media").over(
+                    Window.partitionBy("id_producto", "replica").orderBy("orden")
+                )
+            )
+            * 100,
+        )
+    )
+
+    # `percentile` exacto y no `percentile_approx`: con 2,000 réplicas cuesta nada, y el
+    # aproximado metería su propio error dentro del intervalo que se publica. Por SQL porque
+    # así se escribe igual sin depender de en qué versión de PySpark salió el wrapper.
+    #
+    # La desviación del índice base 100 **es** la del cambio acumulado en puntos porcentuales,
+    # que es la cifra con la que se compara contra lo medido en la exploración.
+    return serie.groupBy("id_producto", "orden").agg(
+        F.expr("percentile(indice, 0.025)").alias("ic_inferior"),
+        F.expr("percentile(indice, 0.975)").alias("ic_superior"),
+        F.stddev("indice").alias("ee_cambio_pp"),
+    )
 
 
 def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
@@ -345,6 +456,53 @@ upsert(dim_tiempo_quincena, "dim_tiempo_quincena", ["id_quincena"], GOLD)
 upsert(hechos_salario_mensual, "hechos_salario_mensual", ["id_mes"], GOLD)
 reemplaza_quincenas(hechos_relativos, TABLA_RELATIVOS, quincenas_lote)
 reemplaza_quincenas(hechos_precios, TABLA_HECHOS, quincenas_lote)
+
+# ---------------------------------------------------------------- intervalo
+
+# El intervalo va después de escribir, y sobre gold ya publicado en vez de sobre el lote, por
+# lo mismo: es de la serie completa. Cada quincena nueva alarga la cadena y mueve el intervalo
+# de todas las anteriores, así que no hay recálculo parcial que valga —el `upsert` de abajo
+# actualiza las filas que de verdad cambiaron y no commitea versión si no cambió ninguna—.
+ic = intervalo_del_indice(
+    spark.read.format("delta").load(ruta_tabla(TABLA_RELATIVOS, GOLD)), dim_tiempo_quincena
+)
+
+# La primera quincena de la serie no tiene eslabón: su índice es 100 en toda réplica y el
+# intervalo es un punto. Va en la tabla para que la banda arranque en la base y no un eslabón
+# después, que es donde el `join` la dejaría fuera. El cruce se arma contra los SKUs que de
+# verdad producen eslabones, no contra `dim_producto`: uno sin pareo no tiene intervalo.
+hechos_ic_indice = (
+    dim_tiempo_quincena.select("id_quincena", "orden")
+    .crossJoin(ic.select("id_producto").distinct())
+    .join(ic, ["id_producto", "orden"], "left")
+    .select(
+        "id_quincena",
+        "id_producto",
+        # `double` y no `decimal`, como `log_relativo`: son cifras de reporte, no dinero.
+        F.coalesce("ic_inferior", F.lit(100.0)).alias("ic_inferior"),
+        F.coalesce("ic_superior", F.lit(100.0)).alias("ic_superior"),
+        F.coalesce("ee_cambio_pp", F.lit(0.0)).alias("ee_cambio_pp"),
+        "orden",
+    )
+)
+
+# El cierre de la serie al resumen: es lo que deja comparar la corrida contra el 1.60 pp que
+# midió la exploración. Va como rango entre SKUs y no como una sola cifra, porque el notebook
+# no tiene por qué saber cuál de los nueve es el titular.
+cierres = [
+    f["ee_cambio_pp"]
+    for f in hechos_ic_indice.filter(
+        F.col("orden") == hechos_ic_indice.agg(F.max("orden")).first()[0]
+    ).collect()
+]
+apunta(
+    "intervalo",
+    replicas=REPLICAS,
+    skus=len(cierres),
+    ee_pp=f"{min(cierres):.2f} a {max(cierres):.2f}",
+)
+
+upsert(hechos_ic_indice.drop("orden"), TABLA_IC, ["id_quincena", "id_producto"], GOLD)
 
 # `smg_real` es el divisor del deflactor y `precio_promedio` el del relativo: un cero castea
 # perfecto y ANSI no lo ve. Son predicados de una fila, que es lo único que Delta expresa.
