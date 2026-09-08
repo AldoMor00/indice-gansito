@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "37f7ccca769057fc4b5e",
+  "name": "e4f5a6b7c8d91a2b3c4d",
   "position": {
-    "x": 36,
-    "y": 300,
-    "z": 0,
-    "height": 462,
-    "width": 1848,
-    "tabOrder": 0
+    "x": 36.775004489136286,
+    "y": 779.6300951696893,
+    "z": 1000,
+    "height": 264.78003232178128,
+    "width": 912.02011133058,
+    "tabOrder": 1000
   },
   "visual": {
     "visualType": "lineChart",
@@ -47,111 +47,63 @@
               },
               "queryRef": "Medidas.Índice encadenado",
               "nativeQueryRef": "Índice encadenado"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Medidas"
+                    }
+                  },
+                  "Property": "Índice real"
+                }
+              },
+              "queryRef": "Medidas.Índice real",
+              "nativeQueryRef": "Índice real"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Medidas"
+                    }
+                  },
+                  "Property": "Índice INPC"
+                }
+              },
+              "queryRef": "Medidas.Índice INPC",
+              "nativeQueryRef": "Índice INPC"
             }
           ]
         }
       }
     },
     "objects": {
-      "error": [
+      "labels": [
         {
           "properties": {
-            "errorRange": {
-              "kind": "ErrorRange",
-              "explicit": {
-                "isRelative": {
-                  "expr": {
-                    "Literal": {
-                      "Value": "false"
-                    }
-                  }
-                },
-                "lowerBound": {
-                  "expr": {
-                    "Measure": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "Medidas"
-                        }
-                      },
-                      "Property": "IC inferior"
-                    }
-                  }
-                },
-                "upperBound": {
-                  "expr": {
-                    "Measure": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "Medidas"
-                        }
-                      },
-                      "Property": "IC superior"
-                    }
-                  }
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
                 }
               }
             }
-          },
-          "selector": {
-            "data": [
-              {
-                "dataViewWildcard": {
-                  "matchingOption": 0
-                }
-              }
-            ],
-            "metadata": "Medidas.Índice encadenado",
-            "highlightMatching": 1
           }
-        },
+        }
+      ],
+      "seriesLabels": [
         {
           "properties": {
-            "enabled": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "shadeShow": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "barShow": {
-              "expr": {
-                "Literal": {
-                  "Value": "false"
-                }
-              }
-            },
-            "barMatchSeriesColor": {
-              "expr": {
-                "Literal": {
-                  "Value": "false"
-                }
-              }
-            },
-            "markerShow": {
-              "expr": {
-                "Literal": {
-                  "Value": "false"
-                }
-              }
-            },
-            "labelShow": {
+            "show": {
               "expr": {
                 "Literal": {
                   "Value": "false"
                 }
               }
             }
-          },
-          "selector": {
-            "metadata": "Medidas.Índice encadenado"
           }
         }
       ]
@@ -160,6 +112,13 @@
       "visualHeader": [
         {
           "properties": {
+            "showDrillRoleSelector": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
             "showDrillUpButton": {
               "expr": {
                 "Literal": {
@@ -171,20 +130,6 @@
               "expr": {
                 "Literal": {
                   "Value": "false"
-                }
-              }
-            },
-            "showDrillRoleSelector": {
-              "expr": {
-                "Literal": {
-                  "Value": "false"
-                }
-              }
-            },
-            "showVisualErrorButton": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
                 }
               }
             }
@@ -204,7 +149,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Índice encadenado, base 100 en 2024-01_q1'"
+                  "Value": "'Contra la inflación general'"
                 }
               }
             },
@@ -224,7 +169,7 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "4a7c4e0b93d6215f8ae4",
+        "name": "5a7c4e0b93d6215f8ae5",
         "field": {
           "Column": {
             "Expression": {
@@ -274,7 +219,64 @@
               }
             }
           ]
-        }
+        },
+        "howCreated": "User"
+      },
+      {
+        "name": "0d2b1f4f6c024e5a4c33",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "dim_tiempo_quincena"
+              }
+            },
+            "Property": "quincena"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "ef4c2484021a250b3c4b",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Medidas"
+              }
+            },
+            "Property": "Índice encadenado"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "211a7ced039640ba3b09",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Medidas"
+              }
+            },
+            "Property": "Índice real"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "5f552f3cb0a050c62d7e",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Medidas"
+              }
+            },
+            "Property": "Índice INPC"
+          }
+        },
+        "type": "Advanced"
       }
     ]
   }

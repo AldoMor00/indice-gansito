@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "a0b25587fe968c120d5c",
+  "name": "c2d3e4f5a6b718293a4b",
   "position": {
-    "x": 0,
+    "x": 936,
     "y": 0,
-    "z": 0,
+    "z": 2000,
     "height": 156,
     "width": 444,
-    "tabOrder": 0
+    "tabOrder": 2000
   },
   "visual": {
     "visualType": "cardVisual",
@@ -23,11 +23,11 @@
                       "Entity": "Medidas"
                     }
                   },
-                  "Property": "Cambio encadenado %"
+                  "Property": "Intervalo del cambio"
                 }
               },
-              "queryRef": "Medidas.Cambio encadenado %",
-              "nativeQueryRef": "Cambio encadenado %"
+              "queryRef": "Medidas.Intervalo del cambio",
+              "nativeQueryRef": "Intervalo del cambio"
             }
           ]
         }
@@ -101,7 +101,7 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "0a7c4e0b93d6215f8ae0",
+        "name": "2a7c4e0b93d6215f8ae2",
         "field": {
           "Column": {
             "Expression": {
@@ -151,22 +151,7 @@
               }
             }
           ]
-        },
-        "howCreated": "User"
-      },
-      {
-        "name": "bf0c4a635cd608205260",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Cambio encadenado %"
-          }
-        },
-        "type": "Advanced"
+        }
       }
     ]
   }

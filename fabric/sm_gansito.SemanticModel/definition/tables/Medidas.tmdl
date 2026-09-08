@@ -31,6 +31,8 @@ table Medidas
 	measure 'Índice encadenado' =
 			
 			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			VAR Base =
+			    CALCULATE( MIN( dim_tiempo_quincena[orden] ), REMOVEFILTERS( dim_tiempo_quincena ) )
 			VAR Suma =
 			    CALCULATE(
 			        SUMX(
@@ -41,7 +43,14 @@ table Medidas
 			        dim_tiempo_quincena[orden] <= Hasta
 			    )
 			RETURN
-			    IF( [Pareo mínimo] >= [Umbral de pareo Value], EXP( Suma ) * 100, BLANK() )
+			    // La quincena base no produce eslabón —no hay anterior contra la cual parear— así
+			    // que la guarda no tiene qué exigirle y el índice es 100 por definición. Sin esta
+			    // rama la serie arranca en blanco y la línea entra un eslabón tarde.
+			    IF(
+			        Hasta = Base,
+			        100,
+			        IF( [Pareo mínimo] >= [Umbral de pareo Value], EXP( Suma ) * 100, BLANK() )
+			    )
 		formatString: #,##0.00
 		lineageTag: 75e5ac05-f908-4d13-842b-633f733fc67d
 
@@ -110,13 +119,20 @@ table Medidas
 			VAR Actual =
 			    CALCULATE( AVERAGE( hechos_salario_mensual[inpc] ), TREATAS( { MesActual }, dim_mes[id_mes] ) )
 			RETURN
-			    DIVIDE( Actual, Base ) - 1
+			    // `BLANK() - 1` es -1 en DAX, así que sin esta guarda un contexto sin mes publicaba
+			    // -100% y arrastraba a `Índice INPC` hasta 0, dibujando una caída que no existe.
+			    IF( NOT ISBLANK( Base ) && NOT ISBLANK( Actual ), DIVIDE( Actual, Base ) - 1 )
 		formatString: #,##0.00%
 		lineageTag: c81a4b73-05e9-4f26-8d47-1e2093bc6a58
 
 	/// Cambio del Gansito descontando la inflación general. Es el titular del proyecto: el
 	/// nominal dice cuánto subió el precio, éste dice cuánto subió de más.
-	measure 'Cambio real %' = DIVIDE( 1 + [Cambio encadenado %], 1 + [Inflación acumulada %] ) - 1
+	measure 'Cambio real %' =
+			VAR Nominal = [Cambio encadenado %]
+			RETURN
+			    // Se apaga con el nominal: sin esto, el corte que la guarda de pareo dejó sin índice
+			    // publicaba 0.00% —`DIVIDE( 1, 1 ) - 1`— en vez de quedarse en blanco.
+			    IF( NOT ISBLANK( Nominal ), DIVIDE( 1 + Nominal, 1 + [Inflación acumulada %] ) - 1 )
 		formatString: #,##0.00%
 		lineageTag: 4b09e6d5-8c31-4a72-b6e0-51fda372c904
 
@@ -229,6 +245,31 @@ table Medidas
 			            & FORMAT( DIVIDE( Superior, 100 ) - 1, "+0.00%;-0.00%" )
 			    )
 		lineageTag: 41c7a0e8-52b6-4d19-8730-e6f9b2450a1d
+
+	/// El INPC rebasado a la quincena inicial, para que las tres series de P1 compartan eje.
+	/// `INPC` a secas es el índice de INEGI —133.554 en la base— y dibujado contra el
+	/// encadenado aplastaría las dos curvas que importan.
+	measure 'Índice INPC' =
+			VAR Inflacion = [Inflación acumulada %]
+			RETURN
+			    // Sin la guarda, `( 1 + BLANK() ) * 100` da 100 y dibuja un punto donde no hay mes.
+			    IF( NOT ISBLANK( Inflacion ), ( 1 + Inflacion ) * 100 )
+		formatString: #,##0.00
+		lineageTag: 3c81f0a7-64d2-4e15-b809-7fa2e605193c
+
+	/// El precio de la quincena más reciente del contexto, y no el promedio de la serie: el
+	/// KPI de P1 dice cuánto cuesta hoy, y promediar dos años lo dejaría a medio camino entre
+	/// el precio viejo y el actual. Mismo patrón de `MAX( orden )` que el índice.
+	measure 'Precio al cierre' =
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			RETURN
+			    CALCULATE(
+			        [Precio promedio],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Hasta
+			    )
+		formatString: \$#,##0.00
+		lineageTag: 5d7e93b1-08fa-4c26-91d3-e40b7c5a2618
 
 	column Column
 		isHidden

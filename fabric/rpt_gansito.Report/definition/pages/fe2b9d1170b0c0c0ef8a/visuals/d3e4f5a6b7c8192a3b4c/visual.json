@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "a0b25587fe968c120d5c",
+  "name": "d3e4f5a6b7c8192a3b4c",
   "position": {
-    "x": 0,
+    "x": 1404,
     "y": 0,
-    "z": 0,
+    "z": 3000,
     "height": 156,
     "width": 444,
-    "tabOrder": 0
+    "tabOrder": 3000
   },
   "visual": {
     "visualType": "cardVisual",
@@ -23,11 +23,11 @@
                       "Entity": "Medidas"
                     }
                   },
-                  "Property": "Cambio encadenado %"
+                  "Property": "Precio al cierre"
                 }
               },
-              "queryRef": "Medidas.Cambio encadenado %",
-              "nativeQueryRef": "Cambio encadenado %"
+              "queryRef": "Medidas.Precio al cierre",
+              "nativeQueryRef": "Precio al cierre"
             }
           ]
         }
@@ -101,7 +101,7 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "0a7c4e0b93d6215f8ae0",
+        "name": "3a7c4e0b93d6215f8ae3",
         "field": {
           "Column": {
             "Expression": {
@@ -151,22 +151,7 @@
               }
             }
           ]
-        },
-        "howCreated": "User"
-      },
-      {
-        "name": "bf0c4a635cd608205260",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Cambio encadenado %"
-          }
-        },
-        "type": "Advanced"
+        }
       }
     ]
   }
