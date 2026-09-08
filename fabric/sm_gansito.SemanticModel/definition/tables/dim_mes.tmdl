@@ -5,6 +5,7 @@ table dim_mes
 
 	column id_mes
 		dataType: int64
+		isHidden
 		formatString: 0
 		lineageTag: 2946ada0-9c40-4875-bc69-f456172750ec
 		sourceLineageTag: id_mes

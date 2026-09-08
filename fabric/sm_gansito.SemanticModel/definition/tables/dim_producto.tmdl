@@ -4,6 +4,7 @@ table dim_producto
 
 	column id_producto
 		dataType: int64
+		isHidden
 		isKey
 		formatString: 0
 		lineageTag: 543715a8-351c-48c2-a515-d528762519ea
@@ -45,7 +46,7 @@ table dim_producto
 
 	column gramos
 		dataType: decimal
-		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		formatString: #,0.##
 		lineageTag: 3f14efd7-b009-4ff9-b21a-7e737819137d
 		sourceLineageTag: gramos
 		summarizeBy: none
@@ -55,10 +56,9 @@ table dim_producto
 
 		annotation SummarizationSetBy = User
 
-		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
-
 	column producto
 		dataType: string
+		isHidden
 		lineageTag: 45082efb-db6b-4c0a-932b-91cb939e6d46
 		sourceLineageTag: producto
 		summarizeBy: none
@@ -68,10 +68,20 @@ table dim_producto
 
 	column categoria
 		dataType: string
+		isHidden
 		lineageTag: bb90de8b-f2f8-4b0b-ba0f-54dcb3d1eb14
 		sourceLineageTag: categoria
 		summarizeBy: none
 		sourceColumn: categoria
+
+		annotation SummarizationSetBy = Automatic
+
+	column nombre
+		dataType: string
+		lineageTag: 7a0c94e5-3f21-4db8-96af-c25e10387b64
+		sourceLineageTag: nombre
+		summarizeBy: none
+		sourceColumn: nombre
 
 		annotation SummarizationSetBy = Automatic
 

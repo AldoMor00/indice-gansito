@@ -217,12 +217,16 @@ table Medidas
 	/// El intervalo como texto, para el KPI de P1: publicar el número sin su incertidumbre al
 	/// lado es lo que separa un tablero de un análisis.
 	measure 'Intervalo del cambio' =
-			VAR Inferior = DIVIDE( [IC inferior], 100 ) - 1
-			VAR Superior = DIVIDE( [IC superior], 100 ) - 1
+			VAR Inferior = [IC inferior]
+			VAR Superior = [IC superior]
 			RETURN
+			    // La resta va después de la guarda y no antes: `BLANK() - 1` es -1 en DAX, no
+			    // BLANK, así que restar primero convertía el corte sin intervalo en un
+			    // "-100.00%" y le daba fila propia en cualquier visual.
 			    IF(
 			        NOT ISBLANK( Inferior ),
-			        FORMAT( Inferior, "+0.00%;-0.00%" ) & " a " & FORMAT( Superior, "+0.00%;-0.00%" )
+			        FORMAT( DIVIDE( Inferior, 100 ) - 1, "+0.00%;-0.00%" ) & " a "
+			            & FORMAT( DIVIDE( Superior, 100 ) - 1, "+0.00%;-0.00%" )
 			    )
 		lineageTag: 41c7a0e8-52b6-4d19-8730-e6f9b2450a1d
 

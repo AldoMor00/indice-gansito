@@ -1,0 +1,89 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "37f7ccca769057fc4b5e",
+  "position": {
+    "x": 88.260010773927092,
+    "y": 402.07338241455676,
+    "z": 1,
+    "height": 625.17507631531691,
+    "width": 1684.2952056024421,
+    "tabOrder": 1
+  },
+  "visual": {
+    "visualType": "lineChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_tiempo_quincena"
+                    }
+                  },
+                  "Property": "quincena"
+                }
+              },
+              "queryRef": "dim_tiempo_quincena.quincena",
+              "nativeQueryRef": "quincena",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Medidas"
+                    }
+                  },
+                  "Property": "Índice encadenado"
+                }
+              },
+              "queryRef": "Medidas.Índice encadenado",
+              "nativeQueryRef": "Índice encadenado"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "53b16a1defb2319c36a0",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "dim_tiempo_quincena"
+              }
+            },
+            "Property": "quincena"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "f87cb422da540ee9a215",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Medidas"
+              }
+            },
+            "Property": "Índice encadenado"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
+  }
+}
