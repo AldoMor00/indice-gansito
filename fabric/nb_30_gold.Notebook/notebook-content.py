@@ -86,6 +86,28 @@ CANAL = {
 }
 
 
+# Profeco declara los nueve SKUs con el mismo `producto` —"Pastelillos y Pan Dulce
+# Empaquetado"— y la misma `categoria`, así que lo único que los distingue es la cadena de
+# `presentacion` (docs/fuentes.md). El nombre comercial es lo que el reporte necesita para
+# filtrar y para el slicer, y no sale de un regex: dos de los nueve no siguen el patrón
+# "Paquete con N <nombre> (M Gr.)" sino "Paquete 280 Gr. Panqué ...".
+#
+# Diccionario explícito, y aquí sí se justifica por lo contrario que en CANAL: la canasta es
+# cerrada —9 SKUs, decisión #13— así que una presentación nueva es una alarma y no un caso que
+# absorber. La compuerta de abajo la convierte en corrida detenida.
+NOMBRE_COMERCIAL = {
+    "Paquete con 1 Gansito (50 Gr.)": "Gansito",
+    "Paquete con 1 Nito (62 Gr.)": "Nito",
+    "Paquete con 2 Pinguinos (80 Gr.)": "Pingüinos",
+    "Paquete con 2 Chocoroles (100 Gr.)": "Chocoroles",
+    "Paquete con 6 Mantecadas. Vainilla (188 Gr.)": "Mantecadas",
+    "Paquete con 6 Roles de Canela. con Pasas (365 Gr.)": "Roles de Canela",
+    "Paquete con 8 Donitas. Espolvoreadas (140 Gr.)": "Donitas Espolvoreadas",
+    "Paquete 280 Gr. Panqué Nuez": "Panqué Nuez",
+    "Paquete 280 Gr. Panqué con Pasas": "Panqué con Pasas",
+}
+
+
 def de_silver(tabla: str):
     """Lee una tabla de silver. Espeja `de_bronze` de nb_00_config."""
     return spark.read.format("delta").load(ruta_tabla(tabla, SILVER))
@@ -339,7 +361,32 @@ dim_tienda = tiendas_silver.withColumn(
     F.coalesce(*[F.when(F.col("giro") == g, F.lit(c)) for g, c in CANAL.items()]),
 )
 
-dim_producto = de_silver("dim_producto")
+productos_silver = de_silver("dim_producto")
+
+# El SKU nuevo ya lo ataja silver, que truena si el lote trae más de 9 presentaciones. Lo que
+# no ve es el **renombre**: con 9 presentaciones y el regex casando, pasa limpio, pero la clave
+# es xxhash64 sobre la cadena, así que nace otro `id_producto` y la dimensión —acumulativa—
+# queda con la vieja y la nueva. Aquí llegaría sin nombre y `coalesce` la dejaría en nulo: un
+# blanco en el slicer y P1 sin encontrar su producto. De ahí que se mire el universo completo
+# de la dimensión y no sólo lo que trae precio.
+sin_nombre = {
+    f["presentacion"] for f in productos_silver.select("presentacion").distinct().collect()
+} - NOMBRE_COMERCIAL.keys()
+if sin_nombre:
+    raise RuntimeError(f"`presentacion` sin nombre comercial — {sorted(sin_nombre)}")
+
+dim_producto = productos_silver.withColumn(
+    # `nombre` a secas y no `nombre_comercial`: esa ya es la de `dim_tienda` —media identidad
+    # de una tienda, decisión #13— y repetirla dejaría dos columnas iguales de nombre y
+    # distintas de significado en el panel de campos del reporte.
+    #
+    # `producto` tampoco se pisa: es el genérico de Profeco y la fuente se conserva como
+    # llegó; lo derivado se agrega al lado, igual que `giro` y `canal`.
+    "nombre",
+    F.coalesce(
+        *[F.when(F.col("presentacion") == p, F.lit(n)) for p, n in NOMBRE_COMERCIAL.items()]
+    ),
+)
 
 # `dim_mes` es la parte de calendario de la serie salarial: mismo grano, misma llave. No se
 # recalcula `clave("anio", "mes")` aquí —silver la hasheó sobre las columnas crudas del CSV,
