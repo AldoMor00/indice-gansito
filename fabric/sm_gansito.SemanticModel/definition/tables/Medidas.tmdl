@@ -364,6 +364,73 @@ table Medidas
 		displayFolder: Cobertura y guarda
 		lineageTag: 0b374de2-8491-442a-8d3f-706930f14637
 
+	/// Cuántos Gansitos compraba un día de trabajo en la quincena base. Espejo de `Precio al
+	/// inicio`: el KPI contrasta dos momentos concretos, y el promedio de las 46 quincenas
+	/// quedaría a medio camino entre los dos.
+	measure 'Gansitos al inicio' =
+			VAR Desde = MIN( dim_tiempo_quincena[orden] )
+			RETURN
+			    CALCULATE(
+			        [Gansitos por día],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Desde
+			    )
+		formatString: #,##0.0
+		displayFolder: Inflación y salario
+		lineageTag: 8f3a1c05-2d47-4e91-b6a8-31c7e5049b62
+
+	measure 'Gansitos al cierre' =
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			RETURN
+			    CALCULATE(
+			        [Gansitos por día],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Hasta
+			    )
+		formatString: #,##0.0
+		displayFolder: Inflación y salario
+		lineageTag: 4e6b90d3-71f8-4a25-9c04-8b52d1730fae
+
+	/// El mínimo lo fija CONASAMI una vez al año, así que esto no es una serie sino una escalera:
+	/// plana todo 2024 y un solo escalón en enero de 2025. Se acumula desde la base igual que la
+	/// inflación, para que las dos comparaciones de la página midan el mismo tramo.
+	measure 'Cambio salario mínimo %' =
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			VAR OrdenBase =
+			    CALCULATE( MIN( dim_tiempo_quincena[orden] ), REMOVEFILTERS( dim_tiempo_quincena ) )
+			VAR Base =
+			    CALCULATE(
+			        [Salario mínimo diario],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = OrdenBase
+			    )
+			VAR Actual =
+			    CALCULATE(
+			        [Salario mínimo diario],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Hasta
+			    )
+			RETURN
+			    // La guarda va antes de la resta: `BLANK() - 1` es -1 en DAX, así que un contexto sin
+			    // mes publicaría -100% en vez de quedarse en blanco. Mismo mordisco que en
+			    // `Inflación acumulada %`.
+			    IF( NOT ISBLANK( Base ) && NOT ISBLANK( Actual ), DIVIDE( Actual, Base ) - 1 )
+		formatString: #,##0.00%
+		displayFolder: Inflación y salario
+		lineageTag: c02d7fb4-56a1-4d38-8e70-9a41b3625cd7
+
+	/// El salario rebasado a la quincena inicial, para que P4 lo dibuje en el mismo eje que el
+	/// encadenado. Vive en `Índice` y no en `Inflación y salario` por la misma razón que
+	/// `Índice INPC`: se busca al armar el visual, no por la fuente de la que sale.
+	measure 'Índice salario mínimo' =
+			VAR Cambio = [Cambio salario mínimo %]
+			RETURN
+			    // Sin la guarda, `( 1 + BLANK() ) * 100` da 100 y dibuja un punto donde no hay mes.
+			    IF( NOT ISBLANK( Cambio ), ( 1 + Cambio ) * 100 )
+		formatString: #,##0.00
+		displayFolder: Índice
+		lineageTag: 7a15be82-3c69-40df-b1a4-05e2c8f79d31
+
 	column Column
 		isHidden
 		formatString: 0
