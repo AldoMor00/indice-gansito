@@ -526,3 +526,20 @@ y los dos cambios que explican la brecha —**+11.96%** el salario mínimo contr
 Gansito—, y ahí el lector hace la resta solo. Un "cambio de poder adquisitivo" en una tarjeta
 tendría que elegir entre −10.88% y −10.00% sin poder justificar la elección en el espacio de una
 tarjeta, que es exactamente el tipo de número que este reporte no publica.
+## 30. La cobertura del panel se mide por eslabón, no sobre el periodo
+
+P5 tiene que declarar cuánto de la muestra usa cada comparación, y eso se cuenta de dos maneras
+que dan números distintos. Sobre el periodo entero, 478 de las 508 tiendas que alguna vez
+vendieron Gansito aparecen en algún eslabón: 94.1%. Sobre el eslabón típico —mediana de los 45—
+es 86.3%.
+
+Se publica la mediana por eslabón. La razón del periodo contesta "¿alguien quedó excluido para
+siempre?", que es la pregunta menor: el índice no se calcula sobre el periodo sino eslabón a
+eslabón, así que lo que hay que declarar es cuánto usa cada comparación. Y esa cifra mejora sola
+con el tiempo —entre más quincenas, más fácil que una tienda pare en alguno— sin que el método
+haya mejorado en nada.
+
+El eje sale de `Nivel de cobertura`, una tabla desconectada de cuatro constantes leída con un
+`SWITCH`: tienda, cadena, municipio y estado son cuatro columnas de `dim_tienda` y no cuatro
+valores de una, y Direct Lake no admite columna calculada (decisiones #21, #22 y #24). El
+municipio se cuenta junto con su estado, porque los nombres se repiten entre estados.
