@@ -58,11 +58,30 @@ ambientes; un shortcut no daría eso, porque es de sólo lectura. A cambio, el c
 foto —se refresca re-clonando— y un `VACUUM` en prod puede romperlo. Es la letra chica del
 clon zero-copy de Snowflake y del shallow clone de Databricks.
 
-## 6. Dos modelos semánticos
+## 6. Dos modelos semánticos, y gold sale a git para el público
 
-Direct Lake exige capacidad y no se puede mover a una cuenta gratuita. El de Fabric es
-Direct Lake sobre `lh_gold`; el público es un PBIX en modo import que lee los agregados
-exportados a CSV por URL anónima. El costo es que el DAX vive duplicado.
+Direct Lake exige capacidad y la del proyecto es una trial que expira. Cuando eso pase, los
+workspaces vuelven a Pro: los items de Fabric —lakehouses, notebooks, pipelines— quedan
+inutilizables y se borran a los siete días, mientras que **los items de Power BI no se tocan**.
+Un modelo import y su reporte son items de Power BI, así que un PBIX import en My Workspace
+sigue vivo indefinidamente sin capacidad de por medio. Se necesita capacidad para *producir*
+gold, no para *mostrarlo*.
+
+El de Fabric es Direct Lake sobre `lh_gold`. El público es un PBIX en modo import, armado en
+local desde un `.pbip` que reusa el TMDL y el PBIR tal cual —sólo cambian las particiones— y
+lee las ocho tablas de gold como parquet desde `indice-gansito-datos/publico`, por URL anónima.
+No son agregados nuevos: gold ya *es* el agregado, y exportarlo verbatim deja que las 37
+medidas y las cinco páginas se copien sin reescribir una línea. Parquet y no CSV porque pesa la
+quinta parte y Power Query lo lee directo. Los escribe `nb_50_export`, a mano.
+
+Gold va a git y bronze y silver no, y el criterio no es el espacio: es que **algo aguas abajo lo
+necesita como origen**. El modelo público tiene que leer de algo que sobreviva a la capacidad, y
+git es lo único que hay. Bronze ya está en el repo —no castea, así que la tabla contiene lo
+mismo que el parquet (decisión #8)— y silver es derivado determinista de raw más `nb_20` y
+`nb_21`. Guardar capas derivadas además debilita lo que el repo afirma: que con el raw y el
+código se reconstruye todo.
+
+El costo es que el DAX vive duplicado, pero como copia y no como reescritura.
 
 ## 7. Nada de wheels: `%run` y pruebas en notebook
 

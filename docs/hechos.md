@@ -389,6 +389,24 @@ Gansito, que es como dejan el contexto los slicers de P2.
   llaves son `xxhash64` deterministas, así que los hechos volvieron a empatar con las mismas
   filas.
 
+## La copia pública
+
+- **Gold entero pesa 1.36 MB en ocho parquets**, y el `coalesce(1)` de `nb_50_export` no es
+  cosmético: en OneLake son **2.11 MB en 128 archivos** por la partición de `_quincena`, y
+  coalescido baja **35%**. `hechos_precios` pasa de 46 archivos y 1.12 MB a **uno de 771 KB**,
+  porque el diccionario comprime sobre la columna entera y se paga un solo footer.
+- **El repo de datos queda en ~8 MB**, contra el techo blando de **1 GB** que GitHub recomienda
+  y los **50 MiB** por archivo donde apenas avisa. El parquet más grande es el 2% de ese umbral.
+  Git guarda cada versión y el parquet no hace delta, así que cada reexport son ~1.4 MB nuevos:
+  cien reexports serían 200 MB.
+- **Los parquets reproducen el índice sin Fabric de por medio.** Leyéndolos con polars y sumando
+  los log-relativos por quincena, el cambio encadenado del Gansito da **+24.40%**, la misma
+  cifra que publica el modelo. Traen todas las columnas, incluida la `_quincena` oculta, así que
+  el TMDL del modelo import se copia sin renombrar nada.
+- **`fab cp` baja archivos de `Files` a disco local**, no sólo entre rutas de Fabric: avisa
+  "not found in Fabric, checking local file system" y copia. Es la última milla de gold a git
+  mientras no haya workflow.
+
 ## CI y despliegue
 
 - **`parameter.yml` se queda vacío**: con el clon de la decisión #5, dev y prod comparten
