@@ -118,6 +118,15 @@ table dim_tienda
 
 		annotation SummarizationSetBy = Automatic
 
+	column clave_estado
+		dataType: string
+		lineageTag: 7b52e0c4-96a1-4d38-af07-3c1d825be6f9
+		sourceLineageTag: clave_estado
+		summarizeBy: none
+		sourceColumn: clave_estado
+
+		annotation SummarizationSetBy = Automatic
+
 	partition dim_tienda = entity
 		mode: directLake
 		source

@@ -108,6 +108,51 @@ NOMBRE_COMERCIAL = {
 }
 
 
+# El mapa de P2 pinta estados, y el `shapeMap` de Power BI casa la ubicación contra las claves
+# del TopoJSON que trae para México. 28 de los 30 estados que declara Profeco casan por nombre
+# —la fuente los escribe sin acentos, igual que el mapa—, pero los dos que no casan son los dos
+# más grandes del padrón: ahí "Ciudad de Mexico" es `mx-dif` y "Estado de Mexico" es `mx-mex`.
+# Sin traducirlos el mapa deja en blanco 634 de las 2,392 tiendas.
+#
+# Van los 32 y no los 30 observados: Colima y Nayarit no están en el panel —Profeco no los
+# visita— y el día que aparezcan el mapa tiene que pintarlos sin volver aquí. El estado que no
+# esté en el diccionario detiene la corrida, igual que la presentación sin nombre.
+CLAVE_ESTADO = {
+    "Aguascalientes": "mx-agu",
+    "Baja California": "mx-bcn",
+    "Baja California Sur": "mx-bcs",
+    "Campeche": "mx-cam",
+    "Chiapas": "mx-chp",
+    "Chihuahua": "mx-chh",
+    "Ciudad de Mexico": "mx-dif",
+    "Coahuila": "mx-coa",
+    "Colima": "mx-col",
+    "Durango": "mx-dur",
+    "Estado de Mexico": "mx-mex",
+    "Guanajuato": "mx-gua",
+    "Guerrero": "mx-gro",
+    "Hidalgo": "mx-hid",
+    "Jalisco": "mx-jal",
+    "Michoacan": "mx-mic",
+    "Morelos": "mx-mor",
+    "Nayarit": "mx-nay",
+    "Nuevo Leon": "mx-nle",
+    "Oaxaca": "mx-oax",
+    "Puebla": "mx-pue",
+    "Queretaro": "mx-que",
+    "Quintana Roo": "mx-roo",
+    "San Luis Potosi": "mx-slp",
+    "Sinaloa": "mx-sin",
+    "Sonora": "mx-son",
+    "Tabasco": "mx-tab",
+    "Tamaulipas": "mx-tam",
+    "Tlaxcala": "mx-tla",
+    "Veracruz": "mx-ver",
+    "Yucatan": "mx-yuc",
+    "Zacatecas": "mx-zac",
+}
+
+
 def de_silver(tabla: str):
     """Lee una tabla de silver. Espeja `de_bronze` de nb_00_config."""
     return spark.read.format("delta").load(ruta_tabla(tabla, SILVER))
@@ -349,6 +394,15 @@ sin_canal = giros_con_precio - CANAL.keys()
 if sin_canal:
     raise RuntimeError(f"`giro` con precio y sin canal en CANAL — {sorted(sin_canal)}")
 
+# Al `estado` sí se le exige la dimensión completa, al revés que a `canal`: aquí no se le pide
+# a la fuente que clasifique lo que no medimos —los 30 valores que escribe ya son estados— y
+# el mapa colorea el universo del archivo, no la canasta.
+sin_clave = {
+    f["estado"] for f in tiendas_silver.select("estado").distinct().collect()
+} - CLAVE_ESTADO.keys()
+if sin_clave:
+    raise RuntimeError(f"`estado` sin clave de mapa en CLAVE_ESTADO — {sorted(sin_clave)}")
+
 dim_tienda = tiendas_silver.withColumn(
     "canal",
     # `giro` se queda tal cual para los cortes transversales, que no necesitan pareo y
@@ -359,6 +413,12 @@ dim_tienda = tiendas_silver.withColumn(
     # además con ANSI encendido el lookup de un mapa con llave ausente truena en vez de
     # dar nulo. `coalesce` se queda con el primer `when` que acierta.
     F.coalesce(*[F.when(F.col("giro") == g, F.lit(c)) for g, c in CANAL.items()]),
+).withColumn(
+    # Clave del mapa y no el nombre traducido: `estado` se queda como lo escribe Profeco.
+    # Misma cadena de `when` que `canal`, y por lo mismo; la compuerta de arriba garantiza
+    # que ninguna acierte en nulo.
+    "clave_estado",
+    F.coalesce(*[F.when(F.col("estado") == e, F.lit(c)) for e, c in CLAVE_ESTADO.items()]),
 )
 
 productos_silver = de_silver("dim_producto")

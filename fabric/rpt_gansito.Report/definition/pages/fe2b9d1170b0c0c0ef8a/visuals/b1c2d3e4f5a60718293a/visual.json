@@ -153,20 +153,6 @@
           ]
         },
         "howCreated": "User"
-      },
-      {
-        "name": "6de2c5edc0894b32ee21",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Cambio real %"
-          }
-        },
-        "type": "Advanced"
       }
     ]
   }

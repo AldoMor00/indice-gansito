@@ -162,6 +162,19 @@
             }
           }
         }
+      ],
+      "subTitle": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
       ]
     },
     "drillFilterOtherVisuals": true
@@ -221,62 +234,6 @@
           ]
         },
         "howCreated": "User"
-      },
-      {
-        "name": "0d2b1f4f6c024e5a4c33",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "dim_tiempo_quincena"
-              }
-            },
-            "Property": "quincena"
-          }
-        },
-        "type": "Categorical"
-      },
-      {
-        "name": "ef4c2484021a250b3c4b",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Índice encadenado"
-          }
-        },
-        "type": "Advanced"
-      },
-      {
-        "name": "211a7ced039640ba3b09",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Índice real"
-          }
-        },
-        "type": "Advanced"
-      },
-      {
-        "name": "5f552f3cb0a050c62d7e",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Índice INPC"
-          }
-        },
-        "type": "Advanced"
       }
     ]
   }

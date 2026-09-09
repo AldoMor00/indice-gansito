@@ -153,20 +153,6 @@
           ]
         },
         "howCreated": "User"
-      },
-      {
-        "name": "bf0c4a635cd608205260",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Cambio encadenado %"
-          }
-        },
-        "type": "Advanced"
       }
     ]
   }

@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "79a24e6e150e6b126e82",
+  "name": "1a2b3c4d5e6f70819200",
   "position": {
     "x": 36,
     "y": 30,
-    "z": 3000,
+    "z": 0,
     "height": 78,
-    "width": 1848,
-    "tabOrder": 3000
+    "width": 1300,
+    "tabOrder": 0
   },
   "visual": {
     "visualType": "textbox",
@@ -19,7 +19,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "¿Cuánto subió el Gansito, de verdad?",
+                    "value": "¿Dónde cuesta más?",
                     "textStyle": {
                       "fontWeight": "bold",
                       "fontSize": "20pt"
@@ -30,7 +30,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "Índice Jevons encadenado · 46 quincenas · enero 2024 – noviembre 2025 · precios de Profeco",
+                    "value": "Corte transversal de una quincena · sin comparación temporal no hay pareo, así que aquí entran todas las tiendas observadas",
                     "textStyle": {
                       "fontSize": "10pt"
                     }

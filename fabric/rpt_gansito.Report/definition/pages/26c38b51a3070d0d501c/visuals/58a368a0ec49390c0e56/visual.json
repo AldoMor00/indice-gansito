@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "d601b5e58375914c8115",
+  "name": "58a368a0ec49390c0e56",
   "position": {
-    "x": 970.860118513198,
-    "y": 779.6300951696893,
-    "z": 4000,
-    "height": 264.78003232178128,
-    "width": 912.02011133058,
-    "tabOrder": 4000
+    "x": 36,
+    "y": 304,
+    "z": 7000,
+    "height": 420,
+    "width": 912,
+    "tabOrder": 7000
   },
   "visual": {
     "visualType": "clusteredBarChart",
@@ -20,14 +20,14 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "dim_producto"
+                      "Entity": "dim_tienda"
                     }
                   },
-                  "Property": "nombre"
+                  "Property": "cadena_comercial"
                 }
               },
-              "queryRef": "dim_producto.nombre",
-              "nativeQueryRef": "nombre",
+              "queryRef": "dim_tienda.cadena_comercial",
+              "nativeQueryRef": "cadena_comercial",
               "active": true
             }
           ]
@@ -42,11 +42,11 @@
                       "Entity": "Medidas"
                     }
                   },
-                  "Property": "Cambio encadenado %"
+                  "Property": "Precio promedio"
                 }
               },
-              "queryRef": "Medidas.Cambio encadenado %",
-              "nativeQueryRef": "Cambio encadenado %"
+              "queryRef": "Medidas.Precio promedio",
+              "nativeQueryRef": "Precio promedio"
             }
           ]
         }
@@ -61,61 +61,14 @@
                     "Entity": "Medidas"
                   }
                 },
-                "Property": "Cambio encadenado %"
+                "Property": "Precio promedio"
               }
             },
             "direction": "Descending"
           }
-        ]
+        ],
+        "isDefaultSort": true
       }
-    },
-    "objects": {
-      "categoryAxis": [
-        {
-          "properties": {
-            "showAxisTitle": {
-              "expr": {
-                "Literal": {
-                  "Value": "false"
-                }
-              }
-            }
-          }
-        }
-      ],
-      "valueAxis": [
-        {
-          "properties": {
-            "showAxisTitle": {
-              "expr": {
-                "Literal": {
-                  "Value": "false"
-                }
-              }
-            }
-          }
-        }
-      ],
-      "labels": [
-        {
-          "properties": {
-            "show": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "fontSize": {
-              "expr": {
-                "Literal": {
-                  "Value": "9D"
-                }
-              }
-            }
-          }
-        }
-      ]
     },
     "visualContainerObjects": {
       "title": [
@@ -131,14 +84,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'El Gansito contra la canasta'"
-                }
-              }
-            },
-            "fontSize": {
-              "expr": {
-                "Literal": {
-                  "Value": "13D"
+                  "Value": "'Precio promedio por cadena · sólo cadenas con 5 tiendas o más en la quincena'"
                 }
               }
             }
@@ -160,5 +106,58 @@
       ]
     },
     "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "c294db691100b16ce7de",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Medidas"
+              }
+            },
+            "Property": "Tiendas observadas"
+          }
+        },
+        "type": "Advanced",
+        "filter": {
+          "Version": 2,
+          "From": [
+            {
+              "Name": "m",
+              "Entity": "Medidas",
+              "Type": 0
+            }
+          ],
+          "Where": [
+            {
+              "Condition": {
+                "Comparison": {
+                  "ComparisonKind": 2,
+                  "Left": {
+                    "Measure": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Source": "m"
+                        }
+                      },
+                      "Property": "Tiendas observadas"
+                    }
+                  },
+                  "Right": {
+                    "Literal": {
+                      "Value": "5L"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "howCreated": "User"
+      }
+    ]
   }
 }

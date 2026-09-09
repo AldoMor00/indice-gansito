@@ -8,6 +8,7 @@ table Medidas
 			    CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) )
 			)
 		formatString: #,0
+		displayFolder: Cobertura y guarda
 		lineageTag: 255e3938-6025-4559-a2d5-4b69fdb48d12
 
 	measure 'Cambio encadenado %' =
@@ -24,6 +25,7 @@ table Medidas
 			        BLANK()
 			    )
 		formatString: #,##0.00%
+		displayFolder: Índice
 		lineageTag: 244c97c8-1df8-43f7-9daf-e5566e7647b1
 
 		annotation PBI_FormatHint = {"isCustom":true}
@@ -52,6 +54,7 @@ table Medidas
 			        IF( [Pareo mínimo] >= [Umbral de pareo Value], EXP( Suma ) * 100, BLANK() )
 			    )
 		formatString: #,##0.00
+		displayFolder: Índice
 		lineageTag: 75e5ac05-f908-4d13-842b-633f733fc67d
 
 		annotation PBI_FormatHint = {"isCustom":true}
@@ -60,10 +63,12 @@ table Medidas
 	/// porque no compara periodos, y es válido con cualquier tamaño de muestra.
 	measure 'Precio promedio' = AVERAGE( hechos_precios[precio_promedio] )
 		formatString: \$#,##0.00
+		displayFolder: Nivel de precio
 		lineageTag: 3f21c0a4-5d7e-42b1-9c33-8ab2d1e05f10
 
 	measure 'Precio mediano' = MEDIAN( hechos_precios[precio_promedio] )
 		formatString: \$#,##0.00
+		displayFolder: Nivel de precio
 		lineageTag: 8c4d19b6-71a2-4e58-bb07-2d9f3ca47e21
 
 	/// Razón entre el percentil 90 y el 10. Mide qué tan abierto está el abanico de precios
@@ -74,16 +79,19 @@ table Medidas
 			    PERCENTILE.INC( hechos_precios[precio_promedio], 0.1 )
 			)
 		formatString: #,##0.00
+		displayFolder: Nivel de precio
 		lineageTag: b2e7f048-3ca9-4d16-89e5-6f01ab73c2d4
 
 	measure 'Tiendas observadas' = DISTINCTCOUNT( hechos_precios[id_tienda] )
 		formatString: #,0
+		displayFolder: Cobertura y guarda
 		lineageTag: 5a83d2c1-9e64-4b70-a1f8-70c25de91b83
 
 	/// Visitas, no celdas: Profeco visita la misma tienda hasta cinco veces por quincena y
 	/// el hecho las promedia. La diferencia contra el conteo de filas dice cuánto se promedió.
 	measure Observaciones = SUM( hechos_precios[observaciones] )
 		formatString: #,0
+		displayFolder: Cobertura y guarda
 		lineageTag: 1d60ba97-4f22-48ce-b3a5-c9e7d418206f
 
 	/// El INPC del mes que contiene a la quincena. Cruza el grano con TREATAS y no con una
@@ -94,6 +102,7 @@ table Medidas
 			    TREATAS( VALUES( dim_tiempo_quincena[id_mes] ), dim_mes[id_mes] )
 			)
 		formatString: #,##0.000
+		displayFolder: Inflación y salario
 		lineageTag: 7e159c30-62db-4a85-90f1-3b4c8ad7e562
 
 	/// Inflación general entre la base de la serie y la quincena en curso. Se acumula desde
@@ -123,6 +132,7 @@ table Medidas
 			    // -100% y arrastraba a `Índice INPC` hasta 0, dibujando una caída que no existe.
 			    IF( NOT ISBLANK( Base ) && NOT ISBLANK( Actual ), DIVIDE( Actual, Base ) - 1 )
 		formatString: #,##0.00%
+		displayFolder: Inflación y salario
 		lineageTag: c81a4b73-05e9-4f26-8d47-1e2093bc6a58
 
 	/// Cambio del Gansito descontando la inflación general. Es el titular del proyecto: el
@@ -134,10 +144,12 @@ table Medidas
 			    // publicaba 0.00% —`DIVIDE( 1, 1 ) - 1`— en vez de quedarse en blanco.
 			    IF( NOT ISBLANK( Nominal ), DIVIDE( 1 + Nominal, 1 + [Inflación acumulada %] ) - 1 )
 		formatString: #,##0.00%
+		displayFolder: Índice
 		lineageTag: 4b09e6d5-8c31-4a72-b6e0-51fda372c904
 
 	measure 'Índice real' = DIVIDE( [Índice encadenado], 1 + [Inflación acumulada %] )
 		formatString: #,##0.00
+		displayFolder: Índice
 		lineageTag: 9f3c7e21-b048-4d95-83a6-2c60e51df7b3
 
 	/// El ponderado nacional de CONASAMI, no el de zona: sin padrón de municipios fronterizos
@@ -148,16 +160,19 @@ table Medidas
 			    TREATAS( VALUES( dim_tiempo_quincena[id_mes] ), dim_mes[id_mes] )
 			)
 		formatString: \$#,##0.00
+		displayFolder: Inflación y salario
 		lineageTag: 6d2b850f-1a7c-46e3-9b84-f0537ac2e169
 
 	/// Cuántos Gansitos compra un día de trabajo al mínimo. Traduce el precio a algo que se
 	/// siente, y es la razón por la que CONASAMI entró al proyecto.
 	measure 'Gansitos por día' = DIVIDE( [Salario mínimo diario], [Precio promedio] )
 		formatString: #,##0.0
+		displayFolder: Inflación y salario
 		lineageTag: 2c948d16-7b53-4f80-a2d1-84e6b09f3527
 
 	measure Eslabones = DISTINCTCOUNT( hechos_relativos[id_quincena] )
 		formatString: #,0
+		displayFolder: Cobertura y guarda
 		lineageTag: e05f31a8-46d2-49b7-8c60-7a13e9b524fd
 
 	/// El pareo típico del corte, contra el mínimo que decide la guarda. Juntos dicen si un
@@ -171,6 +186,7 @@ table Medidas
 			    CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) )
 			)
 		formatString: #,0
+		displayFolder: Cobertura y guarda
 		lineageTag: a7361de4-9b02-4c85-b1e3-05d7248fa6b0
 
 	/// Explica el blanco que deja la guarda, en vez de dejar al lector adivinando por qué
@@ -182,6 +198,7 @@ table Medidas
 			        & " tiendas pareadas en el eslabón más flaco, contra un umbral de "
 			        & [Umbral de pareo Value] & "."
 			)
+		displayFolder: Cobertura y guarda
 		lineageTag: f4820ac7-3e61-4b09-95d2-6c8017ae3b45
 
 	/// El bootstrap de `nb_30` está tabulado por SKU y remuestrea el padrón entero de tiendas
@@ -194,6 +211,7 @@ table Medidas
 			    && HASONEVALUE( dim_producto[id_producto] )
 			    && [Pareo mínimo] >= [Umbral de pareo Value]
 		isHidden
+		displayFolder: Intervalo
 		lineageTag: 0d4f7b26-8a51-4c93-b7e0-46129df3a8c5
 
 	measure 'IC inferior' =
@@ -209,6 +227,7 @@ table Medidas
 			        )
 			    )
 		formatString: #,##0.00
+		displayFolder: Intervalo
 		lineageTag: 2e86c1a4-9f37-40db-85a2-b71c04e9d635
 
 		annotation PBI_FormatHint = {"isCustom":true}
@@ -226,6 +245,7 @@ table Medidas
 			        )
 			    )
 		formatString: #,##0.00
+		displayFolder: Intervalo
 		lineageTag: b93e5a7f-1c48-4a06-9e35-8f2071dab4c9
 
 		annotation PBI_FormatHint = {"isCustom":true}
@@ -244,6 +264,7 @@ table Medidas
 			        FORMAT( DIVIDE( Inferior, 100 ) - 1, "+0.00%;-0.00%" ) & " a "
 			            & FORMAT( DIVIDE( Superior, 100 ) - 1, "+0.00%;-0.00%" )
 			    )
+		displayFolder: Intervalo
 		lineageTag: 41c7a0e8-52b6-4d19-8730-e6f9b2450a1d
 
 	/// El INPC rebasado a la quincena inicial, para que las tres series de P1 compartan eje.
@@ -255,6 +276,7 @@ table Medidas
 			    // Sin la guarda, `( 1 + BLANK() ) * 100` da 100 y dibuja un punto donde no hay mes.
 			    IF( NOT ISBLANK( Inflacion ), ( 1 + Inflacion ) * 100 )
 		formatString: #,##0.00
+		displayFolder: Índice
 		lineageTag: 3c81f0a7-64d2-4e15-b809-7fa2e605193c
 
 	/// El precio de la quincena más reciente del contexto, y no el promedio de la serie: el
@@ -269,7 +291,34 @@ table Medidas
 			        dim_tiempo_quincena[orden] = Hasta
 			    )
 		formatString: \$#,##0.00
+		displayFolder: Nivel de precio
 		lineageTag: 5d7e93b1-08fa-4c26-91d3-e40b7c5a2618
+
+	/// Cuenta las celdas cuyo precio cae en el bin. Es lo único que Power BI no sabe hacer
+	/// solo: no trae histograma nativo, y el binning del UI crea columna calculada, que las
+	/// tablas Direct Lake no admiten. Con quincena y producto en selección única —como los
+	/// fija P2— la celda es la tienda, y la barra cuenta tiendas.
+	measure 'Tiendas en rango' =
+			VAR Desde = MAX( 'Rango de precio'[Desde] )
+			VAR Hasta = MAX( 'Rango de precio'[Hasta] )
+			VAR Piso = MIN( hechos_precios[precio_promedio] )
+			VAR Techo = MAX( hechos_precios[precio_promedio] )
+			VAR Celdas =
+			    CALCULATE(
+			        COUNTROWS( hechos_precios ),
+			        KEEPFILTERS(
+			            hechos_precios[precio_promedio] >= Desde
+			                && hechos_precios[precio_promedio] < Hasta
+			        )
+			    )
+			RETURN
+			    // Cero adentro del rango observado y BLANK afuera. Sin esta rama la serie sale
+			    // con 76 barras y ceros a los lados; devolviendo BLANK a secas, los bins vacíos
+			    // de en medio se colapsan y la forma del histograma miente.
+			    IF( Hasta > Piso && Desde <= Techo, Celdas + 0 )
+		formatString: #,0
+		displayFolder: Nivel de precio
+		lineageTag: 9d4c81f2-3e50-4a67-b8d1-27fa60e9c534
 
 	column Column
 		isHidden

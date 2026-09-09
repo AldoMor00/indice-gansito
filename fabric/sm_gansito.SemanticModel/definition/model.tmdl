@@ -22,4 +22,5 @@ ref table dim_tiempo_quincena
 ref table 'Umbral de pareo'
 ref table Medidas
 ref table hechos_ic_indice
+ref table 'Rango de precio'
 
