@@ -431,6 +431,116 @@ table Medidas
 		displayFolder: Índice
 		lineageTag: 7a15be82-3c69-40df-b1a4-05e2c8f79d31
 
+	/// Las tiendas que Profeco visitó también en la quincena anterior, que son las que entran
+	/// al eslabón. Contra `Tiendas observadas` dice cuánto del corte se queda fuera del índice.
+	measure 'Tiendas pareadas' = DISTINCTCOUNT( hechos_relativos[id_tienda] )
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: 999c5580-51d3-48b1-aba6-23b3517d3108
+
+	/// Las tiendas presentes en todas las quincenas: el panel con el que se quedaría un índice
+	/// de base fija. Son 31 contra las 286 que parea el eslabón típico, y es la razón entera de
+	/// encadenar. Ignora el filtro de quincena a propósito —"completo" es sobre la línea entera,
+	/// no sobre el tramo que alguien haya seleccionado—.
+	measure 'Tiendas de panel completo' =
+			VAR Quincenas =
+			    CALCULATE( DISTINCTCOUNT( hechos_precios[id_quincena] ), REMOVEFILTERS( dim_tiempo_quincena ) )
+			RETURN
+			    COUNTROWS(
+			        FILTER(
+			            VALUES( hechos_precios[id_tienda] ),
+			            CALCULATE(
+			                DISTINCTCOUNT( hechos_precios[id_quincena] ),
+			                REMOVEFILTERS( dim_tiempo_quincena )
+			            ) = Quincenas
+			        )
+			    )
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: e5187630-7608-46c8-bc85-68bd5557c0d2
+
+	/// Cuántos eslabones no llegan al umbral. Es lo que vuelve visible el parámetro: con el
+	/// umbral en 30 son cero de 45, y sube conforme se mueve. Los eslabones sin una sola tienda
+	/// pareada no cuentan como reprobados porque no existen; el `+ 0` es para que la tarjeta
+	/// publique el cero en vez de un blanco, que aquí sí es dato.
+	measure 'Eslabones bajo el umbral' =
+			COUNTROWS(
+			    FILTER(
+			        VALUES( dim_tiempo_quincena[id_quincena] ),
+			        VAR Pareadas = CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) )
+			        RETURN Pareadas > 0 && Pareadas < [Umbral de pareo Value]
+			    )
+			) + 0
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: 5537e78d-5c55-45c4-afa7-b728d7a66d3b
+
+	/// El umbral dibujado como serie plana junto a las tiendas pareadas, para verlo cruzar la
+	/// serie al mover el parámetro. Envuelve la medida del what-if nada más por el nombre, que
+	/// es lo que sale impreso en la leyenda.
+	measure Umbral = [Umbral de pareo Value]
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: b2cf05c5-7b6e-486c-a697-a5c20d338e15
+
+	/// Cuántas entidades del nivel tocó Profeco en el corte. Los cuatro niveles son cuatro
+	/// columnas de `dim_tienda` y no cuatro valores de una, así que el SWITCH sobre la tabla
+	/// desconectada es lo que las vuelve un eje. El municipio va con su estado: los nombres se
+	/// repiten entre estados y agregados sueltos juntan tiendas que no se parecen (hechos.md).
+	measure 'Entidades observadas' =
+			SWITCH(
+			    SELECTEDVALUE( 'Nivel de cobertura'[Nivel] ),
+			    "Tienda", DISTINCTCOUNT( hechos_precios[id_tienda] ),
+			    "Cadena", CALCULATE( DISTINCTCOUNT( dim_tienda[cadena_comercial] ), hechos_precios ),
+			    "Municipio",
+			        CALCULATE(
+			            COUNTROWS( SUMMARIZE( dim_tienda, dim_tienda[estado], dim_tienda[municipio] ) ),
+			            hechos_precios
+			        ),
+			    "Estado", CALCULATE( DISTINCTCOUNT( dim_tienda[estado] ), hechos_precios )
+			)
+		formatString: #,0
+		isHidden
+		displayFolder: Cobertura y guarda
+		lineageTag: f9bdb469-9036-4c6d-8896-76b33b87a278
+
+	/// Espejo del anterior sobre los eslabones en vez de sobre las celdas. Insumo de
+	/// `Cobertura del panel %`.
+	measure 'Entidades pareadas' =
+			SWITCH(
+			    SELECTEDVALUE( 'Nivel de cobertura'[Nivel] ),
+			    "Tienda", DISTINCTCOUNT( hechos_relativos[id_tienda] ),
+			    "Cadena", CALCULATE( DISTINCTCOUNT( dim_tienda[cadena_comercial] ), hechos_relativos ),
+			    "Municipio",
+			        CALCULATE(
+			            COUNTROWS( SUMMARIZE( dim_tienda, dim_tienda[estado], dim_tienda[municipio] ) ),
+			            hechos_relativos
+			        ),
+			    "Estado", CALCULATE( DISTINCTCOUNT( dim_tienda[estado] ), hechos_relativos )
+			)
+		formatString: #,0
+		isHidden
+		displayFolder: Cobertura y guarda
+		lineageTag: f6e48739-2ad1-4826-b2fd-bf94985851c6
+
+	/// Qué fracción de lo observado sobrevive al pareo, en el eslabón típico. Mediana de los 45
+	/// y no una razón del periodo entero: lo que se quiere saber es cuánto usa una comparación,
+	/// no cuánto se tocó alguna vez. La pérdida se concentra abajo —86% de las tiendas contra
+	/// 100% de los estados—, así que el encadenado suelta tiendas pero no geografía.
+	measure 'Cobertura del panel %' =
+			MEDIANX(
+			    FILTER(
+			        VALUES( dim_tiempo_quincena[id_quincena] ),
+			        CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) ) > 0
+			    ),
+			    DIVIDE( [Entidades pareadas], [Entidades observadas] )
+			)
+		formatString: #,##0.0%
+		displayFolder: Cobertura y guarda
+		lineageTag: dc83af65-7c1d-4f25-9058-a5a6df648069
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
 	column Column
 		isHidden
 		formatString: 0

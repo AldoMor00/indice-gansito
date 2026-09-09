@@ -1,0 +1,47 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "e1f7a3b9c5d04a83d024",
+  "position": {
+    "x": 972,
+    "y": 948,
+    "z": 1100,
+    "height": 96,
+    "width": 912,
+    "tabOrder": 1100
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "Índice de Jevons sobre pares tienda-SKU: cada quincena contra la inmediata anterior, sobre quien esté en las dos, y los 45 eslabones multiplicados. El IC 95% sale de 2,000 remuestreos bootstrap de tiendas.",
+                    "textStyle": {
+                      "fontSize": "12pt"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "El muestreo de Profeco no es aleatorio: el intervalo aproxima la variabilidad del panel observado, no es inferencia sobre todas las tiendas de México.",
+                    "textStyle": {
+                      "fontStyle": "italic",
+                      "fontSize": "12pt"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}
