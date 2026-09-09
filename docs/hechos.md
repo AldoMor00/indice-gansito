@@ -242,6 +242,12 @@ celdas en 508 tiendas.
   las 46 quincenas. Pero eslabón a eslabón el traslape es alto: la mediana es de **286 tiendas
   pareadas** contra 332 observadas por quincena, o sea que el encadenamiento **retiene el 86%**
   del n disponible. La rotación asusta en el agregado y es inofensiva entre quincenas vecinas.
+- **La cobertura del panel cae con el detalle del corte, y a nivel estado no cae.** Mediana de
+  los 45 eslabones: el pareo conserva el **86.3%** de las tiendas observadas, el **95.1%** de las
+  cadenas, el **95.2%** de los municipios y el **100%** de los estados. El encadenado suelta
+  tiendas y no geografía, que es lo que deja leer P2 y P3 sobre la misma muestra. El eslabón más
+  flaco del Gansito trae **177 tiendas pareadas** contra un umbral de 30, así que ninguno de los
+  45 queda bajo la guarda (decisión #30).
 - **El sesgo de composición existe y es chico: 1.2 puntos.** Promedio simple de punta a punta
   da **+25.63%**; el encadenado sobre tiendas pareadas, **+24.40%**. El precio del Gansito subió
   de verdad, y el promedio simple no mentía mucho —pero mentía en dirección desconocida—.
