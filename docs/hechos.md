@@ -170,6 +170,18 @@ borrando un `nb_99_prueba_cli` desechable en dev, que quedó como estaba.
   a la vista. Aun así conviene refrescar antes de editar: elegir versión es todo o nada, no un
   merge por celda.
 
+- **El mensaje de commit del UI de Fabric se trunca cerca de los 300 caracteres.** Cuerpo
+  incluido: un título de 46 más dos párrafos se cortó a media palabra. Los commits que salgan de
+  ahí caben en título más dos líneas, y el porqué largo va al comentario del código.
+- **`fab api` antepone `https://api.powerbi.com/v1.0/myorg/`** con `-A powerbi`, así que el
+  endpoint se escribe `datasets/<id>/executeQueries` y no con el prefijo completo. El cuerpo se
+  lee con la codificación del sistema —cp1252 en Windows—, así que el JSON de la consulta va en
+  ASCII con escapes unicode o truena con `charmap codec can't decode`.
+- **La exploración no necesita notebook.** `fab api -A powerbi -X post
+  datasets/<id>/executeQueries` corre DAX contra el modelo y devuelve el resultado envuelto en
+  `text`, y `fab job run` corre un notebook y espera a que termine. Todo el corte transversal de
+  P2 se midió así, sin crear ni borrar un item.
+
 ## Las fuentes
 
 - **El estado estable del cron es no hacer nada**, y se sabe por qué: el programa de Profeco
@@ -274,6 +286,63 @@ celdas en 508 tiendas.
 - **El pareo cuesta 30 tiendas de 508.** `hechos_relativos` toca 478 tiendas y no las 508 que
   venden Gansito alguna vez: las otras 30 nunca aparecen en dos quincenas consecutivas, así que
   no forman ningún eslabón. Son 12,393 pares en 45 eslabones, 275 de media.
+
+- **Gold reproduce el intervalo, no sólo la cifra.** El bootstrap de `nb_30_gold`, con otra
+  semilla, da un EE de **1.6027 pp** contra el 1.60 de la exploración, y un IC de
+  **+21.25% a +27.65%** contra el +21.36 – 27.64 medido con polars. La diferencia de 0.11 pp en
+  la punta baja es ruido de Monte Carlo, y es la señal de que se reproduce el mismo bootstrap.
+- **El Gansito encabeza su propia canasta por mucho.** Con la misma metodología y las mismas
+  tiendas, el cambio encadenado de los nueve SKUs va de +24.40% a +1.16%, y el segundo queda
+  nueve puntos abajo:
+
+  | SKU | cambio | SKU | cambio |
+  |---|---|---|---|
+  | Gansito | +24.40% | Chocoroles | +8.69% |
+  | Nito | +15.13% | Pingüinos | +7.80% |
+  | Mantecadas | +9.49% | Roles de Canela | +3.81% |
+  | Panqué Nuez | +8.99% | Donitas Espolvoreadas | +1.16% |
+  | Panqué con Pasas | +8.74% | | |
+
+  Los nueve pasan la guarda con holgura —el pareo mínimo va de 162 a 206 contra un umbral de
+  30—, así que ninguna barra se apaga.
+- **El intervalo de la canasta no sirve como intervalo del Gansito.** Tabulado por quincena sin
+  separar SKU, el bootstrap da ±0.37 pp y un cambio de +10.5%: promedia nueve series y sale
+  cuatro veces más angosto. Es la razón de que `hechos_ic_indice` tenga grano SKU × quincena
+  (decisión #20).
+- **`BLANK() - 1` es `-1` en DAX, y eso mordió a cuatro medidas.** Restar antes de guardar
+  convierte "no hay dato" en un número: `Intervalo del cambio` publicaba "-100.00%",
+  `Inflación acumulada %` devolvía -100% sin contexto de mes y arrastraba `Índice INPC` a 0
+  —un desplome dibujado que no existe en los datos—, y `Cambio real %` publicaba **0.00%** en el
+  corte que la guarda de pareo había dejado sin índice, que es el caso peor porque 0.00% parece
+  un dato. La guarda va antes de la resta, siempre.
+- **La quincena base no produce eslabón y el índice vale 100 ahí por definición.** La guarda de
+  pareo la apagaba —no hay pareo que medir contra una quincena anterior que no existe— y la
+  serie arrancaba en blanco un eslabón tarde.
+
+## El corte transversal
+
+Medido con `executeQueries` sobre el modelo, para la última quincena —`2025-11_q2`— y el
+Gansito, que es como dejan el contexto los slicers de P2.
+
+- **220 tiendas y 316 visitas**, promedio **$20.83**, mediana **$21.50**, de **$16.00** a
+  **$26.00**, con p90/p10 en **1.28**.
+- **El precio es de anaquel y no continuo.** 39 precios distintos en $10 de rango, y uno domina:
+  **58 de las 220 tiendas cobran exactamente $22.00**, 31 cobran $18.90 y 20 cobran $18.00. Con
+  bins de un peso son once barras —3, 3, 23, 36, 22, 15, **79**, 30, 5, 2, 2—, y el pico se ve
+  de un vistazo.
+- **37 cadenas, y la mayoría trae de una a tres tiendas.** Con cinco o más quedan 13, de **Oxxo
+  a $22.58** hasta **Central de Abastos a $17.75**: casi $5 por el mismo pastelito. Sin ese
+  mínimo la cadena más cara es una farmacia con dos tiendas a $26.
+- **30 estados en todo el padrón de 2,392 tiendas.** Colima y Nayarit no aparecen nunca, así que
+  el mapa los deja sin pintar con razón. En la última quincena van de **Durango $22.82** a
+  **Veracruz $19.38**.
+- **Los nombres de municipio se repiten entre estados.** "Benito Juárez" junta el de Ciudad de
+  México con el de Quintana Roo, que cobran **$20.45 y $21.57**: agregados por nombre dan una
+  fila de 11 tiendas a un precio que no existe en ningún lado.
+- **Reconstruir `dim_tienda` no movió el índice.** Después del drop y la corrida de `nb_30` el
+  encadenado sigue en +24.40%, el real en +16.47% y el intervalo en +21.25% a +27.65%: las
+  llaves son `xxhash64` deterministas, así que los hechos volvieron a empatar con las mismas
+  filas.
 
 ## CI y despliegue
 
