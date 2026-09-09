@@ -332,3 +332,102 @@ flaco del corte no junta el umbral, que arranca en 30 tiendas y se expone como p
 lista negra: se evalúa en el contexto de filtro, así que protege igual a una cadena chica, a un
 estado chico o a un subperiodo corto. Es lo que decide que el corte de canal sean tres
 categorías y no los cinco `giro` de la fuente, de los que sólo uno pasa el umbral.
+
+## 20. El intervalo del índice se materializa en gold, tabulado por SKU
+
+El IC 95% no se puede calcular en DAX. El error del encadenado no es función de los agregados
+del eslabón: las mismas tiendas reaparecen eslabón tras eslabón y sus errores se telescopan, así
+que sumar varianzas en cuadratura da 2.62 pp contra los 1.60 del bootstrap. Una banda calculada
+así saldría 64% más ancha de lo que dicen los datos, que es peor que no publicarla.
+
+`nb_30_gold` lo resuelve con el mismo bootstrap de la exploración —2,000 réplicas, semilla fija
+para que dos corridas publiquen el mismo intervalo— y deja `hechos_ic_indice`. Remuestrea
+**tiendas** y no celdas, porque la tienda es la unidad de muestreo de Profeco y las celdas de una
+misma tienda no son independientes; el sorteo se expresa como pesos multinomiales, que es el
+mismo bootstrap escrito de forma que el join lo pueda aplicar sin explotar.
+
+El grano es **SKU × quincena**, no quincena. El índice que se publica es el de un SKU —el
+titular es el Gansito, no la canasta— y el intervalo de la canasta no se le parece: promedia
+nueve series y sale en ±0.37 pp contra los ±1.60 del Gansito. Cada SKU se remuestrea contra su
+propio padrón de tiendas, porque el n del que depende el ancho es el suyo. Entre SKUs no se
+agrega, así que la medida exige un solo producto en contexto y se apaga ante cualquier filtro de
+tienda: el bootstrap corrió sobre el padrón entero y no sobre el corte.
+
+Es la única tabla de gold que no proyecta silver, y por eso se calcula al final y sobre gold ya
+escrito: cada quincena nueva alarga la cadena y mueve el intervalo de todas las anteriores.
+
+## 21. El nombre comercial del SKU se deriva en gold, con diccionario
+
+Profeco declara los nueve SKUs con el mismo `producto` —"Pastelillos y Pan Dulce
+Empaquetado"— y la misma `categoria`, así que lo único que los distingue es la cadena cruda de
+`presentacion` (decisión #13). El reporte necesita "Gansito", no `Paquete con 1 Gansito
+(50 Gr.)`, así que `dim_producto` gana una columna `nombre`.
+
+Diccionario explícito y no regex: dos de los nueve no siguen el patrón `Paquete con N <nombre>
+(M Gr.)` sino `Paquete 280 Gr. Panqué ...`. Y a diferencia de `CANAL`, aquí el diccionario es lo
+correcto y no la excepción, porque la canasta está cerrada: una presentación nueva es una alarma,
+no un caso que absorber.
+
+La compuerta mira el universo completo de la dimensión y no sólo lo que trae precio. Silver ya
+ataja el SKU nuevo —truena si el lote pasa de nueve presentaciones— pero no ve el **renombre**:
+con nueve presentaciones y el regex casando, pasa limpio, pero la clave es `xxhash64` sobre la
+cadena, así que nace otro `id_producto` y la dimensión, que es acumulativa, queda con la vieja y
+la nueva. Llegaría aquí sin nombre y `coalesce` la dejaría en nulo: un blanco en el slicer y P1
+sin encontrar su producto. `nombre` y no `nombre_comercial`, que ya es media identidad de una
+tienda.
+
+## 22. El histograma sale de una tabla de bins desconectada
+
+Power BI no trae histograma nativo, y las salidas del UI tampoco sirven aquí: el binning
+—*New group → bin size*— crea una **columna calculada**, y las tablas Direct Lake no las
+admiten. Las alternativas eran binear en gold, que congela el ancho del bin dentro de los datos
+y obliga a recorrer `nb_30` para cambiarlo, o un visual de AppSource, que mete una dependencia
+externa en una pieza que se va a enseñar. Se elige una **tabla de constantes desconectada**,
+`Rango de precio`: no referencia Direct Lake y por eso es legal, y es la forma que el modelo ya
+usaba para `Umbral de pareo`.
+
+Bins de un peso con el borde en el medio peso. El ancho no es gusto —Freedman-Diaconis sobre el
+corte real pide $0.99— y el borde resuelve algo concreto: los precios de anaquel se apilan en
+pesos redondos, y con el corte en `x.50` la moda cae al centro de la barra en vez de partirse
+entre dos. `Tiendas en rango` devuelve **cero adentro del rango observado y `BLANK` afuera**;
+sin esa rama la serie sale con 76 barras y ceros a los lados, y devolviendo `BLANK` a secas los
+bins vacíos de en medio se colapsan y la forma del histograma miente.
+
+## 23. Los cortes transversales llevan un mínimo de cinco tiendas, y va en el visual
+
+P2 no compara periodos, así que no hay pareo ni guarda del índice (decisión #19) y los cinco
+giros de la fuente valen completos. Pero ordenar por precio con la muestra entera pone el ruido
+arriba: la cadena más cara de la última quincena es una farmacia con dos tiendas. El mínimo de
+cinco es un **filtro de visual** y no un filtro de gold, por la misma razón que la guarda del
+índice —el dato entra completo y quien decide es la medida en su contexto—, y por eso convive
+con visuales de la misma página que no lo llevan.
+
+Donde más pesa es en el mapa: un coropleta pinta área, y el área se lee como peso. Un estado con
+una sola tienda saldría del color más intenso del mapa. Los que no alcanzan el umbral se quedan
+sin pintar, que es lo que de verdad dicen los datos.
+
+La tabla de municipios lleva el estado como columna aparte, y eso no es formato: los nombres de
+municipio se repiten entre estados, así que agregarlos por nombre inventa una fila.
+
+## 24. La clave del mapa se deriva en gold, con diccionario
+
+El mapa es un `shapeMap` y no Azure Maps. Azure Maps sólo opera en las regiones de Estados
+Unidos y la Unión Europea; fuera de ahí hace falta encender además el switch que deja procesar
+los datos fuera de la región del tenant, y una pieza de portafolio no debería depender de dos
+palancas de administración ni de que el dato salga del tenant para dibujarse. Además dibuja
+tiendas y no estados, y las burbujas se amontonan en el Valle de México. Se paga que `shapeMap`
+siga en preview.
+
+`shapeMap` casa la ubicación contra las claves de su TopoJSON. 28 de los 30 estados que declara
+Profeco casan por nombre —la fuente los escribe sin acentos, igual que el mapa—, pero los dos
+que no casan son los dos más grandes del padrón. De ahí `clave_estado` en `dim_tienda`, con el
+mismo patrón de la decisión #21: diccionario explícito, los 32 y no los 30 observados para que
+Colima y Nayarit pinten el día que aparezcan, y compuerta que detiene la corrida ante un estado
+que no esté. Se guarda el ID del TopoJSON y no el ISO ni el nombre en inglés, porque es la llave
+del propio mapa; `estado` se queda como lo escribe Profeco, igual que `giro` junto a `canal`.
+
+Agregar la columna obligó a **reconstruir** `dim_tienda` en gold, no a evolucionar su esquema:
+el MERGE de `upsert` exige que origen y destino tengan las mismas columnas. La alternativa
+—`autoMerge` de sesión— la desaconseja la propia documentación, y convertiría cualquier cambio
+de esquema futuro en algo que entra callado, que es lo contrario de cómo este repo los trata.
+Gold es una proyección de silver: se dropea la tabla y se vuelve a correr.
