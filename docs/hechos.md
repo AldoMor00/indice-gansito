@@ -318,6 +318,36 @@ celdas en 508 tiendas.
 - **La quincena base no produce eslabón y el índice vale 100 ahí por definición.** La guarda de
   pareo la apagaba —no hay pareo que medir contra una quincena anterior que no existe— y la
   serie arrancaba en blanco un eslabón tarde.
+- **Ninguna cadena alcanza el umbral de pareo.** La mejor es **Hipermercado Soriana con 26**
+  tiendas pareadas en su peor eslabón, y detrás Wal-mart 20, Chedraui 16 y Bodega Aurrera 15;
+  las otras 33 no pasan de 8. Con el umbral en 30, el cambio encadenado por cadena sale en
+  blanco las 37 veces (decisión #25).
+- **`canal` es nulo para 1,429 de las 2,392 tiendas del padrón**, las de los giros que no venden
+  pastelillos —tortillerías 756, papelerías 143, electrodomésticos 143, pescaderías 74,
+  panaderías 73, departamentales 72, uniformes 58, jugueterías 45, vinaterías 42, zapaterías
+  23—, y **ninguna tiene una sola celda** en `hechos_precios`. El diccionario mapea los cinco
+  giros que sí venden y deja el resto sin canal, que es lo correcto y lo que obligó a la
+  decisión #27.
+- **El tramo completo por cadena, con cinco tiendas en las dos puntas: 12 cadenas, y todas
+  suben.** Es lo que dibuja el dumbbell de P3. Los que arrancaron baratos son los que más
+  subieron, con la excepción del mercado tradicional, que arrancó barato y se quedó barato:
+
+  | cadena | inicio | cierre | cadena | inicio | cierre |
+  |---|---|---|---|---|---|
+  | Chedraui | $14.25 | $21.27 | Hipermercado Soriana | $16.01 | $20.26 |
+  | Bodega Aurrera | $14.90 | $20.67 | Mercado Publico | $16.02 | $18.31 |
+  | Wal-mart | $15.24 | $21.59 | Mega Soriana | $16.27 | $20.25 |
+  | H.e.b. | $15.78 | $19.90 | Farmacia Guadalajara | $18.41 | $21.36 |
+  | Central de Abastos | $15.80 | $17.75 | Ley | $19.94 | $22.15 |
+  | Soriana Super | $15.94 | $20.72 | Oxxo | $19.98 | $22.58 |
+
+  El promedio nacional del mismo tramo va de **$16.58 a $20.83**. Superissste queda fuera de las
+  doce por la punta de arranque: en `2024-01_q1` no vendía Gansito en ninguna tienda.
+- **La brecha entre canales no reproduce, aunque el índice sí.** Los cambios por canal cuadran al
+  centésimo con lo medido en la zona raw, pero la brecha de niveles —conveniencia contra
+  supermercado— da **$3.49 al inicio y $1.30 al cierre** con `Precio al inicio` y `Precio al
+  cierre`, no los $4.16 y $0.94 de la exploración. La diferencia está en la base de la brecha,
+  no en el índice, y sigue sin explicar.
 
 ## El corte transversal
 

@@ -431,3 +431,79 @@ el MERGE de `upsert` exige que origen y destino tengan las mismas columnas. La a
 —`autoMerge` de sesión— la desaconseja la propia documentación, y convertiría cualquier cambio
 de esquema futuro en algo que entra callado, que es lo contrario de cómo este repo los trata.
 Gold es una proyección de silver: se dropea la tabla y se vuelve a correr.
+
+## 25. Por cadena se publica nivel, no índice
+
+El plan de la fase le daba a P3 tres visuales, y el tercero eran barras de cambio encadenado por
+cadena. No existe: medido contra el modelo, **ninguna de las 37 cadenas alcanza el umbral de
+pareo**. La mejor es Hipermercado Soriana con 26 tiendas pareadas en su peor eslabón contra las
+30 que exige la guarda (decisión #19), y de ahí para abajo Wal-mart 20, Chedraui 16 y Bodega
+Aurrera 15. El visual habría salido en blanco las 37 veces.
+
+Es el mismo resultado que ya había dado el `giro` crudo de Profeco y que obligó a colapsar a tres
+canales: **el umbral decide la granularidad publicable, no el gusto**, y la cadena queda por
+debajo de esa línea para cualquier índice.
+
+Lo que sí sostiene es el **nivel**: precio al inicio contra precio al cierre, que no encadena
+nada y por eso no le debe nada al pareo. Ahí la guarda que aplica es la de los cinco (decisión
+#23), con una vuelta de tuerca —cinco tiendas **en las dos puntas**, no en el promedio de las
+dos, porque con una sola punta pasan cadenas que en la otra no existen—. Quedan 12 cadenas. Por
+eso la página cierra con dos visuales y no con tres, y el dumbbell se lleva el ancho que sobró.
+
+El precio de la elección se dice en la página y no en una nota al pie: las dos puntas no son las
+mismas tiendas, así que el dumbbell mide nivel de cadena y no cambio pareado.
+
+## 26. El dumbbell se dibuja con error bars, no con un visual de AppSource
+
+Power BI no trae dumbbell, y la pieza es la que carga el hallazgo de P3: dónde arrancó y dónde
+terminó cada cadena, en un solo renglón. Las salidas eran tres. Un visual certificado de
+AppSource mete una dependencia de tenant en un reporte que se escribe entero a mano, y que la
+copia import de la decisión #6 tendría que renderizar también. Un scatter de inicio contra
+cierre con *symmetry shading* es nativo y analíticamente más fuerte —la distancia a la diagonal es el
+encarecimiento— pero se lee frío y encima con doce etiquetas. Barras pareadas se leen solas y
+pierden la línea que une las dos puntas, que es lo que hace legible la brecha.
+
+Se arma con lo que el reporte ya tenía probado: **una barra clusterizada con error bars**, que la
+documentación soporta en barra y columna clusterizada, línea y combo. El valor es `Precio al
+inicio`, las cotas son `Precio al inicio` y `Precio al cierre` con `isRelative: false`, y los
+caps encendidos son las dos pesas —al revés que la banda de P1, donde con 46 puntos tapaban el
+relleno y hubo que apagarlos—. La barra se apaga con `fillTransparency` al 100, que es propiedad
+del punto: apagarla pintándola del color del lienzo la habría dejado dependiendo del tema.
+
+Dos detalles que no son cosméticos. El eje va fijo de $12 a $24, porque arrancando en cero las
+doce mancuernas se apelmazan en el cuarto derecho. Y el orden es por `Precio al inicio`, que es
+lo que deja ver que los que arrancaron baratos son los que más subieron; ordenando por el cierre
+las longitudes se revuelven y el patrón se pierde.
+
+## 27. El índice no publica 100 en la quincena base sin observación
+
+`Índice encadenado` devuelve 100 en la quincena base por definición: no hay eslabón anterior
+contra el cual parear, así que la guarda no tiene qué exigirle, y sin esa rama la serie arranca
+en blanco y entra un eslabón tarde. Pero la rama estaba escrita sin condición, y publicaba ese
+punto para cualquier corte, incluso uno sin una sola celda detrás.
+
+Se vio al partir por canal. `canal` es nulo para los giros que no venden pastelillos —1,429
+tiendas del padrón, cero celdas en `hechos_precios`— y ese grupo dibujaba una cuarta serie
+fantasma en la leyenda: un punto en 100 y nada más.
+
+Se arregla en la medida y no con un filtro de visual. El filtro tapaba el caso en esa página; la
+medida lo resuelve en cualquier corte que venga después, y P5 parte por nivel de cobertura. La
+rama pide ahora `NOT ISBLANK( [Precio promedio] )`: 100 por definición sigue pidiendo que haya
+algo definido. Las cuatro cifras de F4 no se movieron.
+
+## 28. El miembro en blanco se filtra en el slicer, no se promete integridad
+
+Los slicers mostraban una opción en blanco, y no son datos sucios: `dim_producto` tiene 9 filas y
+ninguna con nombre nulo, y las tres tablas de hechos apuntan todas a un producto que existe —el
+conteo no baja ni una fila al excluir la fila en blanco—. Es el *unknown member*, la fila virtual
+que el motor agrega del lado "uno" de cada relación regular al expandir con `LEFT OUTER JOIN`, y
+que en Direct Lake se queda puesta porque la integridad no se puede validar contra los Delta.
+Está en las tres dimensiones: producto da 10 miembros contra 9 filas, `cadena_comercial` 257
+contra 256 y quincena 47 contra 46.
+
+Se quita con un filtro de visual "is not blank" en cada slicer. La alternativa era marcar las
+relaciones con *Assume referential integrity*, que en Fabric sí se puede y de un golpe cambia el
+join a `INNER` y borra el miembro de todo el modelo. No se hace: es una promesa sobre los datos,
+y el día que se rompa —una llave de hecho sin su fila de dimensión— esas filas desaparecen
+calladas en vez de acumularse en el blanco. Silver está construida al revés (decisión #15), y el
+índice publica en blanco antes que publicar de más.
