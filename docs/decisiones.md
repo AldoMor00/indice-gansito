@@ -507,3 +507,22 @@ join a `INNER` y borra el miembro de todo el modelo. No se hace: es una promesa 
 y el día que se rompa —una llave de hecho sin su fila de dimensión— esas filas desaparecen
 calladas en vez de acumularse en el blanco. Silver está construida al revés (decisión #15), y el
 índice publica en blanco antes que publicar de más.
+
+## 29. El poder adquisitivo se publica en dos escalas, y ninguna se convierte en la otra
+
+P4 dice dos veces cuánto menos alcanza un día de trabajo, y las dos cifras no empatan. Por
+nivel: `Gansitos al inicio` da **15.6** y `Gansitos al cierre` **13.9**, un **−10.88%**. Por
+serie, con las dos curvas base 100: el salario llega a 111.96 y el Gansito a 124.40, un
+**−10.00%**. La diferencia es el pareo. El nivel sale de `Precio promedio`, que es transversal y
+no le debe nada a la guarda, y el promedio simple del Gansito va de $16.58 a $20.83, **+25.63%**;
+el encadenado da +24.40% porque sólo compara tiendas presentes en las dos puntas de cada eslabón.
+
+La gráfica base 100 usa `Índice encadenado` y no ese promedio rebasado. Es la serie del proyecto
+(decisión #19), y ya comparte eje con el INPC en P1: rebasar el promedio publicaría +25.63% a un
+clic de un +24.40% que P1 y P3 publican para lo mismo, y nada en la página diría por qué difieren.
+
+Los KPI no intentan reconciliar las dos escalas con una tercera medida. Publican los dos niveles
+y los dos cambios que explican la brecha —**+11.96%** el salario mínimo contra **+24.40%** el
+Gansito—, y ahí el lector hace la resta solo. Un "cambio de poder adquisitivo" en una tarjeta
+tendría que elegir entre −10.88% y −10.00% sin poder justificar la elección en el espacio de una
+tarjeta, que es exactamente el tipo de número que este reporte no publica.
