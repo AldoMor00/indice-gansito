@@ -348,6 +348,15 @@ celdas en 508 tiendas.
   supermercado— da **$3.49 al inicio y $1.30 al cierre** con `Precio al inicio` y `Precio al
   cierre`, no los $4.16 y $0.94 de la exploración. La diferencia está en la base de la brecha,
   no en el índice, y sigue sin explicar.
+- **Un día de salario mínimo compraba 15.6 Gansitos y compra 13.9.** El mínimo nacional pasó de
+  $258.80 a $289.75 diarios, **+11.96%**, contra el +24.40% del Gansito: la caída del poder
+  adquisitivo es −10.88% medida sobre los niveles y −10.00% sobre las dos series base 100
+  (decisión #29).
+- **El salario mínimo es escalón, no serie.** CONASAMI lo fija una vez al año, así que
+  `Índice salario mínimo` es plano en 100 las 24 quincenas de 2024, salta a **111.96** en
+  `2025-01_q1` y ahí se queda las 22 restantes. Contra un precio que sube todo el año, los
+  Gansitos por día bajan de 15.6 a un piso de **13.1** en `2024-11_q2`, rebotan a 14.8 con el
+  escalón de enero y vuelven a bajar a 13.9. El máximo de la serie es la quincena base.
 
 ## El corte transversal
 
