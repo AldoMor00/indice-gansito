@@ -92,6 +92,7 @@ table Medidas
 
 	/// Visitas, no celdas: Profeco visita la misma tienda hasta cinco veces por quincena y
 	/// el hecho las promedia. La diferencia contra el conteo de filas dice cuánto se promedió.
+	/// Sin uso: hoy no la llama ninguna página del reporte ni ninguna otra medida.
 	measure Observaciones = SUM( hechos_precios[observaciones] )
 		formatString: #,0
 		displayFolder: Cobertura y guarda
@@ -99,6 +100,7 @@ table Medidas
 
 	/// El INPC del mes que contiene a la quincena. Cruza el grano con TREATAS y no con una
 	/// relación bidireccional: el filtro pasa sólo donde esta medida lo pide.
+	/// Sin uso: hoy no la llama ninguna página del reporte ni ninguna otra medida.
 	measure INPC =
 			CALCULATE(
 			    AVERAGE( hechos_salario_mensual[inpc] ),
@@ -173,6 +175,9 @@ table Medidas
 		displayFolder: Inflación y salario
 		lineageTag: 2c948d16-7b53-4f80-a2d1-84e6b09f3527
 
+	/// Cuántas quincenas del corte producen eslabón, es decir, tienen una anterior
+	/// contra la cual parear.
+	/// Sin uso: hoy no la llama ninguna página del reporte ni ninguna otra medida.
 	measure Eslabones = DISTINCTCOUNT( hechos_relativos[id_quincena] )
 		formatString: #,0
 		displayFolder: Cobertura y guarda
@@ -194,6 +199,7 @@ table Medidas
 
 	/// Explica el blanco que deja la guarda, en vez de dejar al lector adivinando por qué
 	/// una serie no se dibuja.
+	/// Sin uso: hoy no la llama ninguna página del reporte ni ninguna otra medida.
 	measure 'Nota de cobertura' =
 			IF(
 			    [Pareo mínimo] < [Umbral de pareo Value],
