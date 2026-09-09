@@ -47,10 +47,13 @@ table Medidas
 			RETURN
 			    // La quincena base no produce eslabón —no hay anterior contra la cual parear— así
 			    // que la guarda no tiene qué exigirle y el índice es 100 por definición. Sin esta
-			    // rama la serie arranca en blanco y la línea entra un eslabón tarde.
+			    // rama la serie arranca en blanco y la línea entra un eslabón tarde. Pero 100 por
+			    // definición sigue pidiendo que haya algo definido: un corte sin una sola celda
+			    // —los giros que no venden pastelillos, que traen `canal` en blanco— publicaba un
+			    // punto en la base y una serie fantasma en la leyenda.
 			    IF(
 			        Hasta = Base,
-			        100,
+			        IF( NOT ISBLANK( [Precio promedio] ), 100 ),
 			        IF( [Pareo mínimo] >= [Umbral de pareo Value], EXP( Suma ) * 100, BLANK() )
 			    )
 		formatString: #,##0.00
@@ -319,6 +322,47 @@ table Medidas
 		formatString: #,0
 		displayFolder: Nivel de precio
 		lineageTag: 9d4c81f2-3e50-4a67-b8d1-27fa60e9c534
+
+	/// Espejo de `Precio al cierre` con `MIN( orden )`. El dumbbell de P3 dibuja las dos puntas
+	/// del tramo, y la de arranque no se puede sacar de un promedio: es una quincena concreta.
+	measure 'Precio al inicio' =
+			VAR Desde = MIN( dim_tiempo_quincena[orden] )
+			RETURN
+			    CALCULATE(
+			        [Precio promedio],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Desde
+			    )
+		formatString: \$#,##0.00
+		displayFolder: Nivel de precio
+		lineageTag: f55e8098-a7a6-4d45-9ba1-3bb5c7fd8474
+
+	/// La guarda de cinco tiendas (decisión #23) tiene que valer en las dos puntas del tramo, no
+	/// en el promedio de las dos: con una sola punta pasan cadenas que en la otra no existen.
+	/// Devuelve el mínimo para que el filtro del visual sea una condición y no dos. El COALESCE
+	/// no sobra: MIN de dos escalares ignora el blanco, así que sin él una punta vacía se lee
+	/// como la n de la otra.
+	measure 'Tiendas del tramo' =
+			VAR Desde = MIN( dim_tiempo_quincena[orden] )
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			VAR Inicio =
+			    CALCULATE(
+			        DISTINCTCOUNT( hechos_precios[id_tienda] ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Desde
+			    )
+			VAR Cierre =
+			    CALCULATE(
+			        DISTINCTCOUNT( hechos_precios[id_tienda] ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Hasta
+			    )
+			RETURN
+			    MIN( COALESCE( Inicio, 0 ), COALESCE( Cierre, 0 ) )
+		formatString: #,0
+		isHidden
+		displayFolder: Cobertura y guarda
+		lineageTag: 0b374de2-8491-442a-8d3f-706930f14637
 
 	column Column
 		isHidden

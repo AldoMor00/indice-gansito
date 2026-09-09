@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "e4f5a6b7c8d91a2b3c4d",
+  "name": "a6172839405162738495",
   "position": {
-    "x": 36.775004489136286,
-    "y": 779.6300951696893,
-    "z": 1000,
-    "height": 264.78003232178128,
-    "width": 912.02011133058,
-    "tabOrder": 1000
+    "x": 36,
+    "y": 304,
+    "z": 500,
+    "height": 740,
+    "width": 912,
+    "tabOrder": 500
   },
   "visual": {
     "visualType": "lineChart",
@@ -32,6 +32,25 @@
             }
           ]
         },
+        "Series": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_tienda"
+                    }
+                  },
+                  "Property": "canal"
+                }
+              },
+              "queryRef": "dim_tienda.canal",
+              "nativeQueryRef": "canal",
+              "active": true
+            }
+          ]
+        },
         "Y": {
           "projections": [
             {
@@ -47,53 +66,12 @@
               },
               "queryRef": "Medidas.Índice encadenado",
               "nativeQueryRef": "Índice encadenado"
-            },
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Medidas"
-                    }
-                  },
-                  "Property": "Índice real"
-                }
-              },
-              "queryRef": "Medidas.Índice real",
-              "nativeQueryRef": "Índice real"
-            },
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Medidas"
-                    }
-                  },
-                  "Property": "Índice INPC"
-                }
-              },
-              "queryRef": "Medidas.Índice INPC",
-              "nativeQueryRef": "Índice INPC"
             }
           ]
         }
       }
     },
     "objects": {
-      "labels": [
-        {
-          "properties": {
-            "show": {
-              "expr": {
-                "Literal": {
-                  "Value": "false"
-                }
-              }
-            }
-          }
-        }
-      ],
       "seriesLabels": [
         {
           "properties": {
@@ -106,27 +84,46 @@
             }
           }
         }
-      ]
-    },
-    "visualContainerObjects": {
-      "visualHeader": [
+      ],
+      "labels": [
         {
           "properties": {
-            "showDrillRoleSelector": {
+            "show": {
               "expr": {
                 "Literal": {
                   "Value": "false"
                 }
               }
             },
-            "showDrillUpButton": {
+            "optimizeLabelDisplay": {
               "expr": {
                 "Literal": {
                   "Value": "false"
                 }
               }
             },
-            "showDrillToggleButton": {
+            "enableDetailDataLabel": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "labelContentLayout": {
+              "expr": {
+                "Literal": {
+                  "Value": "'SingleLine'"
+                }
+              }
+            },
+            "leaderLines": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "enableTitleDataLabel": {
               "expr": {
                 "Literal": {
                   "Value": "false"
@@ -135,7 +132,9 @@
             }
           }
         }
-      ],
+      ]
+    },
+    "visualContainerObjects": {
       "title": [
         {
           "properties": {
@@ -149,7 +148,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Contra la inflación general'"
+                  "Value": "'Índice encadenado por canal, base 100 en 2024-01_q1 · tradicional no publica: 7 tiendas pareadas contra 30'"
                 }
               }
             },
@@ -182,58 +181,46 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "5a7c4e0b93d6215f8ae5",
+        "name": "70ce4992320485950718",
         "field": {
           "Column": {
             "Expression": {
               "SourceRef": {
-                "Entity": "dim_producto"
+                "Entity": "dim_tiempo_quincena"
               }
             },
-            "Property": "nombre"
+            "Property": "quincena"
           }
         },
-        "type": "Categorical",
-        "filter": {
-          "Version": 2,
-          "From": [
-            {
-              "Name": "d",
-              "Entity": "dim_producto",
-              "Type": 0
-            }
-          ],
-          "Where": [
-            {
-              "Condition": {
-                "In": {
-                  "Expressions": [
-                    {
-                      "Column": {
-                        "Expression": {
-                          "SourceRef": {
-                            "Source": "d"
-                          }
-                        },
-                        "Property": "nombre"
-                      }
-                    }
-                  ],
-                  "Values": [
-                    [
-                      {
-                        "Literal": {
-                          "Value": "'Gansito'"
-                        }
-                      }
-                    ]
-                  ]
-                }
+        "type": "Categorical"
+      },
+      {
+        "name": "b365ce3f24c33b62400d",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "dim_tienda"
               }
-            }
-          ]
+            },
+            "Property": "canal"
+          }
         },
-        "howCreated": "User"
+        "type": "Categorical"
+      },
+      {
+        "name": "3d65945a2d1c5546bb0e",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Medidas"
+              }
+            },
+            "Property": "Índice encadenado"
+          }
+        },
+        "type": "Advanced"
       }
     ]
   }

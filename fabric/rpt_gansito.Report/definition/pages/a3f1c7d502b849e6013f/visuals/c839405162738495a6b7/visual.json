@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "4b613a19558c96053030",
+  "name": "c839405162738495a6b7",
   "position": {
-    "x": 1400,
+    "x": 1654,
     "y": 30,
-    "z": 1000,
+    "z": 700,
     "height": 78,
     "width": 230,
-    "tabOrder": 1000
+    "tabOrder": 700
   },
   "visual": {
     "visualType": "slicer",
@@ -20,14 +20,14 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "dim_tiempo_quincena"
+                      "Entity": "dim_producto"
                     }
                   },
-                  "Property": "quincena"
+                  "Property": "nombre"
                 }
               },
-              "queryRef": "dim_tiempo_quincena.quincena",
-              "nativeQueryRef": "quincena",
+              "queryRef": "dim_producto.nombre",
+              "nativeQueryRef": "nombre",
               "active": true
             }
           ]
@@ -70,7 +70,7 @@
                 "From": [
                   {
                     "Name": "d",
-                    "Entity": "dim_tiempo_quincena",
+                    "Entity": "dim_producto",
                     "Type": 0
                   }
                 ],
@@ -86,7 +86,7 @@
                                   "Source": "d"
                                 }
                               },
-                              "Property": "quincena"
+                              "Property": "nombre"
                             }
                           }
                         ],
@@ -94,7 +94,7 @@
                           [
                             {
                               "Literal": {
-                                "Value": "'2025-11_q2'"
+                                "Value": "'Gansito'"
                               }
                             }
                           ]
@@ -136,7 +136,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Quincena'"
+                  "Value": "'Producto'"
                 }
               }
             }
@@ -149,15 +149,15 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "91d12ae392340d642059",
+        "name": "edb39fde512cc095e672",
         "field": {
           "Column": {
             "Expression": {
               "SourceRef": {
-                "Entity": "dim_tiempo_quincena"
+                "Entity": "dim_producto"
               }
             },
-            "Property": "quincena"
+            "Property": "nombre"
           }
         },
         "type": "Categorical",
@@ -166,7 +166,7 @@
           "From": [
             {
               "Name": "d",
-              "Entity": "dim_tiempo_quincena",
+              "Entity": "dim_producto",
               "Type": 0
             }
           ],
@@ -184,7 +184,7 @@
                                 "Source": "d"
                               }
                             },
-                            "Property": "quincena"
+                            "Property": "nombre"
                           }
                         }
                       ],
