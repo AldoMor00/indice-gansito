@@ -5,7 +5,7 @@
     "x": 1440,
     "y": 30,
     "z": 300,
-    "height": 78,
+    "height": 102,
     "width": 444,
     "tabOrder": 300
   },
@@ -41,7 +41,7 @@
             "numericStart": {
               "expr": {
                 "Literal": {
-                  "Value": "5D"
+                  "Value": "30D"
                 }
               }
             },
@@ -85,7 +85,7 @@
                         },
                         "Right": {
                           "Literal": {
-                            "Value": "5D"
+                            "Value": "30D"
                           }
                         }
                       }
@@ -126,6 +126,19 @@
               "expr": {
                 "Literal": {
                   "Value": "'Umbral de pareo · tiendas mínimas por eslabón'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "padding": [
+        {
+          "properties": {
+            "top": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
                 }
               }
             }
