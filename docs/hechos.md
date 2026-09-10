@@ -108,14 +108,24 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
 - **Spark no habla HTTPS**: los bytes bajan con `requests` al driver. La capacidad **sí**
   sale a `raw.githubusercontent.com`, probado con texto y con binario.
 - **`activityId` correlaciona el exit value con el snapshot** y `DESCRIBE HISTORY` ya es la
-  bitácora de escrituras. Una tabla de runs propia las duplicaría.
+  bitácora de escrituras. Una tabla de runs propia las duplicaría (decisión #31).
 - **Pero `activityId` es de la sesión, no de la ejecución**, interactivamente y por pipeline.
   Dos corridas seguidas de `nb_21` en la misma sesión interactiva salieron con el mismo
   `corrida` en el exit value, y las dos actividades de `pl_silver` también, con el `sessionId`
   que compartieron. La alta concurrencia lo garantiza en vez de evitarlo: cada actividad se
-  engancha a la sesión de la primera. Así que no sirve de llave para la tabla de corridas de
-  F5 —dos ejecuciones se pisan siempre, no a veces—. El id por ejecución existe del lado del
+  engancha a la sesión de la primera. Así que no sirve de llave para una tabla de corridas
+  —dos ejecuciones se pisan siempre, no a veces—. El id por ejecución existe del lado del
   pipeline: el `runId` de cada actividad salió distinto.
+- **El monitoring hub retiene 30 días de actividades y 60 el historial de notebook.** La página
+  de *Activities* lista hasta 100 actividades de los últimos 30 días —hasta 100 por item— y
+  *Historical runs* da los 30 días completos de una sola actividad; el job history del notebook,
+  snapshot incluido, vive 60 días
+  ([hub](https://learn.microsoft.com/fabric/admin/monitoring-hub),
+  [límites](https://learn.microsoft.com/fabric/data-engineering/notebook-limitation#other-specific-limitations)).
+  Es lo que sostiene la decisión #31.
+- **Los avisos de fallo viven en *Schedule failures*, y son de items programados.** Es una
+  página del hub que gestiona las notificaciones de fallo de lo que corre por schedule, así que
+  no hay nada que prender hasta que `pl_bronze` tenga uno.
 - **La variable library no tiene tipo arreglo y su value set activo no viaja en el item.** Los
   tipos son String, Integer, Number, Boolean, DateTime, Guid y las dos referencias —item y
   connection—; cuál value set está activo lo guarda el workspace aparte de la definición, así

@@ -562,3 +562,23 @@ El eje sale de `Nivel de cobertura`, una tabla desconectada de cuatro constantes
 `SWITCH`: tienda, cadena, municipio y estado son cuatro columnas de `dim_tienda` y no cuatro
 valores de una, y Direct Lake no admite columna calculada (decisiones #21, #22 y #24). El
 municipio se cuenta junto con su estado, porque los nombres se repiten entre estados.
+
+## 31. La observabilidad de las corridas es el monitoring hub
+
+F5 iba a llevar `lh_ops` con una tabla de corridas, para dejar rastro consultable del no-op: la
+corrida que no encontró nada pendiente. No se construye. La corrida sin pendientes no escribe,
+así que `DESCRIBE HISTORY` no la ve —el MERGE sin cambios ni siquiera commitea versión, y es a
+propósito (decisión #14)—, pero el hub sí: la actividad aparece con su estado y `pendientes=0`
+viaja en el exit value, que ya es el único lugar por donde sale un número (decisión #7).
+
+Lo que la tabla agregaba era retención y consulta como serie, y la retención no aprieta: el hub
+guarda 30 días de actividades y 60 del historial de notebook, contra una capacidad de trial que
+expira el 10 de octubre de 2026. Nunca llegaría a contener algo que el hub no tuviera. Aun sin
+esa fecha el rastro tampoco se pierde: bronze trae `_ingestado_utc` y `_corrida` por fila, así
+que qué aterrizó y cuándo se reconstruye del dato mismo; y para años de historial la respuesta
+de la plataforma es workspace monitoring o la Job API, no una tabla Delta a mano.
+
+Lo que el cron sí necesita es aviso de fallo, y eso es *Schedule failures*: un setting del hub
+sobre items programados, no un item. Queda pendiente hasta que exista el primer schedule —hoy
+`pl_bronze` se dispara a mano— y entonces va a `fabric/README.md`, con lo demás que el workspace
+necesita configurado fuera de git.
