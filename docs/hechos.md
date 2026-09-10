@@ -275,14 +275,17 @@ celdas en 508 tiendas.
   Profeco sólo **una de cinco** categorías junta 30 tiendas pareadas en su peor eslabón
   (Supermercado, 135). Colapsado a tres canales pasan dos: supermercado (135, **+29.84%**) y
   conveniencia (31, **+11.35%**); tradicional se queda en 7.
-- **Los supermercados cerraron el 77% de la brecha contra el canal caro.** Arrancaron $4.16 más
-  baratos que conveniencia y terminaron $0.94 más baratos. El canal barato se encareció y el
-  caro casi no se movió.
+- **El supermercado alcanzó a conveniencia a mediados de 2024, y desde entonces no hay brecha
+  estable.** Arrancó $3.49 más barato, se encareció de $15.89 a casi $20 entre enero y junio de
+  2024 —conveniencia se quedó en ~$20— y para agosto la diferencia era $0.17. En las 46
+  quincenas la brecha va de $4.09 a −$0.89, media $0.69: **es negativa en 19**, o sea que el
+  supermercado es el caro buena parte de 2025.
 - **El deflactor sale de CONASAMI y da +6.81%** en la ventana: INPC 133.554 en `2024-01` y
   142.643 en `2025-11`. El Gansito subió **+16.47% real**, más del doble de la inflación general.
 - **El bootstrap remuestrea tiendas como unidad de muestreo**, pero el diseño de Profeco no es
-  aleatorio: eligen a quién visitar. El intervalo aproxima la variabilidad, no es inferencia
-  sobre todas las tiendas de México. Va impreso junto al número.
+  aleatorio: eligen a quién visitar y el criterio no lo publican, citado en
+  [`fuentes.md`](fuentes.md). El intervalo aproxima la variabilidad, no es inferencia sobre
+  todas las tiendas de México. Va impreso junto al número.
 - **Gold reproduce las cifras, calculadas sobre `hechos_relativos` con la agregación que hará
   la medida DAX** —promedio dentro del eslabón, suma entre eslabones, exponencial—: +24.40%
   nominal, +16.47% real y +6.81% de inflación, los tres al centésimo contra lo medido en la
@@ -349,11 +352,14 @@ celdas en 508 tiendas.
 
   El promedio nacional del mismo tramo va de **$16.58 a $20.83**. Superissste queda fuera de las
   doce por la punta de arranque: en `2024-01_q1` no vendía Gansito en ninguna tienda.
-- **La brecha entre canales no reproduce, aunque el índice sí.** Los cambios por canal cuadran al
-  centésimo con lo medido en la zona raw, pero la brecha de niveles —conveniencia contra
-  supermercado— da **$3.49 al inicio y $1.30 al cierre** con `Precio al inicio` y `Precio al
-  cierre`, no los $4.16 y $0.94 de la exploración. La diferencia está en la base de la brecha,
-  no en el índice, y sigue sin explicar.
+- **La brecha entre dos puntas no se publica, porque no es una cantidad estable.** Parando en
+  `2025-10_q2` da −$0.60, en `2025-11_q1` $0.40 y en `2025-11_q2` $1.30, y esta última trae la
+  muestra más chica de conveniencia (36 tiendas): la misma serie sostiene tres conclusiones
+  distintas según dónde se corte. Las cifras viejas de $4.16 y $0.94 no salen de ninguna
+  población ni agregación —se probaron celdas observadas ($3.49 / $1.30, que es lo que da el
+  modelo), sólo pareadas, las dos puntas, panel balanceado, ponderada por visitas, mediana,
+  media geométrica, la canasta completa y otras parejas de puntas—: vienen de una exploración
+  cuyos filtros ya no se conocen.
 - **Un día de salario mínimo compraba 15.6 Gansitos y compra 13.9.** El mínimo nacional pasó de
   $258.80 a $289.75 diarios, **+11.96%**, contra el +24.40% del Gansito: la caída del poder
   adquisitivo es −10.88% medida sobre los niveles y −10.00% sobre las dos series base 100
