@@ -21,8 +21,8 @@
                   {
                     "value": "¿Quién subió?",
                     "textStyle": {
-                      "fontSize": "20pt",
-                      "fontWeight": "bold"
+                      "fontWeight": "bold",
+                      "fontSize": "24pt"
                     }
                   }
                 ]
@@ -32,7 +32,7 @@
                   {
                     "value": "El índice partido por canal, el nivel de precio partido por cadena · cada corte publica sólo donde hay tiendas suficientes para sostenerlo",
                     "textStyle": {
-                      "fontSize": "10pt"
+                      "fontSize": "14pt"
                     }
                   }
                 ]

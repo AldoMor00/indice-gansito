@@ -140,8 +140,9 @@ table Medidas
 		displayFolder: Inflación y salario
 		lineageTag: c81a4b73-05e9-4f26-8d47-1e2093bc6a58
 
-	/// Cambio del Gansito descontando la inflación general. Es el titular del proyecto: el
-	/// nominal dice cuánto subió el precio, éste dice cuánto subió de más.
+	/// Cambio del Gansito descontando la inflación general: el nominal dice cuánto subió el
+	/// precio y éste cuánto subió de más. El reporte titula con el nominal, que es lo que se
+	/// paga en el mostrador; el real vive sólo en P1, contra el nivel general de precios.
 	measure 'Cambio real %' =
 			VAR Nominal = [Cambio encadenado %]
 			RETURN
@@ -465,10 +466,11 @@ table Medidas
 		displayFolder: Cobertura y guarda
 		lineageTag: e5187630-7608-46c8-bc85-68bd5557c0d2
 
-	/// Cuántos eslabones no llegan al umbral. Es lo que vuelve visible el parámetro: con el
-	/// umbral en 30 son cero de 45, y sube conforme se mueve. Los eslabones sin una sola tienda
-	/// pareada no cuentan como reprobados porque no existen; el `+ 0` es para que la tarjeta
-	/// publique el cero en vez de un blanco, que aquí sí es dato.
+	/// Cuántos de los 45 eslabones no llegan al umbral. Al grano nacional son cero para
+	/// cualquier umbral razonable —el eslabón más flaco de los nueve SKUs trae 162 tiendas
+	/// pareadas—, y ése es el punto: la guarda existe y aquí no tiene que actuar. Donde actúa
+	/// es por canal y por cadena. Los eslabones sin una sola tienda pareada no cuentan porque
+	/// no existen, y el `+ 0` publica el cero en vez de un blanco, que aquí sí es dato.
 	measure 'Eslabones bajo el umbral' =
 			COUNTROWS(
 			    FILTER(

@@ -22,7 +22,7 @@
                     "value": "¿Alcanza para más o para menos?",
                     "textStyle": {
                       "fontWeight": "bold",
-                      "fontSize": "20pt"
+                      "fontSize": "24pt"
                     }
                   }
                 ]
@@ -32,7 +32,7 @@
                   {
                     "value": "Un día de salario mínimo contra el precio del Gansito · CONASAMI y Profeco · 46 quincenas",
                     "textStyle": {
-                      "fontSize": "10pt"
+                      "fontSize": "14pt"
                     }
                   }
                 ]

@@ -22,7 +22,7 @@
                     "value": "¿Dónde cuesta más?",
                     "textStyle": {
                       "fontWeight": "bold",
-                      "fontSize": "20pt"
+                      "fontSize": "24pt"
                     }
                   }
                 ]
@@ -32,7 +32,7 @@
                   {
                     "value": "Corte transversal de una quincena · sin comparación temporal no hay pareo, así que aquí entran todas las tiendas observadas",
                     "textStyle": {
-                      "fontSize": "10pt"
+                      "fontSize": "14pt"
                     }
                   }
                 ]

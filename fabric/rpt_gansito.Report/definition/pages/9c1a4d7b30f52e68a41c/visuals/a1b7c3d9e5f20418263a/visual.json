@@ -22,7 +22,7 @@
                     "value": "¿De cuántas tiendas sale el número?",
                     "textStyle": {
                       "fontWeight": "bold",
-                      "fontSize": "20pt"
+                      "fontSize": "24pt"
                     }
                   }
                 ]
@@ -32,7 +32,7 @@
                   {
                     "value": "Cobertura del panel y el umbral que decide qué se publica · 45 eslabones · el parámetro se mueve",
                     "textStyle": {
-                      "fontSize": "10pt"
+                      "fontSize": "14pt"
                     }
                   }
                 ]

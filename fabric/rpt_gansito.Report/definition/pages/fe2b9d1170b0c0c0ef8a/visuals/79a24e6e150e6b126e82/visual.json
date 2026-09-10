@@ -22,7 +22,7 @@
                     "value": "¿Cuánto subió el Gansito, de verdad?",
                     "textStyle": {
                       "fontWeight": "bold",
-                      "fontSize": "20pt"
+                      "fontSize": "24pt"
                     }
                   }
                 ]
@@ -32,7 +32,7 @@
                   {
                     "value": "Índice Jevons encadenado · 46 quincenas · enero 2024 – noviembre 2025 · precios de Profeco",
                     "textStyle": {
-                      "fontSize": "10pt"
+                      "fontSize": "14pt"
                     }
                   }
                 ]

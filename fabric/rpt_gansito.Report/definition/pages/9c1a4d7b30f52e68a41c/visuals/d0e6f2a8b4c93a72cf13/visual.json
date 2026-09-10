@@ -51,6 +51,20 @@
                       "Entity": "Medidas"
                     }
                   },
+                  "Property": "Eslabones"
+                }
+              },
+              "queryRef": "Medidas.Eslabones",
+              "nativeQueryRef": "Eslabones"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Medidas"
+                    }
+                  },
                   "Property": "Pareo mediano"
                 }
               },
@@ -129,7 +143,22 @@
         }
       ]
     },
-    "drillFilterOtherVisuals": true
+    "drillFilterOtherVisuals": true,
+    "objects": {
+      "total": [
+        {
+          "properties": {
+            "totals": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
   },
   "filterConfig": {
     "filters": [

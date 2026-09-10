@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "a6172839405162738495",
+  "name": "a8394051627384950617",
   "position": {
     "x": 36,
-    "y": 304,
-    "z": 500,
+    "y": 686,
+    "z": 600,
     "height": 358,
     "width": 912,
-    "tabOrder": 500
+    "tabOrder": 600
   },
   "visual": {
     "visualType": "lineChart",
@@ -61,11 +61,11 @@
                       "Entity": "Medidas"
                     }
                   },
-                  "Property": "Índice encadenado"
+                  "Property": "Precio promedio"
                 }
               },
-              "queryRef": "Medidas.Índice encadenado",
-              "nativeQueryRef": "Índice encadenado"
+              "queryRef": "Medidas.Precio promedio",
+              "nativeQueryRef": "Precio promedio"
             }
           ]
         }
@@ -148,7 +148,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Índice encadenado por canal, base 100 en 2024-01_q1 · tradicional no publica: 7 tiendas pareadas contra 30'"
+                  "Value": "'Precio promedio por canal · nivel en pesos, sobre todas las tiendas observadas'"
                 }
               }
             },
@@ -181,7 +181,7 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "70ce4992320485950718",
+        "name": "1a4f7c02e5b8319d6042",
         "field": {
           "Column": {
             "Expression": {
@@ -195,7 +195,7 @@
         "type": "Categorical"
       },
       {
-        "name": "b365ce3f24c33b62400d",
+        "name": "2b5a8d13f6c942ae7153",
         "field": {
           "Column": {
             "Expression": {
@@ -207,20 +207,6 @@
           }
         },
         "type": "Categorical"
-      },
-      {
-        "name": "3d65945a2d1c5546bb0e",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Índice encadenado"
-          }
-        },
-        "type": "Advanced"
       }
     ]
   }
