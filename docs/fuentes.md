@@ -33,6 +33,25 @@ cadena_comercial, giro, nombre_comercial, direccion, estado, municipio, latitud,
 Entre 140 y 225 MB y entre 437 y 710 mil filas por archivo, con BOM, CRLF y comas
 embebidas entre comillas.
 
+## Lo que Profeco dice de su método
+
+No hay nota metodológica pública. El portal documenta la cobertura —más de 2,000 productos en
+poco más de 1,450 establecimientos de hasta 54 ciudades, actualizado todos los días hábiles— y
+describe la muestra como "los establecimientos más destacados de cada ciudad". El criterio de
+selección no se publica: no hay marco muestral ni diseño probabilístico declarado.
+
+Y una advertencia explícita de la fuente:
+
+> Los precios sirven exclusivamente como referencia de compra para el consumidor, por la
+> metodología utilizada no permiten medir la inflación que se registra en el país.
+
+Profeco añade que "la única autoridad facultada para determinarla es el INEGI". Este proyecto no
+publica inflación: publica el cambio de precio de un producto concreto, medido por pareo de
+tiendas, y lo deflacta con el INPC que publica INEGI. La advertencia es de la fuente y va
+citada, no reinterpretada.
+
+Consultado el 2026-09-09 en <https://www.profeco.gob.mx/precios/quienesquie_nvo.asp>.
+
 ## Lo que no es obvio
 
 - **`producto` es el genérico, no el nombre comercial.** El Gansito está en `presentacion`
@@ -63,13 +82,13 @@ embebidas entre comillas.
   y `fecha_registro` es `yyyy/MM/dd` sin hora, así que las visitas de un mismo día no se
   pueden ordenar.
 - **177 veces el mismo día, tienda y SKU traen dos precios distintos**, el 0.17% de las
-  filas, siempre exactamente dos y siempre distintos como número, no como formato. No es
-  error de captura: en 169 de 177 al menos uno de los dos valores es un precio que esa
-  tienda cobra en su propia serie, y en 26 lo son los dos. Se descomponen en tres fenómenos
-  —57 con el precio bajo estable de los dos lados, 35 con el alto estable, que es la
-  promoción clásica, y 26 de cambio de precio que las dos capturas cruzan—. Los 17 con firma
-  de alza, el bajo empatando con el vecino previo y el alto con el siguiente, la confirman
-  **17 de 17** con `previo < siguiente`.
+  filas, siempre exactamente dos y siempre distintos como número, no como formato. Lo que sí
+  se puede afirmar es que no parecen ruido de captura: en 169 de 177 al menos uno de los dos
+  valores es un precio que esa tienda cobra en su propia serie, y en 26 lo son los dos. Qué
+  los produce no se sabe. Promoción, cambio de precio a media captura y otras causas
+  explicarían partes, pero eso es reconstrucción nuestra y no algo que la fuente diga, así
+  que no se tratan como fenómenos clasificados: la fuente es ruidosa y así se trata. No hace
+  falta más, porque el grano quincenal los promedia (decisión #12).
 - **Bajo esa clave no cambia nada.** Cadena, giro, estado, municipio y coordenada son
   constantes en las 2,392 tiendas por 46 quincenas, y normalizar —trim, mayúsculas, espacios
   colapsados— no fusiona ni una clave ni deja nulos. Lo que sí rota es el panel: sólo 581

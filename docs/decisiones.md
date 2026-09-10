@@ -189,9 +189,9 @@ El requisito queda en `fabric/README.md` junto a High concurrency, porque vive f
 Silver lee de bronze el `intento` máximo de cada quincena y agrega a tienda-SKU-quincena.
 Promediar varias visitas ya es el caso normal —de las 126,493 celdas de la canasta, sólo 49,179
 traen una sola observación—, así que los 177 grupos con dos precios distintos el mismo día
-dejan de ser un caso especial en cuanto el grano deja de intentar ser diario. No fallan ninguna regla de
-calidad: son promociones, alzas cruzadas y precios transitorios, medidos en
-[`fuentes.md`](fuentes.md), y ninguno se tira. Cuál de los dos se tome es inmaterial: el bajo,
+dejan de ser un caso especial en cuanto el grano deja de intentar ser diario. No fallan ninguna
+regla de calidad y ninguno se tira. Qué los produce no se sabe y no hace falta saberlo, medido
+en [`fuentes.md`](fuentes.md). Cuál de los dos se tome es inmaterial: el bajo,
 el alto o el promedio mueven el cambio del Gansito entre la primera y la última quincena 0.07
 puntos porcentuales. Se promedia porque conserva las dos observaciones en vez de escoger una
 sin criterio.
