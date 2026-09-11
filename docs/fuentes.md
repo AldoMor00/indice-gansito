@@ -177,6 +177,24 @@ que `corte_tiendas` con las suyas —era la asimetría que dejó pasar esto—, 
 escribe con `mergeSchema` apagado: la corrida que tumbó junio hizo exactamente lo que la
 decisión #8 le pide.
 
+## Ni la misma codificación
+
+**Mayo de 2026 llegó en cp1252 y sin BOM**, sus dos quincenas; las otras 60 vienen en utf-8
+con BOM. Comprobado archivo por archivo sobre los 62: son los únicos dos que no decodifican
+como utf-8, y también los únicos dos sin BOM. Que el BOM sea aquí un discriminador perfecto
+es una coincidencia de esta fuente y no se usa como tal: es opcional en utf-8 y el estándar
+desaconseja ponerlo, así que su ausencia no significa nada (decisión #37).
+
+Eso no truena solo, y ahí está el problema: leer cp1252 como utf-8 *lossy* cambia cada byte
+inválido por `U+FFFD` en vez de fallar, así que `Panqué` se vuelve `Panqu?` y entra al repo
+como si nada —**15,125 celdas** entre las dos quincenas—. Lo que sí truena es la compuerta
+de silver, tres capas después y disfrazado: `Panqué Nuez` y `Panqu?  Nuez` cuentan como dos
+presentaciones distintas, así que la canasta de 9 pasó a 11 y `nb_20` detuvo la corrida.
+
+La ingesta comprueba la codificación antes de leer y se cae a cp1252 cuando hace falta
+(decisión #37). El síntoma vale como aviso general: **una fuente puede corromperse sin que
+nada falle**, y lo único que lo cazó fue una regla de calidad que contaba SKUs.
+
 ---
 
 # CONASAMI — salario mínimo

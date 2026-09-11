@@ -759,3 +759,50 @@ de establecimientos tampoco sustituye a `dim_tienda` —sin dirección, con foli
 sólo el padrón actual— y el endpoint de precios es del día, sin historia. Queda medido en
 `fuentes.md` por si algún día Profeco publica las llaves en los archivos, que es cuando
 cambiaría la identidad del modelo.
+
+## 37. La ingesta comprueba la codificación, no la supone
+
+`lee_csv` leía todo con `utf8-lossy`, que absorbe el BOM y nunca falla. Mayo de 2026 llegó
+en cp1252 y sin BOM —los dos únicos archivos así de los 62— y `lossy` hizo lo que promete:
+cambió cada byte inválido por `U+FFFD` y siguió. 15,125 celdas corruptas entraron al repo
+de datos sin que nada se quejara.
+
+Ahora se comprueba: si el archivo entero no decodifica como utf-8 —por trozos, sin cargarlo
+en memoria— se lee como cp1252 y se dice en la corrida. El camino normal no cambia, ni en
+código ni en bytes: el corte regenerado de `2026-07_q2` sale idéntico al commiteado.
+
+Las dos quincenas de mayo se rehicieron desde el mismo CSV, sin `intento` nuevo y por la
+misma razón que junio (#36): el `sha256` del manifiesto es el del archivo de origen, que no
+cambió, así que una línea nueva no diría nada.
+
+Lo que vale la pena dejar escrito no es el arreglo sino el síntoma. **Una fuente puede
+corromperse sin que nada falle**, y aquí nada falló: ni la descarga, ni el hash, ni el
+esquema, ni el conteo de filas. Lo cazó la compuerta de `nb_20` contando presentaciones,
+y lo cazó disfrazado —`Panqué Nuez` y `Panqu?  Nuez` son dos SKUs para cualquier `distinct`,
+así que la canasta de 9 se veía como 11—. Es el argumento de la regla #3 en su forma más
+literal: la compuerta no sabía nada de codificaciones y aun así detuvo la corrida.
+
+El orden de la comprobación no es decorativo. utf-8 va primero porque es autovalidante: una
+secuencia arbitraria de bytes casi nunca decodifica limpia por accidente, así que si pasa,
+es. Las de un byte no tienen esa propiedad —`cp1252` rechaza 5 bytes de 256 y `latin-1`
+ninguno—, por eso el respaldo es uno solo y nombrado, y por eso no es `latin-1`: una
+codificación que nunca falla nunca puede detectar que está equivocada.
+
+Eso es también lo que separa esto de una cascada de las que fallan en silencio: **al
+respaldo sólo se llega cuando el archivo ya demostró que no es utf-8**, así que un utf-8 no
+puede acabar leído como cp1252 por accidente. Si tampoco es cp1252, la ingesta truena.
+
+**El BOM no se mira.** Se evaluó usarlo como discriminador —en estos 62 archivos lo sería,
+perfecto: los 60 de utf-8 lo traen y los 2 de cp1252 no— y se descartó, porque es opcional
+y el estándar Unicode desaconseja ponerlo en utf-8. La regla "sin BOM ⇒ cp1252" convertiría
+el primer utf-8 generado fuera de Windows en mojibake, en silencio y al revés.
+
+Queda un riesgo aceptado y va escrito: un archivo que no sea utf-8 **ni** cp1252 pero que
+cp1252 acepte —otra codificación de un byte, o un utf-16, que decodifica como
+`ÿþP\x00a\x00n\x00`— pasaría con letras equivocadas. Es estrecho y no ha ocurrido; si
+ocurre, lo que lo va a cazar es una compuerta de silver, como esta vez.
+
+Lo detectado se guarda en el manifiesto junto al `sha256`, no sólo en el log: eso es lo que
+lo saca de la categoría de fallo silencioso, porque deja rastro durable de que esa quincena
+se leyó distinto. Las 62 líneas quedaron selladas —60 en `utf-8`, 2 en `cp1252`— y ningún
+parquet se movió al hacerlo.
