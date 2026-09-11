@@ -67,9 +67,10 @@ def exporta(tabla: str, destino: str) -> dict:
     sacar el archivo y tirar el directorio: la URL que consume Power BI tiene que ser fija y
     el `uuid` cambia en cada corrida.
 
-    El `coalesce(1)` no es sólo para que salga uno solo. Con las 46 particiones de
-    `hechos_precios` en un archivo el diccionario comprime sobre la columna entera, así que
-    el resultado pesa menos que la suma de las partes.
+    El `coalesce(1)` es por ese nombre, no por compresión. Cuando `hechos_precios` eran 46
+    particiones, fusionarlas al exportar ahorraba un tercio; desde que la tabla es un solo
+    archivo el parquet exportado pesa lo que ella —378,767 contra 379,918 bytes—, así que lo
+    único que sigue comprando es que Spark no reparta la salida en varias partes.
     """
     gold = spark.read.format("delta").load(ruta_tabla(tabla, GOLD))
     filas = gold.count()

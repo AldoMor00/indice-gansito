@@ -38,6 +38,11 @@ CORRIDA = _runt_ctx["activityId"]
 RAW = "https://raw.githubusercontent.com/AldoMor00/indice-gansito-datos/main"
 BRONZE, SILVER, GOLD = "lh_bronze", "lh_silver", "lh_gold"
 
+# Las columnas de clustering de los hechos por quincena, en silver y en gold: las dos que
+# aparecen en todo predicado —el eje del reporte y el grano del índice—. Van aquí y no en
+# cada notebook para que las tres tablas no se separen entre capas.
+CLUSTER_HECHO = ("_quincena", "id_producto")
+
 # ANSI encendido. Fabric lo trae apagado, así que un `cast` fallido daría nulo en silencio;
 # con esto truena. Es lo que vuelve a `cast` y `try_cast` dos decisiones distintas y
 # visibles —"esto tiene que pasar" contra "esto puede faltar"— en vez de la misma escrita de
@@ -229,6 +234,23 @@ def exige_invariantes(ruta: str, checks: dict[str, str]) -> None:
         if nombre not in puestas:
             spark.sql(f"ALTER TABLE delta.`{ruta}` ADD CONSTRAINT {nombre} CHECK ({predicado})")
             print(f"constraint {nombre}: puesta")
+
+
+def exige_clustering(ruta: str, columnas: tuple[str, ...]) -> None:
+    """Deja declarado el liquid clustering de la tabla, y no repite el DDL si ya está.
+
+    Va por `ALTER TABLE` y no en la escritura porque `DataFrameWriter.clusterBy` sobre una
+    tabla por ruta **se traga las columnas sin avisar**: no truena y la tabla queda sin
+    clusterizar (medido, en hechos.md). El metadato es lo único que dice la verdad.
+
+    Mismo reparto que `exige_invariantes`, y por el mismo motivo: lo aplica el notebook que
+    escribe, porque un DDL suelto desaparece al recrear la tabla y una garantía que crees
+    tener y no tienes es peor que ninguna.
+    """
+    ya = DeltaTable.forPath(spark, ruta).detail().first()["clusteringColumns"]
+    if list(ya or []) != list(columnas):
+        spark.sql(f"ALTER TABLE delta.`{ruta}` CLUSTER BY ({', '.join(columnas)})")
+        print(f"clustering {ruta.rsplit('/', 1)[-1]}: {', '.join(columnas)}")
 
 
 def exige_llave_unica(sdf, llave: str) -> None:

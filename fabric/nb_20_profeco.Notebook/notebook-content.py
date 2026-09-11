@@ -52,6 +52,12 @@ quincenas_pedidas = ""
 # genérico vienen de nb_00_config. CONASAMI va aparte, en nb_21: su dimensión se mueve una
 # vez al año y no cuelga de este lote.
 
+# Silver la leen Spark y el SQL endpoint, no Power BI: `readHeavyForSpark` prende optimize
+# write —que compacta antes de escribir, y hace falta desde que el hecho dejó de estar
+# particionado— y deja el V-Order apagado, que sólo paga donde lee Direct Lake. Explícito
+# porque con High concurrency la sesión se comparte entre los notebooks de un pipeline.
+spark.conf.set("spark.fabric.resourceProfile", "readHeavyForSpark")
+
 # `hechos_precios` es el estado de silver: qué quincenas ya se procesaron y con qué
 # intento. Si no existe —primera corrida— todo sale pendiente y el backfill es esta misma.
 TABLA_HECHOS = "hechos_precios"
@@ -94,26 +100,26 @@ def pendientes_silver(precios) -> list[str]:
 
 
 def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
-    """Hecho: se reescriben las particiones de las quincenas recalculadas y nada más.
+    """Hecho: se reescribe lo de las quincenas recalculadas y nada más.
     `replaceWhere` hace la corrida re-ejecutable sin duplicar y cuesta lo que pesan esas
     quincenas, no lo que pesa la tabla —la diferencia que importa cuando el hecho no cabe
     en memoria—. Un MERGE daría el mismo resultado leyendo la tabla entera para buscar
     filas que por construcción no existen: la quincena está completa o no está.
 
-    Delta valida que lo escrito caiga dentro del predicado, así que una fila de otra
-    quincena truena en vez de colarse.
+    El predicado va sobre `_quincena`, que no es columna de partición —la tabla es
+    clusterizada—. `replaceWhere` no exige que lo sea, y valida igual que lo escrito caiga
+    dentro del predicado, así que una fila de otra quincena truena en vez de colarse.
     """
     if not quincenas:
         apunta(tabla, filas=0, quincenas=0)
         return
 
-    # "_quincena IN ('2024-01_q1', '2024-01_q2', ...)" — el predicado de las particiones
-    # que esta corrida tiene derecho a pisar.
+    # "_quincena IN ('2024-01_q1', '2024-01_q2', ...)" — lo que esta corrida tiene derecho
+    # a pisar.
     filtro = "_quincena IN (" + ", ".join(f"'{q}'" for q in quincenas) + ")"
     (
         nuevas.write.format("delta")
         .mode("overwrite")
-        .partitionBy("_quincena")
         .option("replaceWhere", filtro)
         .save(ruta_tabla(tabla, SILVER))
     )
@@ -331,6 +337,11 @@ exige_llave_unica(dim_tienda, "id_tienda")
 upsert(dim_producto, "dim_producto", ["id_producto"])
 upsert(dim_tienda, "dim_tienda", ["id_tienda"])
 reemplaza_quincenas(hechos, TABLA_HECHOS, quincenas_lote)
+
+# El layout del hecho, declarado por el notebook que escribe: liquid clustering en lugar de
+# partición. Es un ALTER idempotente y de la segunda corrida en adelante no hace nada; lo
+# que lo aplica es el OPTIMIZE del mantenimiento, no la escritura.
+exige_clustering(ruta_tabla(TABLA_HECHOS, SILVER), CLUSTER_HECHO)
 
 # Un precio de cero o negativo castea perfecto y ANSI no lo ve; `gramos` es el divisor de
 # `precio_por_gramo` en gold.

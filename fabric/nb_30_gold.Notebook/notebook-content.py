@@ -59,6 +59,13 @@ quincenas_pedidas = ""
 import numpy as np
 from pyspark.sql import Window
 
+# Gold la lee Direct Lake, que es donde el V-Order paga —40-60% en cold cache, contra ~10%
+# en el SQL endpoint y nada en Spark— y donde su 15% de escritura más lenta se paga una vez.
+# `readHeavyForPBI` lo prende junto con optimize write. Va aquí, en la escritura, y no en el
+# mantenimiento: `OPTIMIZE ... VORDER` no V-Ordena hacia atrás lo que decide no reescribir
+# (medido, en hechos.md).
+spark.conf.set("spark.fabric.resourceProfile", "readHeavyForPBI")
+
 # `hechos_precios` es el estado de gold, igual que en silver: qué quincenas ya se
 # proyectaron. Si no existe —primera corrida— todo sale pendiente y el backfill es esta misma.
 TABLA_HECHOS = "hechos_precios"
@@ -322,11 +329,12 @@ def intervalo_del_indice(relativos, calendario):
 
 
 def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
-    """Hecho: se reescriben las particiones de las quincenas recalculadas y nada más.
+    """Hecho: se reescribe lo de las quincenas recalculadas y nada más.
     Mismo patrón que en silver —la quincena está completa o no está— pero contra gold.
 
-    Delta valida que lo escrito caiga dentro del predicado, así que una fila de otra
-    quincena truena en vez de colarse.
+    El predicado va sobre `_quincena`, que no es columna de partición: las dos tablas son
+    clusterizadas. Delta valida igual que lo escrito caiga dentro del predicado, así que
+    una fila de otra quincena truena en vez de colarse.
     """
     if not quincenas:
         apunta(tabla, filas=0, quincenas=0)
@@ -336,7 +344,6 @@ def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
     (
         nuevas.write.format("delta")
         .mode("overwrite")
-        .partitionBy("_quincena")
         .option("replaceWhere", filtro)
         .save(ruta_tabla(tabla, GOLD))
     )
@@ -513,8 +520,9 @@ hechos_precios = (
         "observaciones",
         "precio_min",
         "precio_max",
-        # Linaje y predicado de `replaceWhere` a la vez: la etiqueta legible es lo que se lee
-        # en el log y lo que acota qué particiones tiene derecho a pisar esta corrida.
+        # Linaje, predicado de `replaceWhere` y clave de clustering a la vez: la etiqueta
+        # legible es lo que se lee en el log y lo que acota qué tiene derecho a pisar esta
+        # corrida.
         "_quincena",
     )
 )
@@ -610,6 +618,13 @@ apunta(
 )
 
 upsert(hechos_ic_indice.drop("orden"), TABLA_IC, ["id_quincena", "id_producto"], GOLD)
+
+# El layout de los dos hechos por quincena, declarado por el notebook que escribe: liquid
+# clustering en lugar de partición. `hechos_ic_indice` no entra —su grano es SKU × quincena
+# y cabe en un archivo—. Son ALTER idempotentes; lo que aplica el layout es el OPTIMIZE del
+# mantenimiento, no la escritura.
+exige_clustering(ruta_tabla(TABLA_HECHOS, GOLD), CLUSTER_HECHO)
+exige_clustering(ruta_tabla(TABLA_RELATIVOS, GOLD), CLUSTER_HECHO)
 
 # `smg_real` es el divisor del deflactor y `precio_promedio` el del relativo: un cero castea
 # perfecto y ANSI no lo ve. Son predicados de una fila, que es lo único que Delta expresa.

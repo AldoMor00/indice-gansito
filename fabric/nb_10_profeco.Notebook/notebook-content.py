@@ -26,6 +26,11 @@
 # filtrar ni deduplicar (regla dura #2). Lo compartido con nb_11_conasami vive en
 # nb_00_config. Aquí no corre nada: la corrida es la celda de abajo.
 
+# El perfil de recursos, explícito aunque `writeHeavy` sea el default del workspace: con
+# High concurrency los notebooks de un pipeline comparten sesión, así que el perfil que haya
+# puesto el que corrió antes seguiría puesto aquí. Cada notebook declara el suyo.
+spark.conf.set("spark.fabric.resourceProfile", "writeHeavy")
+
 FUENTE = "profeco"
 
 # Cómo se llavea esta fuente: campo del manifiesto -> columna de linaje.

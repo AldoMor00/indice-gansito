@@ -26,6 +26,11 @@
 # misma mecánica de nb_00_config, pero llaveada por (archivo, version): esta fuente no
 # tiene período, se versiona por sha256 (decisión #9). Aquí no corre nada.
 
+# Explícito aunque `writeHeavy` sea el default del workspace: con High concurrency los
+# notebooks de un pipeline comparten sesión, y el perfil del que corrió antes seguiría
+# puesto aquí. Cada notebook declara el suyo.
+spark.conf.set("spark.fabric.resourceProfile", "writeHeavy")
+
 FUENTE = "conasami"
 
 LLAVES = [("archivo", "_archivo"), ("version", "_version")]
