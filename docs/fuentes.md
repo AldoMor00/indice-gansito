@@ -4,24 +4,61 @@ Qué traen los archivos que se ingestan y qué se puede dar por cierto de ellos.
 **hacemos** al respecto no está aquí: vive en `scripts/ingesta_profeco.py`,
 `scripts/ingesta_conasami.py` y `objetivo.yml`.
 
-Las dos salen de `repodatos.atdt.gob.mx`, sin token, y ninguna expone listado de
-directorio: la única forma de saber qué hay publicado es pedirlo, o preguntarle al
-catálogo (`datos.gob.mx/api/3/action/package_show?id=...`).
+CONASAMI sale de `repodatos.atdt.gob.mx`, sin token y sin listado de directorio: la única
+forma de saber qué hay publicado es pedirlo, o preguntarle al catálogo
+(`datos.gob.mx/api/3/action/package_show?id=...`). Profeco salía de ahí también, hasta que
+ese canal se congeló y hubo que mudarse a su portal (decisión #34).
 
 ---
 
 # Profeco — *Quién es Quién en los Precios*
 
-Medido sobre `01-2024_01` y `11-2025_02` completos, en agosto de 2026.
+Medido sobre `01-2024_01` y `11-2025_02` completos, en agosto de 2026. Lo de 2026 se
+midió aparte, en septiembre, y va al final.
 
 ## Dónde está
 
+Un bundle por año, en el portal de datos abiertos de Profeco:
+
 ```
-repodatos.atdt.gob.mx/api_update/profeco/programa_quien_es_quien_precios_AAAA/MM-AAAA_QQ.csv
+datos.profeco.gob.mx/datos_abiertos/qqp.php            listado
+datos.profeco.gob.mx/datos_abiertos/file.php?t=TOKEN   el bundle de un año
 ```
 
-`QQ` es `01` o `02`. Hay 46 quincenas contiguas, de `01-2024_01` a `11-2025_02`, sin
-huecos, y nada de 2023.
+El `TOKEN` es una cadena de 32 hexadecimales asignada a mano, no derivable: el de 2024
+termina en `95c5` y el del diccionario de datos en `95c7`. La única forma de conocer el de
+un año es leerlo del listado, que es HTML servido por PHP —sin XHR ni JSON detrás: la
+página hace dos peticiones y una es un jQuery que da 404—.
+
+Lo que hay que saber para automatizarlo:
+
+- **Se baja entero o nada.** El bundle ignora `Range` —contesta `200` y `chunked`— y no
+  manda `Content-Length`, `Last-Modified` ni `ETag`, con `Cache-Control: no-store`. No hay
+  forma barata de preguntarle si cambió. Por eso la sonda es el CSV de metadatos (877
+  bytes), que declara `Cobertura temporal` y `Última modificación`.
+- **Un token inválido contesta `200` con HTML**, no `404`: una página con un
+  `alert('Documento no disponible')`. Validar por código de estado no sirve; hay que ver
+  que lo que llegó sea un zip.
+- **El zip trae su propio manifiesto.** El directorio central lleva tamaño y CRC32 de cada
+  miembro, legibles sin descomprimir. Es lo que permite saber qué quincenas reescribió la
+  fuente sin volver a hashear 2.5 GB.
+- **No pide nada.** Ni cookie, ni referer, ni `User-Agent`.
+- **2025 viene en `.rar`**; 2024 y 2026 en `.zip`. Por eso el script tiene `--local`, que
+  procesa los CSV ya extraídos a mano.
+- **El nombre del archivo cambió de convención**: `MM-AAAA_01`/`_02` hasta 2025,
+  `MM-AAAA_Q1`/`_Q2` desde 2026. El script acepta las dos.
+
+## Es el mismo archivo que servía repodatos
+
+Verificado en septiembre de 2026: las **46** quincenas que el manifiesto había bajado de
+`repodatos.atdt.gob.mx` tienen el mismo `sha256` que sus copias dentro de los bundles del
+portal. Las 46, byte por byte, incluido el conteo de bytes ya registrado. Y el corte
+regenerado desde el portal para `2025-11_q2` sale idéntico al parquet commiteado, tanto
+en precios como en tiendas.
+
+O sea que el cambio de canal no partió la serie en dos ni obliga a re-ingestar nada, y el
+`url_origen` de esas 46 líneas apunta hoy a un host que da 503 sin que eso invalide su
+`sha256`: lo que promete el manifiesto sigue siendo cierto, sólo que por el portal.
 
 ## Qué trae
 
@@ -94,21 +131,32 @@ Consultado el 2026-09-09 en <https://www.profeco.gob.mx/precios/quienesquie_nvo.
   colapsados— no fusiona ni una clave ni deja nulos. Lo que sí rota es el panel: sólo 581
   tiendas (24.3%) aparecen en las 46, con una media de 31.
 
-## El programa dejó de publicar
+## Lo que cambió en 2026
 
-No es un cambio de ruta ni una caída. Tres cosas apuntan al mismo lado, medidas en agosto
-de 2026:
+El programa nunca dejó de publicar: lo que murió fue el canal. Durante nueve meses este
+documento dio por cerrada la ventana en `2025-11_q2` porque `repodatos.atdt.gob.mx`
+contestaba 503 a todo lo posterior —y lo sigue contestando— y porque el catálogo de
+`datos.gob.mx` no tiene un dataset de 2026. Las dos cosas siguen siendo ciertas y las dos
+eran la evidencia equivocada: Profeco se mudó a su propio portal y ahí publica **mensual**,
+con un mes de rezago. Julio de 2026 salió el 31 de agosto.
 
-- El patrón de URL sigue sirviendo: `11-2025_02.csv` contesta 206 a un range request, y
-  todo lo posterior —diciembre de 2025 y las quincenas de 2026— contesta 503.
-- El catálogo arma **un dataset por año**, que es por qué el año va en la ruta.
-  `programa_quien_es_quien_precios_2026` no existe: `package_show` responde `Not Found`.
-  Los dos que sí existen no se tocan desde diciembre de 2025.
-- Profeco sigue publicando en el mismo host: cinco datasets suyos —quejas, telecom,
-  comercio electrónico, aerolíneas, buró comercial— se actualizaron en marzo de 2026.
+Medido en septiembre de 2026 sobre `07-2026_Q2` contra `11-2025_02`:
 
-O sea: la ventana de análisis está cerrada en 2024-01 → 2025-11 y no falta nada por
-llegar. El cron sigue sondeando por si vuelve, no porque se le espere.
+- **El esquema no se movió.** Las mismas 15 columnas en el mismo orden, con BOM,
+  `fecha_registro` en `yyyy/MM/dd` y el corte de quincena en 1–15 / 16–31.
+- **El catálogo objetivo está completo.** Los 9 SKUs de `Pastelillos y Pan Dulce
+  Empaquetado` que había en la última quincena ingestada siguen los 9, y el corte creció
+  de 2,847 filas a 5,946. El Gansito conserva su cadena exacta —`Paquete con 1 Gansito
+  (50 Gr.)`, `Marinela`, `Pan`— y pasa de 316 a 664 filas.
+- **`catalogo` se acentuó**: `Basicos`→`Básicos`, `Electrodomesticos`→`Electrodomésticos`,
+  `Pacic`→`PACIC`. No toca la identidad —ni la de tienda ni la de SKU— pero parte en dos
+  cualquier agrupación por ese campo que cruce el año.
+- **El panel rota como siempre**: 1,197 de las 1,662 tiendas de `2025-11_q2` siguen en
+  `2026-07_q2`, dentro de lo que ya se sabía del panel.
+- Lo estacional se comporta: sale `Navideños`, entran `Útiles Escolares` y `Tenis`.
+
+Lo anterior a 2026 no se volvió a medir: las afirmaciones de arriba siguen acotadas a las
+46 quincenas sobre las que se hicieron.
 
 ---
 

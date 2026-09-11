@@ -664,3 +664,42 @@ notebooks de un pipeline comparten sesión, así que el perfil del que corrió a
 Qué le va a dar trabajo de verdad no son las tres tablas migradas —a este volumen `OPTIMIZE` se
 las salta— sino `hechos_ic_indice`, que el `MERGE` deja en siete archivos para 414 filas, y las
 deletion vectors que va dejando cada recálculo de quincenas.
+
+## 34. Profeco se lee del portal, por bundle anual
+
+`repodatos.atdt.gob.mx` sirvió un CSV por quincena hasta `2025-11_q2` y desde entonces
+contesta 503 a todo lo demás. Durante nueve meses eso se leyó como que el programa estaba
+suspendido. No lo estaba: Profeco se mudó a `datos.profeco.gob.mx/datos_abiertos/qqp.php`,
+donde publica mensual y con un mes de rezago, y donde la granularidad ya no es la quincena
+sino **un bundle por año**. La ingesta se mueve ahí y el canal viejo se descarta.
+
+No se re-ingesta nada. Las 46 quincenas que ya estaban tienen el mismo `sha256` que sus
+copias dentro de los bundles del portal —las 46, byte por byte— y el corte regenerado sale
+idéntico al parquet commiteado, así que la serie no se parte en dos y el manifiesto sigue
+siendo válido tal como está. Su `url_origen` apunta a un host caído, y se deja: es la
+bitácora de lo que pasó, no un catálogo de lo alcanzable. `docs/fuentes.md` explica por
+dónde se rehace hoy.
+
+Lo demás lo impone la forma del bundle. Se baja entero o nada —ignora `Range` y no manda
+`Last-Modified`, `ETag` ni `Content-Length`—, así que la corrida se decide antes con el CSV
+de metadatos, 877 bytes que declaran hasta qué mes cubre la fuente. El token de cada año es
+una cadena asignada a mano y no derivable, de modo que se resuelve leyendo el listado en
+cada corrida: es lo que hace que 2027 entre solo el día que aparezca su renglón, y lo que
+hace que la corrida truene —sin mapa de años— si algún día cambian la plantilla. Y como
+2025 se sirve en `.rar` mientras 2024 y 2026 van en `.zip`, el script no aprende a
+descomprimir rar: lleva `--local` para procesar CSV ya extraídos a mano, que es el camino
+de los años que no necesitan automatizarse.
+
+El bundle además regala algo que el canal viejo no daba: **el directorio central del zip
+trae el tamaño y el CRC32 de cada miembro sin descomprimir nada**, así que cotejarlos
+contra el manifiesto no cuesta ni una lectura extra. Con eso se detecta que Profeco
+reescribió una quincena ya procesada —el caso que el tamaño solo no ve, porque corregir un
+precio de 20 a 21 no mueve un byte de longitud—, y lo reescrito entra como `intento` nuevo
+sin pisar lo anterior. El manifiesto guarda el `crc32` junto al `sha256`; las 62 líneas que
+existían se sellaron de una vez, verificando antes el `sha256` de cada una.
+
+El alcance de esa comprobación es deliberado: **sólo se cotejan los años cuyo bundle hubo
+que bajar de todos modos**. Abrir uno nada más por revisar tiraría el ahorro de la sonda,
+y como la fuente publica mensual, cada publicación arrastra una quincena pendiente que
+obliga a abrir el año en curso y revisa sus catorce miembros de paso. Un año ya cerrado no
+se vuelve a mirar solo; para eso está `--rehacer`, que fuerza sin consultar sellos.

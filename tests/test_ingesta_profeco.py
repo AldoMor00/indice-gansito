@@ -4,6 +4,8 @@ No tocan la red: lo único que sale es `descarga`, que ya no vive aquí —se co
 la ingesta de CONASAMI— y se prueba en `test_fuente.py`.
 """
 
+import zipfile
+import zlib
 from datetime import date
 from pathlib import Path
 
@@ -51,10 +53,83 @@ MUESTRA = pl.DataFrame(
 OBJETIVO = ["Pastelillos y Pan Dulce Empaquetado"]
 
 
-def test_etiqueta_y_url():
+def _li(token: str, texto: str) -> str:
+    return f'<li><a href="file.php?t={token}">{texto}</a></li>'
+
+
+# El listado como lo sirve el portal, con la basura de plantilla incluida: un `</ul>`
+# suelto y los enlaces en desorden, 2025 antes que 2026.
+LISTADO = "\n".join(
+    [
+        "                     </ul>",
+        _li("b9540b181657c2bc7735892091e81f96", "Quien es Quien en los Precios 2025"),
+        _li("9d62040eae6dcc63e36b8ac821427647", "Quien es Quien en los Precios 2026"),
+        _li("42ed7dad4da507b9d536d9b737e7912d", "Metadatos dataset"),
+        _li("2de3505b2d37e7db72557a09262d95c5", "Quien es Quien en los Precios 2024"),
+        _li("2de3505b2d37e7db72557a09262d95c7", "Diccionario de datos dataset"),
+    ]
+)
+
+METADATOS = (
+    "Metadato,Descripción\n"
+    'Título,"Programa Quién es Quién en los Precios, Julio de 2026."\n'
+    "Cobertura temporal,2026-07-01 a 2026-07-31\n"
+    "Temporalidad de actualización,Mensual\n"
+)
+
+
+def test_etiqueta_y_los_dos_nombres_de_archivo():
     q = ingesta.Quincena(2025, 11, 2)
     assert q.etiqueta == "2025-11_q2"
-    assert q.url.endswith("programa_quien_es_quien_precios_2025/11-2025_02.csv")
+    # Hasta 2025 el sufijo era `_02`; desde 2026 es `_Q2`. Se aceptan los dos.
+    assert q.nombres == {"11-2025_02.csv", "11-2025_q2.csv"}
+
+
+def test_publicados_arma_un_bundle_por_anio():
+    assert ingesta.publicados(LISTADO) == {
+        2024: f"{ingesta.BASE}/file.php?t=2de3505b2d37e7db72557a09262d95c5",
+        2025: f"{ingesta.BASE}/file.php?t=b9540b181657c2bc7735892091e81f96",
+        2026: f"{ingesta.BASE}/file.php?t=9d62040eae6dcc63e36b8ac821427647",
+    }
+
+
+def test_publicados_no_confunde_el_diccionario_ni_los_metadatos():
+    # Los dos cuelgan del mismo `file.php` y sólo el texto del enlace los distingue.
+    assert ingesta.url_metadatos(LISTADO).endswith("t=42ed7dad4da507b9d536d9b737e7912d")
+
+
+def test_el_ano_que_falta_simplemente_no_esta():
+    # Es todo lo que el cambio de año necesita: 2027 entra solo cuando aparezca su `li`.
+    assert 2027 not in ingesta.publicados(LISTADO)
+
+
+def test_plantilla_cambiada_deja_el_mapa_vacio():
+    # Sin `li` que casar no hay de dónde sacar el token, y eso tiene que notarse.
+    assert ingesta.publicados("<p>ya no hay listado</p>") == {}
+    with pytest.raises(RuntimeError):
+        ingesta.url_metadatos("<p>ya no hay listado</p>")
+
+
+def test_cobertura_lee_el_mes_mas_reciente():
+    assert ingesta.cobertura(METADATOS) == (2026, 7)
+
+
+def test_cobertura_se_queja_si_el_metadato_cambia():
+    with pytest.raises(RuntimeError):
+        ingesta.cobertura("Metadato,Descripción\nAutor,Profeco\n")
+
+
+def test_miembro_reconoce_las_dos_convenciones():
+    nombres = ["QQP_2026/", "QQP_2026/07-2026_Q1.csv", "QQP_2026/07-2026_Q2.csv"]
+    assert ingesta.miembro(nombres, ingesta.Quincena(2026, 7, 2)) == "QQP_2026/07-2026_Q2.csv"
+
+    viejos = ["QQP_2025/11-2025_01.csv", "QQP_2025/11-2025_02.csv"]
+    assert ingesta.miembro(viejos, ingesta.Quincena(2025, 11, 2)) == "QQP_2025/11-2025_02.csv"
+
+
+def test_miembro_es_none_si_la_quincena_no_viene():
+    nombres = ["QQP_2026/07-2026_Q1.csv", "QQP_2026/07-2026_Q2.csv"]
+    assert ingesta.miembro(nombres, ingesta.Quincena(2026, 8, 1)) is None
 
 
 def test_quincenas_arranca_en_2024_y_no_pasa_del_mes():
@@ -121,6 +196,117 @@ def test_objetivo_yml_declara_el_corte():
 
     objetivo = yaml.safe_load((ingesta.RAIZ / "objetivo.yml").read_text(encoding="utf-8"))
     assert objetivo["producto"] == OBJETIVO
+
+
+def _bundle_falso(contenido: dict[str, str]):
+    """Reemplaza la descarga por un zip armado en memoria. No sale a la red."""
+
+    def escribe(_url, destino):
+        with zipfile.ZipFile(destino, "w") as zf:
+            for nombre, texto in contenido.items():
+                zf.writestr(nombre, texto)
+        return "sha", destino.stat().st_size
+
+    return escribe
+
+
+def test_del_bundle_extrae_lo_que_viene_y_se_salta_lo_que_no(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        ingesta,
+        "descarga",
+        _bundle_falso({"QQP_2026/07-2026_Q2.csv": "producto,precio\nGansito,20\n"}),
+    )
+    cola = [ingesta.Quincena(2026, 7, 1), ingesta.Quincena(2026, 7, 2)]
+    lote = list(ingesta.del_bundle("https://ejemplo/bundle", cola, {}, tmp_path))
+
+    assert [q.etiqueta for q, _, _ in lote] == ["2026-07_q2"]
+    _, crudo, origen = lote[0]
+    assert crudo.read_text(encoding="utf-8").startswith("producto,precio")
+    assert origen == "https://ejemplo/bundle#QQP_2026/07-2026_Q2.csv"
+
+
+def test_del_bundle_se_salta_lo_que_no_cambio_y_entrega_lo_reescrito(tmp_path, monkeypatch):
+    texto = "producto,precio\nGansito,20\n"
+    monkeypatch.setattr(
+        ingesta,
+        "descarga",
+        _bundle_falso(
+            {
+                "QQP_2026/07-2026_Q1.csv": texto,
+                "QQP_2026/07-2026_Q2.csv": texto,
+            }
+        ),
+    )
+    intacta, reescrita = ingesta.Quincena(2026, 7, 1), ingesta.Quincena(2026, 7, 2)
+    sellos = {
+        # La q1 con su sello real: el bundle la trae igual y no hay que tocarla.
+        intacta.etiqueta: (len(texto), zlib.crc32(texto.encode())),
+        # La q2 con el CRC32 de cuando el precio decía 21: mismo tamaño, otro contenido.
+        reescrita.etiqueta: (len(texto), zlib.crc32(texto.replace("20", "21").encode())),
+    }
+    lote = list(
+        ingesta.del_bundle("https://ejemplo/bundle", [intacta, reescrita], sellos, tmp_path)
+    )
+
+    assert [q.etiqueta for q, _, _ in lote] == ["2026-07_q2"]
+
+
+def test_del_bundle_truena_si_lo_que_bajo_no_es_zip(tmp_path, monkeypatch):
+    # Las dos formas de llegar aquí: el año que viene como rar, y la página de error del
+    # portal, que contesta 200 con HTML en vez de 404 cuando el token no existe.
+    def html(_url, destino):
+        destino.write_bytes(b"<script> alert('Documento no disponible'); </script>")
+        return "sha", destino.stat().st_size
+
+    monkeypatch.setattr(ingesta, "descarga", html)
+    cola = [ingesta.Quincena(2026, 7, 2)]
+    with pytest.raises(RuntimeError, match="--local"):
+        list(ingesta.del_bundle("https://ejemplo/bundle", cola, {}, tmp_path))
+
+
+def test_cambio_usa_el_tamano_y_el_crc_cuando_lo_hay():
+    # Tamaño distinto: no hace falta mirar nada más.
+    assert ingesta.cambio((100, 111), (200, 111)) is True
+    # Mismo tamaño y mismo CRC32: intacta.
+    assert ingesta.cambio((100, 111), (100, 111)) is False
+    # Mismo tamaño y otro CRC32: es justo el caso que el tamaño solo no ve.
+    assert ingesta.cambio((100, 222), (100, 111)) is True
+
+
+def test_cambio_sin_crc_de_algun_lado_se_queda_en_el_tamano():
+    # Las líneas de manifiesto anteriores a que se guardara el CRC32, y los CSV de
+    # `--local`, donde no hay directorio central del que leerlo.
+    assert ingesta.cambio((100, 222), (100, None)) is False
+    assert ingesta.cambio((100, None), (100, 111)) is False
+    assert ingesta.cambio((100, None), (200, None)) is True
+
+
+def test_sellos_se_queda_con_el_ultimo_intento():
+    manifiesto = [
+        {"quincena": "2026-01_q1", "bytes": 10, "crc32": 111, "intento": 1},
+        {"quincena": "2026-01_q1", "bytes": 20, "crc32": 222, "intento": 2},
+        {"quincena": "2025-11_q2", "bytes": 30, "intento": 1},
+    ]
+    # La reescrita vale por su última versión, y la línea vieja no trae CRC32.
+    assert ingesta.sellos_de(manifiesto) == {
+        "2026-01_q1": (20, 222),
+        "2025-11_q2": (30, None),
+    }
+
+
+def test_del_local_encuentra_el_csv_extraido_a_mano(tmp_path):
+    # La vía del año que la fuente sirve como rar: el CSV ya está en disco, anidado como
+    # lo deja el extractor.
+    (tmp_path / "QQP_2025").mkdir()
+    csv = tmp_path / "QQP_2025" / "12-2025_02.csv"
+    csv.write_text("producto,precio\n", encoding="utf-8")
+
+    cola = [ingesta.Quincena(2025, 12, 2), ingesta.Quincena(2025, 12, 1)]
+    lote = list(ingesta.del_local(tmp_path, "https://ejemplo/bundle", cola, {}))
+
+    # La que no está se salta sin tronar; la que sí, viaja con su origen.
+    assert [(q.etiqueta, ruta) for q, ruta, _ in lote] == [("2025-12_q2", csv)]
+    assert lote[0][2] == "https://ejemplo/bundle#12-2025_02.csv"
 
 
 @pytest.mark.parametrize("intento", [1, 3])
