@@ -664,3 +664,28 @@ notebooks de un pipeline comparten sesión, así que el perfil del que corrió a
 Qué le va a dar trabajo de verdad no son las tres tablas migradas —a este volumen `OPTIMIZE` se
 las salta— sino `hechos_ic_indice`, que el `MERGE` deja en siete archivos para 414 filas, y las
 deletion vectors que va dejando cada recálculo de quincenas.
+
+## 34. Profeco se lee del portal, por bundle anual
+
+`repodatos.atdt.gob.mx` sirvió un CSV por quincena hasta `2025-11_q2` y desde entonces
+contesta 503 a todo lo demás. Durante nueve meses eso se leyó como que el programa estaba
+suspendido. No lo estaba: Profeco se mudó a `datos.profeco.gob.mx/datos_abiertos/qqp.php`,
+donde publica mensual y con un mes de rezago, y donde la granularidad ya no es la quincena
+sino **un bundle por año**. La ingesta se mueve ahí y el canal viejo se descarta.
+
+No se re-ingesta nada. Las 46 quincenas que ya estaban tienen el mismo `sha256` que sus
+copias dentro de los bundles del portal —las 46, byte por byte— y el corte regenerado sale
+idéntico al parquet commiteado, así que la serie no se parte en dos y el manifiesto sigue
+siendo válido tal como está. Su `url_origen` apunta a un host caído, y se deja: es la
+bitácora de lo que pasó, no un catálogo de lo alcanzable. `docs/fuentes.md` explica por
+dónde se rehace hoy.
+
+Lo demás lo impone la forma del bundle. Se baja entero o nada —ignora `Range` y no manda
+`Last-Modified`, `ETag` ni `Content-Length`—, así que la corrida se decide antes con el CSV
+de metadatos, 877 bytes que declaran hasta qué mes cubre la fuente. El token de cada año es
+una cadena asignada a mano y no derivable, de modo que se resuelve leyendo el listado en
+cada corrida: es lo que hace que 2027 entre solo el día que aparezca su renglón, y lo que
+hace que la corrida truene —sin mapa de años— si algún día cambian la plantilla. Y como
+2025 se sirve en `.rar` mientras 2024 y 2026 van en `.zip`, el script no aprende a
+descomprimir rar: lleva `--local` para procesar CSV ya extraídos a mano, que es el camino
+de los años que no necesitan automatizarse.

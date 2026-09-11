@@ -9,12 +9,11 @@ name: ingesta
 
 on:
   schedule:
-    # Semanal. Era diario, con una razón que ya no se sostiene: Profeco publicaba sin
-    # calendario fijo y sondear dos veces al mes podía dejar una quincena esperando dos
-    # semanas. Pero el programa no publica desde `11-2025_02` y el dataset de 2026 no
-    # existe en el catálogo, así que no hay nada que alcanzar (ver docs/fuentes.md). Se
-    # sigue sondeando por si vuelve; enterarse seis días tarde de una fuente parada nueve
-    # meses no cuesta nada. A CONASAMI, que publica una vez al año, semanal le sobra.
+    # Semanal. Profeco publica una vez al mes —julio de 2026 salió el 31 de agosto— pero
+    # sin día fijo, así que un cron mensual podría errarle y esperar otro mes. Semanal le
+    # cuesta 877 bytes a las tres corridas que no encuentran nada: la sonda de metadatos
+    # decide si vale la pena bajar el bundle (ver docs/fuentes.md). A CONASAMI, que
+    # publica una vez al año, semanal le sobra.
     - cron: '0 12 * * 1'
   workflow_dispatch:
     inputs:
