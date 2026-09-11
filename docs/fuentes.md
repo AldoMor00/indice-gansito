@@ -2,7 +2,7 @@
 
 Qué traen los archivos que se ingestan y qué se puede dar por cierto de ellos. Lo que
 **hacemos** al respecto no está aquí: vive en `scripts/ingesta_profeco.py`,
-`scripts/ingesta_conasami.py` y `objetivo.yml`.
+`scripts/ingesta_conasami.py`, `scripts/ingesta_inpc.py` y `objetivo.yml`.
 
 CONASAMI sale de `repodatos.atdt.gob.mx`, sin token y sin listado de directorio: la única
 forma de saber qué hay publicado es pedirlo, o preguntarle al catálogo
@@ -158,6 +158,25 @@ Medido en septiembre de 2026 sobre `07-2026_Q2` contra `11-2025_02`:
 Lo anterior a 2026 no se volvió a medir: las afirmaciones de arriba siguen acotadas a las
 46 quincenas sobre las que se hicieron.
 
+## El archivo no siempre trae las mismas columnas
+
+**Junio de 2026 salió con 18 columnas en vez de 15**, sus dos quincenas, y julio volvió a
+15. Las tres de más son las llaves internas de Profeco:
+
+- **`folio` es la tienda.** 411 folios para 411 tiendas en `2026-06_q1` y 388 para 388 en
+  `2026-06_q2`, uno a uno en las dos direcciones. Confirma, contra el id propio de la
+  fuente, que la clave `(nombre_comercial, direccion)` deducida arriba era la correcta.
+- **`cv_marca` es el SKU, no la marca.** Nueve valores para los nueve SKUs del corte
+  objetivo: Marinela sale como 1, 2 y 4, y Bimbo como 10, 25, 29, 32, 33 y 34.
+- **`cv_producto` es el producto genérico.** Un solo valor en el corte, porque el corte es
+  un solo `producto`.
+
+No es una migración de esquema ni algo que se pueda esperar: es el sistema interno
+asomándose un mes. Por eso `corte_precios` declara sus 15 columnas y tira lo demás, igual
+que `corte_tiendas` con las suyas —era la asimetría que dejó pasar esto—, y por eso bronze
+escribe con `mergeSchema` apagado: la corrida que tumbó junio hizo exactamente lo que la
+decisión #8 le pide.
+
 ---
 
 # CONASAMI — salario mínimo
@@ -267,3 +286,46 @@ la última observación.
   de **julio de 2024**. Es la razón por la que se paga el costo del token.
 - **El token no entra al repo.** Va en la URL, así que el manifiesto guarda `{token}` en
   su lugar. Vive como secreto `INEGI_TOKEN` del repositorio.
+
+---
+
+# Profeco — la API del portal, que no se usa
+
+Medido en septiembre de 2026. **Está aquí porque se investigó y se descartó**, no porque
+se ingeste: ver la decisión #36.
+
+El portal de consulta —`qqp.profeco.gob.mx`— no es una página estática sobre los mismos
+archivos: tiene su propia API JSON, sin token, sin cookie y sin referer. Las rutas salen
+del bundle de la aplicación; ninguna está documentada.
+
+| ruta | qué devuelve |
+|---|---|
+| `/api/catalogo` | los 9 catálogos: `bas`, `ele`, `fru`, `jug`, `med`, `nav`, `pes`, `uti`, `esp` |
+| `/api/productos/{clave}` | 12,178 productos con `CVE_PRODUCTO`, `CVE_MARCA`, `MARCA`, `PRESENTACION`, `DES_PRODUCTO` |
+| `/api/establecimientos` | 7,607 filas con `folio`, `establecimiento`, `cadena_comercial`, `entidad` |
+| `/api/catalogo/entidades`, `/api/ciudades` | claves de estado y de ciudad |
+| `/api/producto?tipo=...` | precios **del día**, con dirección, colonia y CP |
+
+## Son las mismas llaves que se filtraron en junio
+
+El Gansito en el catálogo es `CVE_PRODUCTO='0008'` y `CVE_MARCA='002'`; lo que trajo junio
+fue `cv_producto='8'` y `cv_marca='2'`. La misma llave sin los ceros a la izquierda, y los
+nueve `cv_marca` de junio son uno a uno los `CVE_MARCA` del catálogo para el producto 0008.
+
+## Por qué no resuelve nada aquí
+
+- **No mete las llaves en la historia.** Los archivos masivos, que son los que tienen las
+  62 quincenas, siguen sin traerlas. Enlazar el catálogo con ellos exige unir por texto, y
+  ahí ya hay fricción: de los 9 SKUs del corte, 8 empatan exacto y el noveno no —el
+  catálogo dice `PAQUETE C/8. DONITAS. ESPOLVOREADAS (140 GR.)` y el archivo dice
+  `Paquete con 8 Donitas. Espolvoreadas (140 Gr.)`, y son el mismo `0008/029`.
+- **`/establecimientos` no sustituye a `dim_tienda`.** Trae 3,037 folios en 7,607 filas
+  —hay folios repetidos hasta 897 veces—, no incluye dirección, y es el padrón *actual*:
+  sólo 328 de los 388 folios de junio aparecen ahí. Las tiendas que salieron del panel no
+  están.
+- **El endpoint de precios es más fresco y no sirve para la serie.** Devuelve
+  observaciones del día —`fecha_observacion` de hace dos días, contra el mes de rezago de
+  los archivos— pero sin llaves y sin historia.
+
+Y una advertencia que vale para todo lo de arriba: es la API interna del portal, sin
+documentar y sin contrato. Puede cambiar sin aviso, a diferencia de los archivos masivos.

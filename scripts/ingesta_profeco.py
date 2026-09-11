@@ -63,6 +63,28 @@ ZONA = "profeco"
 # La fuente no publica nada anterior: 2023 no tiene bundle.
 PRIMERA = (2024, 1, 1)
 
+# Las 15 columnas del contrato, en el orden en que la fuente las sirve. Se declaran, igual
+# que las de tienda, porque la fuente no siempre manda las mismas: en junio de 2026 publicó
+# tres de más —`folio`, `cv_producto` y `cv_marca`, sus llaves internas— y las volvió a
+# quitar en julio. Ver docs/fuentes.md.
+COLUMNAS_PRECIOS = [
+    "producto",
+    "presentacion",
+    "marca",
+    "categoria",
+    "catalogo",
+    "precio",
+    "fecha_registro",
+    "cadena_comercial",
+    "giro",
+    "nombre_comercial",
+    "direccion",
+    "estado",
+    "municipio",
+    "latitud",
+    "longitud",
+]
+
 # Lo que se guarda de cada tienda. La llave es (latitud, longitud, nombre_comercial);
 # el resto viaja para que silver arme dim_tienda sin volver a la fuente.
 COLUMNAS_TIENDA = [
@@ -211,11 +233,23 @@ def lee_csv(ruta: Path) -> pl.DataFrame:
 
 
 def corte_precios(df: pl.DataFrame, productos: list[str]) -> pl.DataFrame:
-    """Las filas del catálogo objetivo.
+    """Las filas del catálogo objetivo, con las columnas del contrato y nada más.
 
     No se filtra por `catalogo`: el mismo SKU aparece en `Basicos` y en `Mercados`.
+
+    Proyectar no es cosmético. Bronze escribe con `mergeSchema` apagado a propósito
+    (decisión #8), así que una columna de más en un lote tumba la corrida —y eso fue
+    exactamente lo que pasó con junio de 2026—. Y si algún día falta una de las 15, esto
+    truena aquí, donde todavía se puede mirar el archivo.
     """
-    return df.filter(pl.col("producto").is_in(productos)).sort(df.columns)
+    faltan = [c for c in COLUMNAS_PRECIOS if c not in df.columns]
+    if faltan:
+        raise RuntimeError(f"la fuente ya no trae {faltan}")
+    return (
+        df.filter(pl.col("producto").is_in(productos))
+        .select(COLUMNAS_PRECIOS)
+        .sort(COLUMNAS_PRECIOS)
+    )
 
 
 def corte_tiendas(df: pl.DataFrame) -> pl.DataFrame:
