@@ -731,3 +731,31 @@ El costo es un token en la URL, y por eso vive como secreto del repositorio y el
 guarda `{token}` en lugar del valor. Se pagó porque la alternativa sin credencial —el CSV
 de datos abiertos del programa INPC— se quedó en julio de 2024. Cómo se encontró el
 indicador, y los tres errores que dan el mismo 400 mudo, están en `fuentes.md`.
+
+## 36. El corte de precios declara sus columnas, y el catálogo del portal no se ingesta
+
+Junio de 2026 llegó con 18 columnas en vez de 15 —`folio`, `cv_producto` y `cv_marca`, las
+llaves internas de Profeco— y julio volvió a 15. `corte_precios` no declaraba qué columnas
+conserva, así que se las llevó al repo de datos, y bronze tumbó la corrida al escribir: es
+lo que la decisión #8 le pide con `mergeSchema` apagado. La alarma funcionó; lo que faltaba
+era la respuesta.
+
+`corte_precios` pasa a declarar sus 15 columnas y a tronar si falta alguna, igual que
+`corte_tiendas` con las suyas —esa asimetría era la causa—. El recorte va en la ingesta y
+no en bronze porque la regla #2 dice que bronze no filtra, y la zona raw ya es donde el
+proyecto concede recortes (decisión #2). Los dos parquets de junio se rehicieron desde el
+mismo CSV: no entraron como `intento` nuevo porque el `sha256` del manifiesto es el del CSV
+de origen, que no cambió, así que un intento 2 habría sido una línea idéntica a la primera.
+No fue una versión nueva de la fuente sino un defecto de extracción nuestro, y el historial
+de git conserva lo que produjo.
+
+Con las llaves a la vista se investigó de dónde salen, y salen de una API JSON pública del
+portal de consulta —`/api/productos/{catálogo}` y `/api/establecimientos`, sin credencial—
+cuyas claves son exactamente las de junio: el Gansito es `0008/002` ahí y fue
+`cv_producto=8`, `cv_marca=2` en el archivo. **No se ingesta.** No mete las llaves en la
+historia, que es lo que haría falta: los archivos masivos siguen sin traerlas, y enlazarlos
+con el catálogo exige unir por texto, que ya falla en 1 de los 9 SKUs del corte. El padrón
+de establecimientos tampoco sustituye a `dim_tienda` —sin dirección, con folios repetidos y
+sólo el padrón actual— y el endpoint de precios es del día, sin historia. Queda medido en
+`fuentes.md` por si algún día Profeco publica las llaves en los archivos, que es cuando
+cambiaría la identidad del modelo.

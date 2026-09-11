@@ -154,6 +154,26 @@ def test_corte_precios_conserva_los_dos_catalogos():
     corte = ingesta.corte_precios(MUESTRA, OBJETIVO)
     assert corte.height == 2
     assert set(corte["catalogo"]) == {"Basicos", "Mercados"}
+    assert corte.columns == ingesta.COLUMNAS_PRECIOS
+
+
+def test_corte_precios_tira_las_columnas_que_no_son_del_contrato():
+    # Junio de 2026: Profeco publicó sus llaves internas y las quitó en julio. Bronze
+    # escribe con mergeSchema apagado, así que una columna de más tumba la corrida.
+    con_llaves = MUESTRA.with_columns(
+        pl.lit("44375").alias("folio"),
+        pl.lit("8").alias("cv_producto"),
+        pl.lit("2").alias("cv_marca"),
+    )
+    corte = ingesta.corte_precios(con_llaves, OBJETIVO)
+    assert corte.columns == ingesta.COLUMNAS_PRECIOS
+    # Y el corte es el mismo que sin ellas: sólo sobraban columnas, no filas.
+    assert corte.equals(ingesta.corte_precios(MUESTRA, OBJETIVO))
+
+
+def test_corte_precios_truena_si_falta_una_del_contrato():
+    with pytest.raises(RuntimeError, match="precio"):
+        ingesta.corte_precios(MUESTRA.drop("precio"), OBJETIVO)
 
 
 def test_corte_tiendas_sale_del_archivo_completo():
