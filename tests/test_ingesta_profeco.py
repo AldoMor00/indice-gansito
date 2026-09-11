@@ -202,6 +202,24 @@ def test_rutas_cuelgan_de_la_fuente_y_versionan_el_reintento():
     assert reintento.name == "qqp_2025-11_q2_i2.parquet"
 
 
+def test_lee_csv_cae_a_cp1252_cuando_no_es_utf8(tmp_path):
+    # Mayo de 2026 llegó en cp1252 y sin BOM. Leerlo como utf-8 lossy no truena: cambia
+    # cada acento por U+FFFD, y eso llegó hasta la compuerta de silver como un SKU nuevo.
+    texto = "producto,presentacion\nPastelillos,Paquete 280 Gr. Panqué Nuez\n"
+    utf8 = tmp_path / "utf8.csv"
+    utf8.write_bytes(texto.encode("utf-8"))
+    cp = tmp_path / "cp1252.csv"
+    cp.write_bytes(texto.encode("cp1252"))
+
+    assert ingesta.es_utf8(utf8) is True
+    assert ingesta.es_utf8(cp) is False
+    # Los dos tienen que dar exactamente lo mismo, con la é entera y sin U+FFFD.
+    for ruta in (utf8, cp):
+        df = ingesta.lee_csv(ruta)
+        assert df["presentacion"][0] == "Paquete 280 Gr. Panqué Nuez"
+        assert "�" not in df["presentacion"][0]
+
+
 def test_lee_csv_absorbe_bom_y_crlf(tmp_path):
     ruta = tmp_path / "crudo.csv"
     ruta.write_bytes("﻿producto,precio\r\nPastelillos y Pan Dulce Empaquetado,20\r\n".encode())

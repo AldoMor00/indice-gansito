@@ -759,3 +759,25 @@ de establecimientos tampoco sustituye a `dim_tienda` —sin dirección, con foli
 sólo el padrón actual— y el endpoint de precios es del día, sin historia. Queda medido en
 `fuentes.md` por si algún día Profeco publica las llaves en los archivos, que es cuando
 cambiaría la identidad del modelo.
+
+## 37. La ingesta comprueba la codificación, no la supone
+
+`lee_csv` leía todo con `utf8-lossy`, que absorbe el BOM y nunca falla. Mayo de 2026 llegó
+en cp1252 y sin BOM —los dos únicos archivos así de los 62— y `lossy` hizo lo que promete:
+cambió cada byte inválido por `U+FFFD` y siguió. 15,125 celdas corruptas entraron al repo
+de datos sin que nada se quejara.
+
+Ahora se comprueba: si el archivo entero no decodifica como utf-8 —por trozos, sin cargarlo
+en memoria— se lee como cp1252 y se dice en la corrida. El camino normal no cambia, ni en
+código ni en bytes: el corte regenerado de `2026-07_q2` sale idéntico al commiteado.
+
+Las dos quincenas de mayo se rehicieron desde el mismo CSV, sin `intento` nuevo y por la
+misma razón que junio (#36): el `sha256` del manifiesto es el del archivo de origen, que no
+cambió, así que una línea nueva no diría nada.
+
+Lo que vale la pena dejar escrito no es el arreglo sino el síntoma. **Una fuente puede
+corromperse sin que nada falle**, y aquí nada falló: ni la descarga, ni el hash, ni el
+esquema, ni el conteo de filas. Lo cazó la compuerta de `nb_20` contando presentaciones,
+y lo cazó disfrazado —`Panqué Nuez` y `Panqu?  Nuez` son dos SKUs para cualquier `distinct`,
+así que la canasta de 9 se veía como 11—. Es el argumento de la regla #3 en su forma más
+literal: la compuerta no sabía nada de codificaciones y aun así detuvo la corrida.

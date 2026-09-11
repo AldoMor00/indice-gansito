@@ -18,6 +18,7 @@ Ver docs/decisiones.md.
 from __future__ import annotations
 
 import argparse
+import codecs
 import hashlib
 import json
 import re
@@ -227,9 +228,34 @@ def cambio(fuente: tuple[int, int | None], sello: tuple[int, int | None]) -> boo
     return crc_fuente != crc_sello
 
 
+def es_utf8(ruta: Path) -> bool:
+    """Si el archivo entero decodifica como utf-8, leyéndolo por trozos y sin cargarlo."""
+    decodificador = codecs.getincrementaldecoder("utf-8")()
+    with ruta.open("rb") as f:
+        while trozo := f.read(1 << 22):
+            try:
+                decodificador.decode(trozo)
+            except UnicodeDecodeError:
+                return False
+    return True
+
+
 def lee_csv(ruta: Path) -> pl.DataFrame:
-    """Todo como texto: bronze no castea. `utf8-lossy` absorbe el BOM."""
-    return pl.read_csv(ruta, encoding="utf8-lossy", infer_schema_length=0)
+    """Todo como texto: bronze no castea. `utf8-lossy` absorbe el BOM.
+
+    La fuente no siempre manda la misma codificación: las dos quincenas de mayo de 2026
+    llegaron en cp1252 y sin BOM, y las otras 60 en utf-8 con BOM. Leer cp1252 como utf-8
+    `lossy` no truena —cambia cada acento por un U+FFFD, 15,125 celdas— y eso llegó hasta
+    la compuerta de silver disfrazado de dos SKUs nuevos. Se comprueba y se cae a cp1252.
+    """
+    if es_utf8(ruta):
+        return pl.read_csv(ruta, encoding="utf8-lossy", infer_schema_length=0)
+    print(f"    {ruta.name}: viene en cp1252, no en utf-8")
+    return pl.read_csv(
+        ruta.read_bytes().decode("cp1252").encode("utf-8"),
+        encoding="utf8-lossy",
+        infer_schema_length=0,
+    )
 
 
 def corte_precios(df: pl.DataFrame, productos: list[str]) -> pl.DataFrame:
