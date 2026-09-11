@@ -4,6 +4,7 @@ No tocan la red: lo único que sale es `descarga`, que ya no vive aquí —se co
 la ingesta de CONASAMI— y se prueba en `test_fuente.py`.
 """
 
+import codecs
 import zipfile
 import zlib
 from datetime import date
@@ -202,20 +203,49 @@ def test_rutas_cuelgan_de_la_fuente_y_versionan_el_reintento():
     assert reintento.name == "qqp_2025-11_q2_i2.parquet"
 
 
-def test_lee_csv_cae_a_cp1252_cuando_no_es_utf8(tmp_path):
-    # Mayo de 2026 llegó en cp1252 y sin BOM. Leerlo como utf-8 lossy no truena: cambia
-    # cada acento por U+FFFD, y eso llegó hasta la compuerta de silver como un SKU nuevo.
-    texto = "producto,presentacion\nPastelillos,Paquete 280 Gr. Panqué Nuez\n"
-    utf8 = tmp_path / "utf8.csv"
-    utf8.write_bytes(texto.encode("utf-8"))
-    cp = tmp_path / "cp1252.csv"
-    cp.write_bytes(texto.encode("cp1252"))
+TEXTO = "producto,presentacion\nPastelillos,Paquete 280 Gr. Panqué Nuez\n"
 
-    assert ingesta.es_utf8(utf8) is True
-    assert ingesta.es_utf8(cp) is False
-    # Los dos tienen que dar exactamente lo mismo, con la é entera y sin U+FFFD.
-    for ruta in (utf8, cp):
-        df = ingesta.lee_csv(ruta)
+
+def _archivo(tmp_path, nombre, contenido: bytes):
+    ruta = tmp_path / nombre
+    ruta.write_bytes(contenido)
+    return ruta
+
+
+def test_codificacion_reconoce_utf8_con_y_sin_bom(tmp_path):
+    assert ingesta.codificacion(_archivo(tmp_path, "a.csv", TEXTO.encode("utf-8"))) == "utf-8"
+    con_bom = codecs.BOM_UTF8 + TEXTO.encode("utf-8")
+    assert ingesta.codificacion(_archivo(tmp_path, "b.csv", con_bom)) == "utf-8"
+
+
+def test_codificacion_cae_a_cp1252(tmp_path):
+    # Mayo de 2026: cp1252 y sin BOM, los dos únicos de los 62.
+    ruta = _archivo(tmp_path, "c.csv", TEXTO.encode("cp1252"))
+    assert ingesta.codificacion(ruta) == "cp1252"
+
+
+def test_un_utf8_sin_bom_no_acaba_leido_como_cp1252(tmp_path):
+    # Lo que hace que esto no sea una cascada de las que fallan en silencio: al respaldo
+    # sólo se llega cuando el archivo ya demostró que no es utf-8. El BOM no se mira,
+    # porque es opcional y su ausencia no significa nada.
+    sin_bom = _archivo(tmp_path, "d.csv", TEXTO.encode("utf-8"))
+    assert not sin_bom.read_bytes().startswith(codecs.BOM_UTF8)
+    assert ingesta.codificacion(sin_bom) == "utf-8"
+
+
+def test_codificacion_truena_si_no_es_ninguna_de_las_dos(tmp_path):
+    # 0x81 no es utf-8 válido y es uno de los cinco bytes que cp1252 tampoco acepta.
+    ruta = _archivo(tmp_path, "e.csv", b"producto\n\x81\n")
+    with pytest.raises(RuntimeError, match="no decodifica"):
+        ingesta.codificacion(ruta)
+
+
+def test_lee_csv_da_lo_mismo_en_las_dos_codificaciones(tmp_path):
+    # Leer cp1252 como utf-8 lossy no truena: cambia cada acento por U+FFFD, y eso llegó
+    # hasta la compuerta de silver disfrazado de un SKU nuevo.
+    for nombre, codec in (("utf8.csv", "utf-8"), ("cp.csv", "cp1252")):
+        ruta = _archivo(tmp_path, nombre, TEXTO.encode(codec))
+        df = ingesta.lee_csv(ruta, ingesta.codificacion(ruta))
         assert df["presentacion"][0] == "Paquete 280 Gr. Panqué Nuez"
         assert "�" not in df["presentacion"][0]
 

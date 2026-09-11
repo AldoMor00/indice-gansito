@@ -58,6 +58,11 @@ ENLACE_METADATOS = re.compile(
 # `Content-Length`, ni `Range`: no hay forma más barata de preguntarle si cambió.
 COBERTURA = re.compile(r"^Cobertura temporal,(\d{4})-(\d{2})-", re.MULTILINE)
 
+# La única codificación de un byte que se acepta como plan B, y va nombrada. `latin-1` no
+# serviría: acepta los 256 bytes, así que nunca falla y por tanto nunca detecta que está
+# equivocada. Una cascada de codificaciones tampoco: garantiza que siempre "funcione".
+RESPALDO = "cp1252"
+
 # Todo lo que escribe esta fuente vive bajo este directorio del repo de datos.
 ZONA = "profeco"
 
@@ -228,9 +233,13 @@ def cambio(fuente: tuple[int, int | None], sello: tuple[int, int | None]) -> boo
     return crc_fuente != crc_sello
 
 
-def es_utf8(ruta: Path) -> bool:
-    """Si el archivo entero decodifica como utf-8, leyéndolo por trozos y sin cargarlo."""
-    decodificador = codecs.getincrementaldecoder("utf-8")()
+def decodifica(ruta: Path, codec: str) -> bool:
+    """Si el archivo **entero** decodifica con `codec`, por trozos y sin cargarlo.
+
+    Entero y no una muestra: el primer byte malo de mayo de 2026 estaba en la posición
+    370, pero pudo haber estado en el megabyte 190.
+    """
+    decodificador = codecs.getincrementaldecoder(codec)()
     with ruta.open("rb") as f:
         while trozo := f.read(1 << 22):
             try:
@@ -240,22 +249,37 @@ def es_utf8(ruta: Path) -> bool:
     return True
 
 
-def lee_csv(ruta: Path) -> pl.DataFrame:
-    """Todo como texto: bronze no castea. `utf8-lossy` absorbe el BOM.
+def codificacion(ruta: Path) -> str:
+    """En qué codificación está el archivo, comprobándola. Truena si no es ninguna.
 
-    La fuente no siempre manda la misma codificación: las dos quincenas de mayo de 2026
-    llegaron en cp1252 y sin BOM, y las otras 60 en utf-8 con BOM. Leer cp1252 como utf-8
-    `lossy` no truena —cambia cada acento por un U+FFFD, 15,125 celdas— y eso llegó hasta
-    la compuerta de silver disfrazado de dos SKUs nuevos. Se comprueba y se cae a cp1252.
+    El orden no es simétrico y ahí está todo. utf-8 va primero porque es autovalidante: una
+    secuencia arbitraria de bytes casi nunca decodifica limpia por accidente, así que si
+    pasa, es. Eso es lo que hace que esto no sea una cascada de las que fallan en silencio:
+    al respaldo sólo se llega cuando el archivo ya **demostró** que no es utf-8, así que un
+    utf-8 —con BOM o sin él— nunca puede acabar leído como cp1252.
+
+    Las de un byte no tienen esa propiedad: `cp1252` rechaza 5 bytes de 256 y `latin-1`
+    ninguno. Por eso el respaldo es uno solo, nombrado, y no `latin-1`: una codificación que
+    nunca falla tampoco puede detectar que está equivocada. El BOM no se mira —es opcional
+    en utf-8 y el estándar desaconseja ponerlo, así que su ausencia no significa nada—.
     """
-    if es_utf8(ruta):
-        return pl.read_csv(ruta, encoding="utf8-lossy", infer_schema_length=0)
-    print(f"    {ruta.name}: viene en cp1252, no en utf-8")
-    return pl.read_csv(
-        ruta.read_bytes().decode("cp1252").encode("utf-8"),
-        encoding="utf8-lossy",
-        infer_schema_length=0,
-    )
+    for codec in ("utf-8", RESPALDO):
+        if decodifica(ruta, codec):
+            return codec
+    raise RuntimeError(f"{ruta.name} no decodifica ni como utf-8 ni como {RESPALDO}")
+
+
+def lee_csv(ruta: Path, codec: str = "utf-8") -> pl.DataFrame:
+    """Todo como texto: bronze no castea.
+
+    `utf8-lossy` absorbe el BOM, y aquí ya no puede perder nada porque `codificacion` lo
+    comprobó antes: no queda un solo byte que reemplazar.
+    """
+    if codec != "utf-8":
+        ruta_o_bytes = ruta.read_bytes().decode(codec).encode("utf-8")
+    else:
+        ruta_o_bytes = ruta
+    return pl.read_csv(ruta_o_bytes, encoding="utf8-lossy", infer_schema_length=0)
 
 
 def corte_precios(df: pl.DataFrame, productos: list[str]) -> pl.DataFrame:
@@ -368,7 +392,8 @@ def procesa(
 ) -> dict:
     """Corta y escribe una quincena ya materializada. Devuelve su entrada de manifiesto."""
     sha, total, crc = huella(crudo)
-    df = lee_csv(crudo)
+    codec = codificacion(crudo)
+    df = lee_csv(crudo, codec)
     precios = corte_precios(df, productos)
     tiendas = corte_tiendas(df)
 
@@ -376,14 +401,16 @@ def procesa(
     escribe(precios, ruta_precios)
     escribe(tiendas, ruta_tiendas)
 
+    aviso = "" if codec == "utf-8" else f", en {codec} y no en utf-8"
     print(
         f"  {q.etiqueta}: {df.height:,} filas leídas, {precios.height:,} al corte, "
-        f"{tiendas.height:,} tiendas"
+        f"{tiendas.height:,} tiendas{aviso}"
     )
     return {
         "url_origen": origen,
         "sha256": sha,
         "crc32": crc,
+        "codificacion": codec,
         "bytes": total,
         "filas_leidas": df.height,
         "filas_filtradas": precios.height,

@@ -181,7 +181,9 @@ decisión #8 le pide.
 
 **Mayo de 2026 llegó en cp1252 y sin BOM**, sus dos quincenas; las otras 60 vienen en utf-8
 con BOM. Comprobado archivo por archivo sobre los 62: son los únicos dos que no decodifican
-como utf-8, y también los únicos dos sin BOM.
+como utf-8, y también los únicos dos sin BOM. Que el BOM sea aquí un discriminador perfecto
+es una coincidencia de esta fuente y no se usa como tal: es opcional en utf-8 y el estándar
+desaconseja ponerlo, así que su ausencia no significa nada (decisión #37).
 
 Eso no truena solo, y ahí está el problema: leer cp1252 como utf-8 *lossy* cambia cada byte
 inválido por `U+FFFD` en vez de fallar, así que `Panqué` se vuelve `Panqu?` y entra al repo
