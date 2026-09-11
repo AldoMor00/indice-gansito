@@ -39,6 +39,9 @@ Lo que hay que saber para automatizarlo:
 - **Un token inválido contesta `200` con HTML**, no `404`: una página con un
   `alert('Documento no disponible')`. Validar por código de estado no sirve; hay que ver
   que lo que llegó sea un zip.
+- **El zip trae su propio manifiesto.** El directorio central lleva tamaño y CRC32 de cada
+  miembro, legibles sin descomprimir. Es lo que permite saber qué quincenas reescribió la
+  fuente sin volver a hashear 2.5 GB.
 - **No pide nada.** Ni cookie, ni referer, ni `User-Agent`.
 - **2025 viene en `.rar`**; 2024 y 2026 en `.zip`. Por eso el script tiene `--local`, que
   procesa los CSV ya extraídos a mano.

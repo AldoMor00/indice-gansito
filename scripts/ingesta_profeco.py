@@ -4,7 +4,9 @@ Corre en GitHub Actions, no en Fabric. El backfill y el cron son la misma corrid
 manifiesto dice qué falta y `--max` limita cuántas se procesan por tanda.
 
 La fuente sirve un bundle por año y no un archivo por quincena (decisión #34): se baja el
-del año que tenga pendientes y se saca de él sólo lo que falte. De cada CSV (~155 MB)
+del año que tenga pendientes y se saca de él lo que falte, más lo que la fuente haya
+reescrito —que se detecta con el CRC32 del directorio central, sin descomprimir—. Lo
+reescrito no pisa nada: entra como un `intento` nuevo. De cada CSV (~155 MB)
 sobreviven las filas del catálogo de `objetivo.yml` y las tuplas distintas de tienda,
 estas del archivo completo. El original no se guarda; el `sha256` del manifiesto —el del
 CSV, nunca el del bundle— es lo que permite rehacer cualquier corte desde la fuente.
@@ -23,6 +25,7 @@ import shutil
 import sys
 import tempfile
 import zipfile
+import zlib
 from collections.abc import Iterator
 from contextlib import closing
 from datetime import UTC, date, datetime
@@ -75,6 +78,10 @@ COLUMNAS_TIENDA = [
 
 RAIZ = Path(__file__).resolve().parent.parent
 
+# Lo que el manifiesto recuerda de cada quincena para saber si la fuente la reescribió:
+# etiqueta -> (bytes, crc32). El CRC32 es None en las líneas anteriores a que se guardara.
+Sellos = dict[str, tuple[int, int | None]]
+
 
 class Quincena(NamedTuple):
     anio: int
@@ -113,12 +120,21 @@ def quincenas(hasta: date) -> list[Quincena]:
 def pendientes(todas: list[Quincena], manifiesto: list[dict]) -> list[Quincena]:
     """Las que aún no tienen entrada en el manifiesto.
 
-    Que Profeco republique una quincena corregida no se detecta aquí: exigiría rebajar
-    los bundles enteros en cada corrida. Para eso está `--rehacer`, que la vuelve a
-    procesar con un `intento` nuevo y conserva las dos versiones.
+    Lo que Profeco reescriba no sale de aquí sino de `cambio()`, contra el bundle ya
+    abierto. Es por eso que sólo se revisan los años que de todos modos hubo que bajar:
+    abrir uno nada más por comprobar tiraría el ahorro de la sonda.
     """
     hechas = {e["quincena"] for e in manifiesto}
     return [q for q in todas if q.etiqueta not in hechas]
+
+
+def sellos_de(manifiesto: list[dict]) -> Sellos:
+    """Lo que se procesó de cada quincena, quedándose con el último intento."""
+    ultimos: dict[str, dict] = {}
+    for e in manifiesto:
+        if e["intento"] >= ultimos.get(e["quincena"], {}).get("intento", 0):
+            ultimos[e["quincena"]] = e
+    return {q: (e["bytes"], e.get("crc32")) for q, e in ultimos.items()}
 
 
 def baja_texto(url: str) -> str:
@@ -156,14 +172,37 @@ def miembro(nombres: list[str], q: Quincena) -> str | None:
     return None
 
 
-def huella(ruta: Path) -> tuple[str, int]:
-    """(sha256, bytes) del CSV, que es lo que el manifiesto promete poder reproducir."""
-    digest, total = hashlib.sha256(), 0
+def huella(ruta: Path) -> tuple[str, int, int]:
+    """(sha256, bytes, crc32) del CSV, en una sola pasada.
+
+    El `sha256` es lo que el manifiesto promete poder reproducir. El `crc32` no compite
+    con él: está porque es lo mismo que el zip guarda en su directorio central, y tenerlo
+    de los dos lados es lo que permite comparar sin descomprimir.
+    """
+    digest, total, crc = hashlib.sha256(), 0, 0
     with ruta.open("rb") as f:
         while trozo := f.read(1 << 20):
             digest.update(trozo)
+            crc = zlib.crc32(trozo, crc)
             total += len(trozo)
-    return digest.hexdigest(), total
+    return digest.hexdigest(), total, crc
+
+
+def cambio(fuente: tuple[int, int | None], sello: tuple[int, int | None]) -> bool:
+    """Si la fuente ya no trae el mismo archivo que se procesó en su día.
+
+    El tamaño distinto basta para saberlo. Con el mismo tamaño hace falta el CRC32:
+    corregir un precio de 20 a 21 no mueve un solo byte de longitud. Cuando alguno de los
+    dos lados no lo tiene —las líneas de manifiesto anteriores a esto, y los CSV sueltos
+    de `--local`— el tamaño es todo lo que hay, y se dice en la corrida.
+    """
+    bytes_fuente, crc_fuente = fuente
+    bytes_sello, crc_sello = sello
+    if bytes_fuente != bytes_sello:
+        return True
+    if crc_fuente is None or crc_sello is None:
+        return False
+    return crc_fuente != crc_sello
 
 
 def lee_csv(ruta: Path) -> pl.DataFrame:
@@ -203,9 +242,14 @@ def escribe(df: pl.DataFrame, ruta: Path) -> None:
 
 
 def del_bundle(
-    url: str, cola: list[Quincena], tmp: Path
+    url: str, candidatas: list[Quincena], sellos: Sellos, tmp: Path
 ) -> Iterator[tuple[Quincena, Path, str]]:
-    """Baja el bundle del año y va entregando (quincena, csv, origen)."""
+    """Baja el bundle del año y entrega (quincena, csv, origen) de lo que haya que hacer.
+
+    Lo pendiente, y además lo que la fuente haya reescrito. Eso segundo sale gratis: el
+    directorio central del zip trae el tamaño y el CRC32 de cada miembro sin descomprimir
+    un byte, así que cotejarlos contra el manifiesto no cuesta ni una lectura extra.
+    """
     bundle = tmp / "bundle"
     if descarga(url, bundle) is None:
         print(f"  la fuente no sirvió {url}")
@@ -218,10 +262,15 @@ def del_bundle(
         )
     with zipfile.ZipFile(bundle) as zf:
         nombres = zf.namelist()
-        for q in cola:
+        for q in candidatas:
             if (nombre := miembro(nombres, q)) is None:
                 print(f"  {q.etiqueta}: no viene en el bundle")
                 continue
+            info = zf.getinfo(nombre)
+            if (sello := sellos.get(q.etiqueta)) is not None:
+                if not cambio((info.file_size, info.CRC), sello):
+                    continue
+                print(f"  {q.etiqueta}: la fuente la reescribió")
             crudo = tmp / "crudo.csv"
             with zf.open(nombre) as dentro, crudo.open("wb") as f:
                 shutil.copyfileobj(dentro, f)
@@ -229,15 +278,23 @@ def del_bundle(
 
 
 def del_local(
-    raiz: Path, url: str, cola: list[Quincena]
+    raiz: Path, url: str, candidatas: list[Quincena], sellos: Sellos
 ) -> Iterator[tuple[Quincena, Path, str]]:
-    """Los CSV ya extraídos a mano, que es la única vía para el año que viene en rar."""
+    """Los CSV ya extraídos a mano, que es la única vía para el año que viene en rar.
+
+    Aquí no hay directorio central del que leer el CRC32, así que lo reescrito se detecta
+    sólo por tamaño. Para forzar una quincena concreta está `--rehacer`.
+    """
     disponibles = {ruta.name.lower(): ruta for ruta in raiz.rglob("*.csv")}
-    for q in cola:
+    for q in candidatas:
         crudo = next((disponibles[n] for n in q.nombres if n in disponibles), None)
         if crudo is None:
             print(f"  {q.etiqueta}: no está en {raiz}")
             continue
+        if (sello := sellos.get(q.etiqueta)) is not None:
+            if not cambio((crudo.stat().st_size, None), sello):
+                continue
+            print(f"  {q.etiqueta}: cambió de tamaño en la fuente")
         yield q, crudo, f"{url}#{crudo.name}"
 
 
@@ -250,7 +307,7 @@ def procesa(
     intento: int,
 ) -> dict:
     """Corta y escribe una quincena ya materializada. Devuelve su entrada de manifiesto."""
-    sha, total = huella(crudo)
+    sha, total, crc = huella(crudo)
     df = lee_csv(crudo)
     precios = corte_precios(df, productos)
     tiendas = corte_tiendas(df)
@@ -266,6 +323,7 @@ def procesa(
     return {
         "url_origen": origen,
         "sha256": sha,
+        "crc32": crc,
         "bytes": total,
         "filas_leidas": df.height,
         "filas_filtradas": precios.height,
@@ -301,6 +359,7 @@ def main() -> int:
 
     todas = quincenas(date.today())
     falta = pendientes(todas, manifiesto)
+    sellos = sellos_de(manifiesto)
 
     if args.rehacer:
         por_etiqueta = {q.etiqueta: q for q in todas}
@@ -309,6 +368,8 @@ def main() -> int:
             print(f"quincenas desconocidas: {desconocidas}", file=sys.stderr)
             return 1
         cola, tope = [por_etiqueta[e] for e in args.rehacer], len(args.rehacer)
+        # `--rehacer` fuerza: sin sellos que cotejar, nada se salta por estar igual.
+        sellos = {}
     else:
         cola, tope = falta, args.max
 
@@ -339,16 +400,25 @@ def main() -> int:
         for anio in sorted({q.anio for q in cola}):
             if len(hechas) >= tope:
                 break
-            del_anio = [q for q in cola if q.anio == anio]
+            # Ya que hubo que abrir el bundle de este año, se cotejan también las
+            # quincenas suyas que ya estaban: si alguna fue reescrita, sale aquí.
+            pendiente = {q.etiqueta for q in cola}
+            candidatas = [
+                q
+                for q in todas
+                if q.anio == anio
+                and (q.anio, q.mes) <= hasta
+                and (q.etiqueta in pendiente or q.etiqueta in sellos)
+            ]
             url = bundles.get(anio)
             if url is None and args.local is None:
                 print(f"  {anio}: la fuente todavía no publica su bundle")
                 continue
             with tempfile.TemporaryDirectory() as tmp:
                 lote = (
-                    del_local(args.local, url or LISTADO, del_anio)
+                    del_local(args.local, url or LISTADO, candidatas, sellos)
                     if args.local
-                    else del_bundle(url, del_anio, Path(tmp))
+                    else del_bundle(url, candidatas, sellos, Path(tmp))
                 )
                 # `closing` no sobra: al cortar por el tope se sale del `for` sin agotar
                 # el generador, y entonces el zip sigue abierto cuando el temporal se

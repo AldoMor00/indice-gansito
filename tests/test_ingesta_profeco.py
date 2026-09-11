@@ -5,6 +5,7 @@ la ingesta de CONASAMI— y se prueba en `test_fuente.py`.
 """
 
 import zipfile
+import zlib
 from datetime import date
 from pathlib import Path
 
@@ -216,12 +217,38 @@ def test_del_bundle_extrae_lo_que_viene_y_se_salta_lo_que_no(tmp_path, monkeypat
         _bundle_falso({"QQP_2026/07-2026_Q2.csv": "producto,precio\nGansito,20\n"}),
     )
     cola = [ingesta.Quincena(2026, 7, 1), ingesta.Quincena(2026, 7, 2)]
-    lote = list(ingesta.del_bundle("https://ejemplo/bundle", cola, tmp_path))
+    lote = list(ingesta.del_bundle("https://ejemplo/bundle", cola, {}, tmp_path))
 
     assert [q.etiqueta for q, _, _ in lote] == ["2026-07_q2"]
     _, crudo, origen = lote[0]
     assert crudo.read_text(encoding="utf-8").startswith("producto,precio")
     assert origen == "https://ejemplo/bundle#QQP_2026/07-2026_Q2.csv"
+
+
+def test_del_bundle_se_salta_lo_que_no_cambio_y_entrega_lo_reescrito(tmp_path, monkeypatch):
+    texto = "producto,precio\nGansito,20\n"
+    monkeypatch.setattr(
+        ingesta,
+        "descarga",
+        _bundle_falso(
+            {
+                "QQP_2026/07-2026_Q1.csv": texto,
+                "QQP_2026/07-2026_Q2.csv": texto,
+            }
+        ),
+    )
+    intacta, reescrita = ingesta.Quincena(2026, 7, 1), ingesta.Quincena(2026, 7, 2)
+    sellos = {
+        # La q1 con su sello real: el bundle la trae igual y no hay que tocarla.
+        intacta.etiqueta: (len(texto), zlib.crc32(texto.encode())),
+        # La q2 con el CRC32 de cuando el precio decía 21: mismo tamaño, otro contenido.
+        reescrita.etiqueta: (len(texto), zlib.crc32(texto.replace("20", "21").encode())),
+    }
+    lote = list(
+        ingesta.del_bundle("https://ejemplo/bundle", [intacta, reescrita], sellos, tmp_path)
+    )
+
+    assert [q.etiqueta for q, _, _ in lote] == ["2026-07_q2"]
 
 
 def test_del_bundle_truena_si_lo_que_bajo_no_es_zip(tmp_path, monkeypatch):
@@ -234,7 +261,37 @@ def test_del_bundle_truena_si_lo_que_bajo_no_es_zip(tmp_path, monkeypatch):
     monkeypatch.setattr(ingesta, "descarga", html)
     cola = [ingesta.Quincena(2026, 7, 2)]
     with pytest.raises(RuntimeError, match="--local"):
-        list(ingesta.del_bundle("https://ejemplo/bundle", cola, tmp_path))
+        list(ingesta.del_bundle("https://ejemplo/bundle", cola, {}, tmp_path))
+
+
+def test_cambio_usa_el_tamano_y_el_crc_cuando_lo_hay():
+    # Tamaño distinto: no hace falta mirar nada más.
+    assert ingesta.cambio((100, 111), (200, 111)) is True
+    # Mismo tamaño y mismo CRC32: intacta.
+    assert ingesta.cambio((100, 111), (100, 111)) is False
+    # Mismo tamaño y otro CRC32: es justo el caso que el tamaño solo no ve.
+    assert ingesta.cambio((100, 222), (100, 111)) is True
+
+
+def test_cambio_sin_crc_de_algun_lado_se_queda_en_el_tamano():
+    # Las líneas de manifiesto anteriores a que se guardara el CRC32, y los CSV de
+    # `--local`, donde no hay directorio central del que leerlo.
+    assert ingesta.cambio((100, 222), (100, None)) is False
+    assert ingesta.cambio((100, None), (100, 111)) is False
+    assert ingesta.cambio((100, None), (200, None)) is True
+
+
+def test_sellos_se_queda_con_el_ultimo_intento():
+    manifiesto = [
+        {"quincena": "2026-01_q1", "bytes": 10, "crc32": 111, "intento": 1},
+        {"quincena": "2026-01_q1", "bytes": 20, "crc32": 222, "intento": 2},
+        {"quincena": "2025-11_q2", "bytes": 30, "intento": 1},
+    ]
+    # La reescrita vale por su última versión, y la línea vieja no trae CRC32.
+    assert ingesta.sellos_de(manifiesto) == {
+        "2026-01_q1": (20, 222),
+        "2025-11_q2": (30, None),
+    }
 
 
 def test_del_local_encuentra_el_csv_extraido_a_mano(tmp_path):
@@ -245,7 +302,7 @@ def test_del_local_encuentra_el_csv_extraido_a_mano(tmp_path):
     csv.write_text("producto,precio\n", encoding="utf-8")
 
     cola = [ingesta.Quincena(2025, 12, 2), ingesta.Quincena(2025, 12, 1)]
-    lote = list(ingesta.del_local(tmp_path, "https://ejemplo/bundle", cola))
+    lote = list(ingesta.del_local(tmp_path, "https://ejemplo/bundle", cola, {}))
 
     # La que no está se salta sin tronar; la que sí, viaja con su origen.
     assert [(q.etiqueta, ruta) for q, ruta, _ in lote] == [("2025-12_q2", csv)]
