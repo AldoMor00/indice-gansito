@@ -238,6 +238,9 @@ La condición de cambio del MERGE —`NOT (d.col <=> n.col)` sobre los atributos
 carga peso. Sin ella la corrida sin novedades reescribe archivos y el log deja de distinguir
 "no pasó nada" de "se recalculó todo"; con ella un MERGE que no cambia nada no commitea versión.
 
+El `replaceWhere` del hecho no depende de cómo esté acomodada la tabla por debajo: sobre qué
+layout se apoya es la decisión #32.
+
 ## 15. Silver es fail fast: pasa o truena, sin cuarentena ni bandera
 
 El proyecto nació con `precios_cuarentena` —la fila que no casteaba se apartaba a una tabla
@@ -582,3 +585,82 @@ Lo que el cron sí necesita es aviso de fallo, y eso es *Schedule failures*: un 
 sobre items programados, no un item. Queda pendiente hasta que exista el primer schedule —hoy
 `pl_bronze` se dispara a mano— y entonces va a `fabric/README.md`, con lo demás que el workspace
 necesita configurado fuera de git.
+
+## 32. El hecho se clusteriza, no se particiona
+
+Los tres hechos por quincena —`hechos_precios` en silver y en gold, y `hechos_relativos`— van con
+liquid clustering por `(_quincena, id_producto)` y sin `partitionBy`. El patrón de escritura de la
+decisión #14 no cambia: `replaceWhere` no exige que la columna de su predicado sea de partición.
+
+La partición venía del runtime 1.3, y ahí era lo correcto: en esa versión liquid clustering
+reescribía el Z-Cube entero en cada `OPTIMIZE` para tablas de menos de 100 GB —o sea toda la
+tabla, siempre—. El modo incremental que lo vuelve barato llegó con el runtime 2.0.
+
+Lo que decide el cambio es el criterio que Fabric publica ahora: **particionar es para aislar
+escritores concurrentes**, y pide al menos 1 GB por partición. Los dos fallan aquí. Escritor hay
+uno solo y por diseño: `pl_silver` encadena sus notebooks, y la capacidad ni siquiera aguanta dos
+sesiones de Spark. Y el tamaño falla **en producción**, no por la muestra: con todos los productos
+de Profeco son unas 590 mil filas por quincena, 24 quincenas al año, del orden de 3 a 6 GB en diez
+años. Eso deja particiones de 25 a 40 MB contra un objetivo adaptativo de 128 MB, y 24 particiones
+nuevas al año para siempre. La partición impide llegar al tamaño que el propio runtime calcula
+como bueno.
+
+En contra pesa que la doc de Direct Lake recomienda justo lo opuesto —particionar por una fecha
+de baja cardinalidad para que el mantenimiento toque pocas particiones y el modelo recargue
+poco—. Se le da menos peso porque esa misma doc pide row groups de entre 1 y 16 millones de
+filas, y una quincena de 590 mil no llega: el archivo por quincena queda corto justamente para el
+consumidor que la partición se supone que protege.
+
+Las columnas son las dos que aparecen en todo predicado —el eje del reporte y el grano del
+índice—, dentro de las una a cuatro que la doc recomienda. `id_tienda` queda fuera: alta
+cardinalidad y sólo aparece en joins que barren la tabla igual.
+
+Lo que costó comprobarlo, medido en [`hechos.md`](hechos.md): el `clusterBy` del writer **es un
+no-op silencioso** sobre tabla por ruta —no truena y la tabla queda sin clusterizar—, así que el
+layout se declara con un `ALTER` idempotente, `exige_clustering`, gemelo de `exige_invariantes`.
+El guard del `replaceWhere` sigue vivo. Y el write amplification que se le temía —recalcular una
+quincena obligando a reescribir a las vecinas por compartir archivo— **no ocurre**: las deletion
+vectors marcan las filas viejas en 833 bytes y las nuevas se escriben aparte.
+
+Queda una honestidad. A este volumen `OPTIMIZE` se salta la tabla entera, así que el clustering
+está **declarado y nunca aplicado**: lo que ordena las filas hoy es el V-Order de la escritura, no
+el clustering. El layout está elegido para el caso real, y sólo el caso real lo va a ejercer.
+
+## 33. El mantenimiento va programado y por notebook, y el V-Order no entra por ahí
+
+`pl_mantenimiento` corre semanal, aparte de la ingesta porque las cadencias no coinciden, y en
+este orden: `OPTIMIZE` → `VACUUM` → refresh de `sm_gansito` → re-clon del bronze de dev. El orden
+no es estético. Un modelo Direct Lake *frameado* referencia una versión concreta del commit, así
+que si `VACUUM` borra sus parquets antes del refresh, las queries del reporte truenan; y el
+shallow clone de la decisión #5 se rompe con `OPTIMIZE` seguido de `VACUUM` —el primero deja
+huérfanos los archivos que el clon referencia y el segundo los borra—, así que el re-clon va
+después de los dos y no entre ellos.
+
+**Va en notebook y no en la *Lakehouse maintenance activity* del pipeline**, que sería la pieza
+obvia: sus known issues dicen que no soporta lakehouses con esquemas, y los tres lo son. El
+notebook además es el único camino que deja usar `DRY RUN`, `VACUUM LITE` y la retención por
+sesión, y corre por ruta `abfss` como todo lo demás (regla #1).
+
+**`VACUUM` con `RETAIN 168 HOURS` escritos.** Es el mismo número que el default, pero escrito
+queda la intención en el código y no en la cabeza de quien lo eligió. Bajar de siete días exige
+apagar el seguro `retentionDurationCheck`, y no hay razón para apagarlo: lo que se gana es ver
+borrar antes, y lo que se arriesga es que un lector en curso pierda los archivos que está usando.
+
+**`OPTIMIZE` programado, y no auto compaction**, en contra de lo que Microsoft recomienda por
+defecto para tablas escritas por Spark. Su umbral son 50 archivos por debajo del mínimo, y una
+corrida quincenal escribe uno: no se dispararía nunca, ni con volumen de producción. La
+recomendación está escrita para streaming y microbatch, donde entran archivitos cada minuto.
+Y además commitearía versiones que no vienen de ninguna corrida, que es justo lo que hace
+ilegible el historial que la decisión #14 cuida.
+
+**El V-Order entra por la escritura de gold, no por el mantenimiento.** `OPTIMIZE … VORDER` no
+V-Ordena hacia atrás lo que decide no reescribir ([`hechos.md`](hechos.md)), así que esperar a la
+corrida semanal dejaría a gold sin él. Lo pone el perfil `readHeavyForPBI` en `nb_30`. El
+`VORDER` va igual en el comando del mantenimiento, pero para **conservarlo**: esa sesión corre en
+`writeHeavy`, que trae el V-Order apagado, y la sesión le gana a la propiedad de tabla. Los tres
+notebooks de escritura declaran su perfil explícito por la misma razón: con High concurrency los
+notebooks de un pipeline comparten sesión, así que el perfil del que corrió antes seguiría puesto.
+
+Qué le va a dar trabajo de verdad no son las tres tablas migradas —a este volumen `OPTIMIZE` se
+las salta— sino `hechos_ic_indice`, que el `MERGE` deja en siete archivos para 414 filas, y las
+deletion vectors que va dejando cada recálculo de quincenas.
