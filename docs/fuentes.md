@@ -218,3 +218,52 @@ profesional por oficio, de `albanileria` a `zapatero`.
 - **Cruzar la zona contra el precio exige un catálogo que no está aquí.** La Zona Libre de
   la Frontera Norte se define por municipio, y el archivo no los lista; para pegarla contra
   el `estado` y `municipio` de Profeco haría falta el padrón de municipios fronterizos.
+
+---
+
+# INEGI — INPC quincenal
+
+Medido en septiembre de 2026.
+
+## Dónde está
+
+La API de indicadores, que pide token:
+
+```
+inegi.org.mx/app/api/indicadores/desarrolladores/jsonxml/INDICATOR/910420/es/00/false/BIE-BISE/2.0/{token}?type=json
+```
+
+`910420` es el **nivel del índice** del INPC general, base 2018=100 y grano **quincenal**.
+928 observaciones, de `1988/01/01` a `2026/08/02`, y la respuesta pesa 140 KB.
+
+## Lo que costó encontrarla
+
+Nada de esto está en la documentación de INEGI, que sólo trae ejemplos de población, y
+los tres errores dan **el mismo** `400` con "No se encontraron resultados" —indistinguible
+de un token inválido—:
+
+- La fuente es **`BIE-BISE`**, no `BIE`.
+- La geografía nacional es **`00`**, no `0700`, que aparece en ejemplos viejos.
+- El id no se puede deducir. Salió de recorrer el catálogo del navegador de indicadores.
+  Se reconoce por tema `189128` ("Índice"), unidad `1051` ("Índice base 2018=100") y
+  frecuencia `15` ("Quincenal"), y casi todos sus vecinos de id son variación porcentual
+  en vez de nivel: `910445`, por ejemplo, es la inflación quincenal anual.
+
+`false` en la penúltima posición pide la serie completa; con `true` la API devuelve sólo
+la última observación.
+
+## Lo que no es obvio
+
+- **El mensual es el promedio de sus dos quincenas.** Enero de 2024 son 133.34 y 133.77,
+  que promedian 133.5550 contra el 133.554 que el proyecto ya tenía medido desde CONASAMI
+  (`hechos.md`). Es la comprobación de que cambiar de fuente el deflactor no mueve la
+  cadena: una milésima de redondeo.
+- **La respuesta es estable byte a byte** entre llamadas seguidas: no trae marca de tiempo
+  de la petición. Por eso el `sha256` sirve para decidir si hay algo que escribir.
+- **`LASTUPDATE` viene dentro de la serie** y dice cuándo la actualizó INEGI, que no es lo
+  mismo que hasta cuándo llega. Las dos cosas se guardan en el manifiesto.
+- **La descarga sin token existe y no sirve.** El CSV de datos abiertos del programa INPC
+  —`inpc_indicador_mensual_csv.zip`— se baja sin credencial, pero su última observación es
+  de **julio de 2024**. Es la razón por la que se paga el costo del token.
+- **El token no entra al repo.** Va en la URL, así que el manifiesto guarda `{token}` en
+  su lugar. Vive como secreto `INEGI_TOKEN` del repositorio.

@@ -1,11 +1,11 @@
 name: ingesta
 
-# Baja las dos fuentes y las commitea en indice-gansito-datos, cada una bajo su
+# Baja las tres fuentes y las commitea en indice-gansito-datos, cada una bajo su
 # directorio. Un script por fuente: ver decisión #9.
 #
 # Profeco: el backfill y el cron son la misma corrida —el manifiesto dice qué falta y
-# `max` limita la tanda—. CONASAMI no tiene backfill: son dos archivos que se bajan
-# siempre y se escriben sólo si su sha256 cambió.
+# `max` limita la tanda—. CONASAMI y el INPC no tienen backfill: se bajan siempre y se
+# escriben sólo si su sha256 cambió.
 
 on:
   schedule:
@@ -100,4 +100,43 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add conasami
           git commit -m "Actualiza CONASAMI: $ACTUALIZADOS"
+          git push
+
+  inpc:
+    needs: conasami
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Clona la zona raw
+        uses: actions/checkout@v7
+        with:
+          repository: AldoMor00/indice-gansito-datos
+          ssh-key: ${{ secrets.DATOS_DEPLOY_KEY }}
+          path: datos
+
+      - name: Instala uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+
+      # INEGI publica el INPC dos veces al mes, así que semanal le alcanza. El token va
+      # en la URL: por eso es secreto y por eso el manifiesto guarda la URL sin él.
+      - name: Revisa si cambió la serie
+        id: ingesta
+        env:
+          INEGI_TOKEN: ${{ secrets.INEGI_TOKEN }}
+        run: uv run --python 3.13 scripts/ingesta_inpc.py --destino datos
+
+      - name: Commitea la versión nueva
+        if: steps.ingesta.outputs.actualizados != ''
+        working-directory: datos
+        env:
+          ACTUALIZADOS: ${{ steps.ingesta.outputs.actualizados }}
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add inpc
+          git commit -m "Actualiza INPC: $ACTUALIZADOS"
           git push
