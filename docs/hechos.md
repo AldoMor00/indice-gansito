@@ -19,13 +19,24 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   puestas salen en `DeltaTable.forPath(...).detail()["properties"]` como `delta.constraints.<nombre>`,
   que es lo que las hace idempotentes. Probado con las tres de `nb_20` sobre tablas ya pobladas:
   el `ADD` valida lo que ya está.
-- **`replaceWhere` reescribe sólo sus particiones, y con las 46 es el full refresh.** Las cuatro
-  ramas del parámetro de `nb_20` sobre `hechos_precios`: vacío no commitea versión; dos quincenas
-  dejan `numFiles=2` y `numRemovedFiles=2`, con las otras 44 intactas; una quincena inventada
-  truena antes de escribir; `todas` deja **una sola** versión de 46 archivos y 126,493 filas.
-  Y la reescritura es determinista —byte por byte igual a la anterior, 53,636 bytes las dos
-  quincenas y 1,147,796 las 46—, así que reconstruir no mueve el dato. Es lo que vuelve
-  innecesario el drop de la tabla, que además abriría una ventana sin tabla.
+- **`replaceWhere` reescribe sólo lo suyo, y con las 46 es el full refresh.** Las cuatro ramas
+  del parámetro de `nb_20` sobre `hechos_precios`: vacío no commitea versión; una quincena
+  inventada truena antes de escribir; `todas` deja **una sola** versión, de un archivo y 126,493
+  filas. Es lo que vuelve innecesario el drop de la tabla, que además abriría una ventana sin
+  tabla.
+- **Recalcular dos quincenas no reescribe el archivo grande: lo marca con una deletion vector.**
+  Sobre la tabla clusterizada, un `replaceWhere` de `2025-11_q1` y `q2` dejó el archivo de
+  830,440 bytes intacto con una DV de **833 bytes** sobre 4,258 filas, y escribió las nuevas en
+  un archivo aparte de **33,480 bytes**. O sea que soltar la partición **no** trajo el write
+  amplification que se le temía —reescribir a las quincenas vecinas por compartir archivo—: se
+  escriben 33 KB donde antes se reescribían 830 KB.
+- **Y esa reescritura sigue siendo determinista, ahora medido con checksum.** Dos corridas
+  idénticas de esas dos quincenas dan dos archivos de 33,480 bytes con el **mismo `md5` y sin
+  una diferencia en `cmp`**, y la tabla queda en 863,920 bytes las dos veces. Reconstruir no
+  mueve el dato.
+- **Lo que sí cuesta es la DV acumulada**: la tabla pasa de 830,440 a 863,920 bytes y ahí se
+  queda hasta que alguien la purgue. Las 4,258 filas marcadas son el **3.4%** de la tabla, justo
+  debajo del 5% con el que `OPTIMIZE` purga solo. Es el trabajo concreto del mantenimiento.
 - **Las deletion vectors vienen prendidas por defecto**
   (`spark.databricks.delta.properties.defaults.enableDeletionVectors`), así que una tabla
   nueva nace en el protocolo (3,7), con `deletionVectors` y `delta.targetFileSize.adaptive`.
@@ -95,6 +106,66 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   ya esté pasando.
 - **Lo que rompe un clon es `OPTIMIZE` seguido de `VACUUM`** —el primero deja huérfanos los
   archivos que el clon referencia y el segundo los borra—, no `VACUUM` solo.
+- **El `CLUSTER BY` engancha sobre tabla por ruta**, igual que el `ADD CONSTRAINT`, y el
+  clustering sobrevive las escrituras posteriores. Es lo que permite el layout de los hechos
+  sin lakehouse por defecto.
+- **`DataFrameWriter.clusterBy` es un no-op silencioso sobre tabla por ruta.** El método
+  existe en Spark 4 y no truena, pero `DESCRIBE DETAIL` devuelve `clusteringColumns` vacío:
+  la tabla queda sin clusterizar. Por eso el layout se declara con un `ALTER` idempotente
+  —`exige_clustering`— y no en la escritura.
+- **`replaceWhere` no exige que la columna del predicado sea de partición, y el guard sigue
+  vivo.** Reemplazar una quincena dejó la otra intacta —51.5 contra 55.0 en la sonda— y una
+  fila fuera del predicado tronó con `DELTA_REPLACE_WHERE_MISMATCH`. Es lo que deja soltar el
+  `partitionBy` sin tocar el fail fast de silver.
+- **`OPTIMIZE … VORDER` no V-Ordena hacia atrás lo que decide no reescribir.** Sobre cuatro
+  archivos de 10 KB escritos sin V-Order: 4 considerados, 4 saltados y `NonVOrderedFiles` con
+  cero archivos, con clustering y sin él. Por eso el V-Order entra por el perfil de la
+  escritura en `nb_30` y el `VORDER` del mantenimiento sólo sirve para conservarlo.
+- **El perfil de recursos puesto en runtime sí aplica lo que la doc dice que trae.**
+  `spark.conf.set("spark.fabric.resourceProfile", "readHeavyForPBI")` en la sesión mueve
+  `spark.sql.parquet.vorder.default` de `false` a `true` y deja `optimizeWrite.enabled` en
+  `true` con `binSize` de `1g`. Lo verificado es la sesión, no los bytes del parquet: el
+  V-Order no se ve en el metadato de la tabla.
+- **Cuánto vale cada cosa, sobre las mismas 126,493 filas de `hechos_precios` y con un archivo
+  de control:**
+
+  | escritura | archivos | bytes |
+  |---|---|---|
+  | sin V-Order | 1 | 830,440 |
+  | con V-Order | 1 | **380,227** |
+  | fuente ya V-Ordenada, reescrita con V-Order apagado | 1 | 379,483 |
+  | esa misma, particionada por `_quincena` | 46 | 833,921 |
+
+  **El V-Order vale −54.2% y particionar cuesta +120%**, y las dos cifras se parecen porque son
+  la misma mecánica: qué tan bien se agrupan las filas parecidas dentro de un archivo. El
+  V-Order las agrupa; partir la tabla en 46 deshace esa agrupación y obliga a 46 diccionarios y
+  46 footers. El tercer renglón es el que separa las dos cosas: **el orden que impone el V-Order
+  sobrevive una reescritura sin V-Order**, así que lo que se pierde al reescribir sin él son
+  2.8 puntos de encoding, no el ordenamiento. Medir esto leyendo de gold —que ya está
+  V-Ordenado— da ese 2.8% y esconde el resto.
+- **`OPTIMIZE` no commitea versión cuando no reescribe nada, y `VACUUM` commitea dos siempre.**
+  En la primera corrida de `nb_60` sobre silver `hechos_precios`, el `OPTIMIZE` no dejó versión
+  —se salta la tabla por tamaño— y el `VACUUM` dejó `VACUUM START` y `VACUUM END`: Fabric trae
+  prendido el logging del vacuum. O sea que **cada mantenimiento deja dos versiones nuevas en
+  cada tabla aunque no se haya movido un dato**, y eso desframea al modelo Direct Lake igual.
+  Es otra razón para que el refresh vaya dentro del pipeline (decisión #33).
+- **El `DRY RUN` del `VACUUM` lista el `metadata/` de Iceberg en todas las tablas, y el `VACUUM`
+  no lo borra.** Fabric mantiene por tabla un directorio `metadata` con la virtualización
+  Iceberg de OneLake —`v1.metadata.json`, los `.avro` del snapshot, `version-hint.text`—, y el
+  listado del vacuum lo toma por candidato: `numFilesToDelete: 1` contra `numDeletedFiles: 0`
+  donde era el único, y `numDeletedFiles: 2` en `dim_salario_minimo`, que sí tenía dos parquets
+  huérfanos. Se regenera después de cada corrida, pero por los commits nuevos, no porque lo
+  hayan borrado. `nb_60` lo descuenta de su conteo para no reportar un borrado que no ocurre.
+- **`VACUUM … LITE` combina con `DRY RUN`, y aquí no sirve.** Ignora el `metadata/`, que es lo
+  que se le pedía, pero sobre `dim_salario_minimo` también ignoró los dos huérfanos de verdad
+  que el modo completo sí borró: da cero. Arma la lista leyendo el log en vez del directorio, y
+  lo que el log no alcanza no lo ve.
+- **`clusteringQuality` viene dentro de las métricas de `OPTIMIZE`, en PySpark.** La doc lo
+  presenta como método exclusivo de Scala: sale una fila por columna de clustering, con
+  `avgDepth`, `overlapRatio` y `skippingEffectiveness`, sin llamada aparte.
+- **Ninguna API pública devuelve el exit value de un notebook**: ni job instances ni
+  livySessions lo traen, se queda en el snapshot. Para leerlo desde la CLI el notebook escribe
+  el mismo JSON a `Files/` y se baja con `fab cp`.
 - **Fabric escribe `.platform` sin salto de línea final.** Con uno de más, el item sale
   `uncommitted` al sincronizar aunque el contenido sea idéntico. El `notebook-content.py`
   escrito a mano **sí** sobrevive el round-trip, celda `%run` incluida.
@@ -407,12 +478,17 @@ Gansito, que es como dejan el contexto los slicers de P2.
 
 ## La copia pública
 
-- **Gold entero pesa 1.36 MB en ocho parquets**, y el `coalesce(1)` de `nb_50_export` no es
-  cosmético: en OneLake son **2.11 MB en 128 archivos** por la partición de `_quincena`, y
-  coalescido baja **35%**. `hechos_precios` pasa de 46 archivos y 1.12 MB a **uno de 771 KB**,
-  porque el diccionario comprime sobre la columna entera y se paga un solo footer.
-- **El repo de datos queda en ~8 MB**, contra el techo blando de **1 GB** que GitHub recomienda
-  y los **50 MiB** por archivo donde apenas avisa. El parquet más grande es el 2% de ese umbral.
+- **Gold entero pesa 0.87 MB en ocho parquets.** Eran 1.36 MB antes de soltar la partición y
+  prender el V-Order: `hechos_precios` bajó de **771,008 a 378,767 bytes** (−50.9%) y
+  `hechos_relativos` de **327,677 a 224,395** (−31.5%). Las otras seis salieron **idénticas al
+  byte**, que es la señal de que el cambio está donde se tocó y en ningún otro lado.
+- **El `coalesce(1)` de `nb_50_export` ya no puede argumentar compresión.** Cuando la tabla eran
+  46 archivos, fusionarlos al exportar ahorraba un tercio; ahora la tabla ya viene en uno y el
+  parquet exportado pesa 378,767 contra los 379,918 de la tabla. Sigue haciendo falta, pero por
+  la otra razón: que la URL que consume Power BI tenga nombre fijo y no un `uuid` por corrida.
+- **El repo de datos queda en 7.5 MB** —6.6 de Profeco, 872 KB de la copia pública y 44 KB de
+  CONASAMI—, contra el techo blando de **1 GB** que GitHub recomienda y los **50 MiB** por
+  archivo donde apenas avisa. El parquet más grande es el 0.7% de ese umbral.
   Git guarda cada versión y el parquet no hace delta, así que cada reexport son ~1.4 MB nuevos:
   cien reexports serían 200 MB.
 - **Los parquets reproducen el índice sin Fabric de por medio.** Leyéndolos con polars y sumando

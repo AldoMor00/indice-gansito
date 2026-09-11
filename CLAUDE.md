@@ -63,7 +63,7 @@
 | prefijo | item |
 |---|---|
 | `lh_` | lakehouse |
-| `nb_NN_` | notebook; `NN` marca la capa (10 bronze, 20 silver, 30 gold, 40 dq —muerta: la observabilidad va al resumen de la corrida, decisión #7—, 50 export) |
+| `nb_NN_` | notebook; `NN` marca la capa (10 bronze, 20 silver, 30 gold, 40 dq —muerta: la observabilidad va al resumen de la corrida, decisión #7—, 50 export, 60 mantenimiento) |
 | `pl_` | data pipeline |
 | `sm_` / `rpt_` | modelo semántico / reporte |
 | `_col` | columna de metadato técnico, nunca de negocio |
