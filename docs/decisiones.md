@@ -703,3 +703,31 @@ que bajar de todos modos**. Abrir uno nada más por revisar tiraría el ahorro d
 y como la fuente publica mensual, cada publicación arrastra una quincena pendiente que
 obliga a abrir el año en curso y revisa sus catorce miembros de paso. Un año ya cerrado no
 se vuelve a mirar solo; para eso está `--rehacer`, que fuerza sin consultar sellos.
+
+## 35. El deflactor sale del INPC de INEGI, no de CONASAMI
+
+Hasta ahora el deflactor era implícito: `smg_nominal / smg_real` de la serie de CONASAMI
+es el INPC entre 100. Funcionaba y estaba medido, pero esa serie se detiene en enero de
+2026 mientras los precios de Profeco llegan a julio, y `nb_30_gold` truena a propósito
+cuando la ventana de precios se adelanta a la del salario. El deflactor pasa a salir del
+indicador `910420` de INEGI, que llega a la segunda quincena de agosto de 2026.
+
+No es sólo alcance, también es grano. El de CONASAMI es mensual, así que las dos quincenas
+de un mes compartían deflactor; el de INEGI es **quincenal** y empata uno a uno con
+`_quincena`. Eso era lo que `fuentes.md` ya declaraba como lo correcto y no se tenía. De
+paso el índice deja de pasar por `dim_mes` para deflactarse: hoy la cadena es quincena →
+mes → deflactor, y queda quincena → deflactor.
+
+El cambio de fuente está comprobado, no supuesto: el INPC de enero de 2024 es 133.5550
+promediando las dos quincenas de INEGI, contra el 133.554 que `hechos.md` tenía medido
+desde CONASAMI. Una milésima de redondeo.
+
+CONASAMI **se queda** como fuente del salario, que es lo que responde la página de cuántos
+Gansitos compra un día de trabajo. Que su serie mensual pare en enero no la deja coja: el
+salario mínimo es un dato que se fija una vez al año y sigue vigente hasta el siguiente,
+así que el nominal de 2026 se conoce completo.
+
+El costo es un token en la URL, y por eso vive como secreto del repositorio y el manifiesto
+guarda `{token}` en lugar del valor. Se pagó porque la alternativa sin credencial —el CSV
+de datos abiertos del programa INPC— se quedó en julio de 2024. Cómo se encontró el
+indicador, y los tres errores que dan el mismo 400 mudo, están en `fuentes.md`.
