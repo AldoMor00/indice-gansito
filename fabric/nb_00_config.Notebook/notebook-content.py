@@ -168,7 +168,21 @@ def escribe(sdf, ruta: str) -> None:
 # solo, así que aquí sólo va lo que un cast no puede ver.
 
 
-def exige_completo(sdf, columnas: list[str]) -> None:
+def muestra_filas(sdf, columnas: list[str], n: int = 5) -> str:
+    """Las primeras filas que rompieron una compuerta, para el mensaje del fallo.
+
+    El conteo dice cuánto y no qué: con `latitud: 24 filas` hay que abrir el SQL endpoint
+    para saber de qué tiendas habla. La evidencia va en el mensaje porque el mensaje es lo
+    que llega al `errorValue` del pipeline, y ahí se diagnostica sin consultar la tabla.
+    Acotada a `n`: el errorValue es una cadena, no un reporte.
+    """
+    return " | ".join(
+        ", ".join(f"{c}={f[c]!r}" for c in columnas)
+        for f in sdf.select(*columnas).take(n)
+    )
+
+
+def exige_completo(sdf, columnas: list[str], contexto: tuple[str, ...] = ()) -> None:
     """Truena si una columna obligatoria viene vacía. Es el hueco que ANSI no tapa: el nulo
     castea a nulo sin protestar, y las llaves naturales ni siquiera se castean —se hashean—.
 
@@ -176,15 +190,23 @@ def exige_completo(sdf, columnas: list[str]) -> None:
     que bronze no castee (decisión #9), así que una celda vacía de CONASAMI llega como "" y
     no como nulo; los parquets de Profeco sí traen nulo. Misma noticia, dos formas. Es para
     las columnas de texto de bronze.
+
+    `contexto` son las columnas que identifican la fila en el mensaje del fallo —la quincena
+    y la clave natural— y que no necesariamente están entre las validadas.
     """
+    VACIA = "(`{c}` IS NULL OR trim(`{c}`) = '')"
     conteos = sdf.agg(*[
-        F.count_if(F.col(c).isNull() | (F.trim(F.col(c)) == "")).alias(c) for c in columnas
+        F.count_if(F.expr(VACIA.format(c=c))).alias(c) for c in columnas
     ]).first()
     vacias = {c: n for c, n in zip(columnas, conteos) if n}
     if vacias:
+        # Segunda pasada sólo cuando ya va a tronar: la corrida sana paga el agg y nada más.
+        rotas = sdf.filter(" OR ".join(VACIA.format(c=c) for c in vacias))
         raise RuntimeError(
             "columnas obligatorias vacías — "
             + "; ".join(f"{c}: {n:,} filas" for c, n in vacias.items())
+            + " — "
+            + muestra_filas(rotas, [*contexto, *vacias])
         )
 
 
@@ -196,17 +218,28 @@ def exige_uno_por_clave(sdf, llaves: list[str], atributos: list[str], muestra: i
     y las dos cosas se miran antes de escribir, no se desempatan solas.
 
     Los conflictos se cuentan sólo si los hay: en la corrida sana esto es una pasada y nada.
+
+    `collect_set` y no `count_distinct` porque el conteo no alcanza para diagnosticar: saber
+    que `giro` trae dos valores no dice que son 'Papeler?as' y 'Papelerias' —un defecto de
+    codificación de la fuente— y no dos giros de verdad. El mensaje lleva los valores.
     """
     conflictos = (
         sdf.groupBy(*llaves)
-        .agg(*[F.count_distinct(c).alias(c) for c in atributos])
-        .filter(" OR ".join(f"`{c}` > 1" for c in atributos))
+        .agg(*[F.collect_set(c).alias(c) for c in atributos])
+        .filter(" OR ".join(f"size(`{c}`) > 1" for c in atributos))
     )
     ejemplos = conflictos.take(muestra)
     if ejemplos:
         raise RuntimeError(
             f"{conflictos.count():,} claves con un atributo cambiado debajo — "
-            + "; ".join(str(f.asDict()) for f in ejemplos)
+            + "; ".join(
+                # Sólo el atributo que cambió: los que traen un valor son ruido en el mensaje.
+                str({
+                    c: v for c, v in f.asDict().items()
+                    if c in llaves or len(v) > 1
+                })
+                for f in ejemplos
+            )
         )
 
 
@@ -253,14 +286,22 @@ def exige_clustering(ruta: str, columnas: tuple[str, ...]) -> None:
         print(f"clustering {ruta.rsplit('/', 1)[-1]}: {', '.join(columnas)}")
 
 
-def exige_llave_unica(sdf, llave: str) -> None:
+def exige_llave_unica(sdf, llave: str, muestra: int = 4) -> None:
     """Truena si la llave sustituta se repite. La dimensión ya viene agrupada por su clave
     natural, así que un duplicado aquí sólo puede ser una colisión de `xxhash64`, y una
     colisión fusiona dos filas distintas sin dejar rastro: el hash no propaga nulos ni
-    avisa, devuelve una llave válida y equivocada."""
+    avisa, devuelve una llave válida y equivocada.
+
+    El mensaje lleva las filas que chocan, completas: una colisión de hash y un bug nuestro
+    calculando la clave se ven igual en el conteo y sólo se distinguen mirando las dos filas.
+    """
     filas, distintas = sdf.count(), sdf.select(llave).distinct().count()
     if filas != distintas:
-        raise RuntimeError(f"{llave}: {filas:,} filas y {distintas:,} llaves distintas")
+        repetidas = sdf.groupBy(llave).count().filter("count > 1").select(llave)
+        raise RuntimeError(
+            f"{llave}: {filas:,} filas y {distintas:,} llaves distintas — "
+            + muestra_filas(sdf.join(repetidas, llave).orderBy(llave), sdf.columns, muestra)
+        )
 
 
 def de_bronze(tabla: str):

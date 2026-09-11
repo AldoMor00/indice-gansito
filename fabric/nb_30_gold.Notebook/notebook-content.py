@@ -81,15 +81,18 @@ REPLICAS, SEMILLA = 2_000, 20240101
 # una cadena nueva llega con su giro puesto y un diccionario de cadenas se rompería en la
 # quincena siguiente. Es la granularidad que sobrevive el umbral de pareo (decisión #19).
 #
-# Son los cinco giros que venden la canasta —los mismos para los 9 SKUs que para el Gansito
-# solo—; el universo de tiendas tiene 15 y los otros 10 no venden esto y se quedan sin canal.
-# Un giro nuevo que sí traiga precio detiene la corrida.
+# Son los seis giros que venden la canasta —los mismos para los 9 SKUs que para el Gansito
+# solo—; el universo de tiendas tiene 15 y los otros 9 no venden esto y se quedan sin canal.
+# Un giro nuevo que sí traiga precio detiene la corrida, y así entró "Tortillerias": dos
+# tiendas de San Luis Potosí con 8 de los 9 SKUs en 2026-05_q1. Va a `tradicional` por el
+# tipo de establecimiento, igual que `Mercados`.
 CANAL = {
     "Supermercado / Tienda de Autoservicio": "supermercado",
     "Tienda de Conveniencia": "conveniencia",
     "Farmacias": "conveniencia",
     "Mercados": "tradicional",
     "Central de Abasto": "tradicional",
+    "Tortillerias": "tradicional",
 }
 
 
@@ -117,7 +120,9 @@ NOMBRE_COMERCIAL = {
 
 # El mapa de P2 pinta estados, y el `shapeMap` de Power BI casa la ubicación contra las claves
 # del TopoJSON que trae para México. 28 de los 30 estados que declara Profeco casan por nombre
-# —la fuente los escribe sin acentos, igual que el mapa—, pero los dos que no casan son los dos
+# —sin acentos, igual que el mapa: la fuente empezó a acentuarlos en 2026 y es `nb_20` el que
+# los vuelve a plegar (decisión #39), así que quitar eso de silver rompe aquí—, pero los dos
+# que no casan son los dos
 # más grandes del padrón: ahí "Ciudad de Mexico" es `mx-dif` y "Estado de Mexico" es `mx-mex`.
 # Sin traducirlos el mapa deja en blanco 634 de las 2,392 tiendas.
 #

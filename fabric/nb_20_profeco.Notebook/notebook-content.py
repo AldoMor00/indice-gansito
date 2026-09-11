@@ -77,6 +77,328 @@ SKUS_CANASTA = 9
 LLAVE_PRODUCTO = ["presentacion", "marca"]
 ATRIBUTOS_PRODUCTO = ["producto", "categoria"]
 
+# Las columnas de tienda se normalizan antes de todo lo demás porque de su texto cuelga la
+# identidad: `id_tienda` es `xxhash64(nombre_comercial, direccion)`, así que cada grafía es
+# una tienda distinta. Profeco escribe la misma tienda con acento y sin él, y desde 2026
+# también con el acento perdido como "?" —4,484 identidades donde hay 2,956— (decisión #39).
+#
+# Las de producto quedan fuera, medido: no traen "?" ni deriva de acentos, y `presentacion`
+# es la llave de `NOMBRE_COMERCIAL` en gold, que la espera con acento.
+COLUMNAS_TEXTO = [
+    "nombre_comercial",
+    "direccion",
+    "cadena_comercial",
+    "giro",
+    "municipio",
+    "estado",
+]
+
+# Los doce primeros pares pliegan el acento; los dos últimos reparan. "ð" es una "ñ" mal
+# decodificada —0xF0 por 0xF1, en "Muðoz" y "Viða del Mar"— y "´" es un apóstrofo suelto
+# usado como tal, en "O´farril". La "ñ" no se pliega: es letra propia y no colapsa ninguna
+# identidad de más. Plegar y no acentuar porque sólo esa dirección es determinista, y porque
+# `CLAVE_ESTADO` de gold espera los 30 estados sin acento, como el TopoJSON del mapa.
+ACENTOS = ("áéíóúüÁÉÍÓÚÜð´", "aeiouuAEIOUUñ'")
+
+# Palabras que Profeco publica con el acento perdido, y su forma canónica. Cada destino es
+# un valor que la propia fuente escribe limpio en otra quincena: no se imputa la letra, se
+# copia. El desempate de las once que tenían más de un candidato salió de la cadena gemela
+# completa y no de la frecuencia global, que se habría equivocado en cuatro —"Vi?a" da
+# "Viga" por frecuencia y "Viña" por contexto—.
+#
+# Congelado y no derivado en cada corrida: estas palabras están en la llave, y un mapa que
+# se recalcula puede resolver distinto al llegar una quincena y mover `id_tienda` en
+# silencio. "Maron" no lleva "?" y va aquí porque es la grafía limpia de la misma papelería,
+# la única que la fuente escribe de las dos formas sin que una sea la corrupción de la otra.
+#
+# Riesgo residual conocido: el mapa es por palabra y generaliza, así que un valor nuevo cuya
+# palabra ya esté aquí no dispara compuerta. Un "Quintana R?o" quedaría "Quintana Rio"; la
+# evidencia es 5,754 a 4 a favor de "Rio", pero no es imposible.
+PALABRAS = {
+    "?greda": "Agreda",
+    "?guila": "Aguila",
+    "?lvarez": "Alvarez",
+    "?lvaro": "Alvaro",
+    "?ngel": "Angel",
+    "?nica": "Unica",
+    "?vila": "Avila",
+    "Acatl?n": "Acatlan",
+    "Agaler?a": "Agaleria",
+    "Agust?n": "Agustin",
+    "Alb?n": "Alban",
+    "Alem?n": "Aleman",
+    "Ampliaci?n": "Ampliacion",
+    "An?huac": "Anahuac",
+    "Anah?": "Anahi",
+    "Anax?goras": "Anaxagoras",
+    "Ant?n": "Anton",
+    "Arag?n": "Aragon",
+    "Atizap?n": "Atizapan",
+    "Av?cola": "Avicola",
+    "Aztl?n": "Aztlan",
+    "B?rcenas": "Barcenas",
+    "Baj?o": "Bajio",
+    "Bol?var": "Bolivar",
+    "C?mara": "Camara",
+    "C?rdenas": "Cardenas",
+    "Callej?n": "Callejon",
+    "Canc?n": "Cancun",
+    "Cant?n": "Canton",
+    "Carnicer?a": "Carniceria",
+    "Cat?lica": "Catolica",
+    "Ceil?n": "Ceilan",
+    "Ch?vez": "Chavez",
+    "Chapay?n": "Chapayan",
+    "Cob?": "Coba",
+    "Col?n": "Colon",
+    "Concepci?n": "Concepcion",
+    "Constituc?on": "Constitucion",
+    "Constituci?n": "Constitucion",
+    "constituci?n": "constitucion",
+    "Coraz?n": "Corazon",
+    "Cort?nez": "Cortinez",
+    "Costituci?n": "Costitucion",
+    "Coyoac?n": "Coyoacan",
+    "Cremer?a": "Cremeria",
+    "Cuatitl?n": "Cuatitlan",
+    "Cuautitl?n": "Cuautitlan",
+    "Culiac?n": "Culiacan",
+    "D?az": "Diaz",
+    "D?tais": "D'tais",
+    "Delegaci?n": "Delegacion",
+    "Desviaci?n": "Desviacion",
+    "Divisi?n": "Division",
+    "Dom?nguez": "Dominguez",
+    "Echeverr?a": "Echeverria",
+    "Ecolog?a": "Ecologia",
+    "Egu?a": "Eguia",
+    "El?as": "Elias",
+    "Encarnaci?n": "Encarnacion",
+    "Fr?as": "Frias",
+    "Fr?o": "Frio",
+    "Front?n": "Fronton",
+    "G?lvez": "Galvez",
+    "G?mez": "Gomez",
+    "Galer?as": "Galerias",
+    "Galv?n": "Galvan",
+    "Garc?a": "Garcia",
+    "Gonz?lez": "Gonzalez",
+    "H?per": "Hiper",
+    "Her?ico": "Heroico",
+    "Hern?n": "Hernan",
+    "Hern?ndez": "Hernandez",
+    "Hiliana?s": "Hiliana's",
+    "Ixtlix?chitl": "Ixtlixochitl",
+    "Jab?n": "Jabin",
+    "Jard?n": "Jardin",
+    "Jes?s": "Jesus",
+    "Joaqu?n": "Joaquin",
+    "Ju?rez": "Juarez",
+    "Jugueter?as": "Jugueterias",
+    "Jur?dico": "Juridico",
+    "L?pez": "Lopez",
+    "L?zaro": "Lazaro",
+    "Le?n": "Leon",
+    "Lecher?a": "Lecheria",
+    "Liberaci?n": "Liberacion",
+    "Lim?n": "Limon",
+    "M?": "Mi",
+    "M?jica": "Mujica",
+    "M?rmol": "Marmol",
+    "M?rtires": "Martires",
+    "M?s": "Mas",
+    "Ma?z": "Maiz",
+    "Mag?n": "Magon",
+    "Malec?n": "Malecon",
+    "Mar?a": "Maria",
+    "Mar?n": "Marin",
+    "Maron": "Marin",
+    "Mart?": "Marti",
+    "Mart?n": "Martin",
+    "Mart?nez": "Martinez",
+    "Mediterr?neo": "Mediterraneo",
+    "Mercer?a": "Merceria",
+    "Michoac?n": "Michoacan",
+    "Miner?a": "Mineria",
+    "Mir?n": "Miron",
+    "Misi?n": "Mision",
+    "Mor?n": "Moran",
+    "Mu?oz": "Muñoz",
+    "Muebler?a": "Muebleria",
+    "N?emero": "Nuemero",
+    "N?m": "Num",
+    "N?mero": "Numero",
+    "Nen?far": "Nenufar",
+    "Nezahualc?yothl": "Nezahualcoyothl",
+    "Nezahualc?yotl": "Nezahualcoyotl",
+    "Nic?las": "Nicolas",
+    "Nicol?s": "Nicolas",
+    "O?farril": "O'farril",
+    "Obreg?n": "Obregon",
+    "Ocean?a": "Oceania",
+    "Ocotl?n": "Ocotlan",
+    "Oreg?n": "Oregon",
+    "Ort?z": "Ortiz",
+    "Oxolot?n": "Oxolotan",
+    "Pa?tu": "Pa'tu",
+    "Pac?fico": "Pacifico",
+    "Panader?a": "Panaderia",
+    "Panader?as": "Panaderias",
+    "Panam?": "Panama",
+    "Pante?n": "Panteon",
+    "Papeler?a": "Papeleria",
+    "Papeler?as": "Papelerias",
+    "Paricut?n": "Paricutin",
+    "Pasteler?a": "Pasteleria",
+    "Patr?n": "Patron",
+    "Per?": "Peru",
+    "Pescader?a": "Pescaderia",
+    "Pescader?as": "Pescaderias",
+    "Pit?goras": "Pitagoras",
+    "Plut?n": "Pluton",
+    "Poller?a": "Polleria",
+    "Potos?": "Potosi",
+    "Prolongaci?n": "Prolongacion",
+    "R?o": "Rio",
+    "R?os": "Rios",
+    "R?stico": "Rustico",
+    "Ram?n": "Ramon",
+    "Ram?rez": "Ramirez",
+    "Ray?n": "Rayon",
+    "Reelecci?n": "Reeleccion",
+    "Regi?n": "Region",
+    "Renter?a": "Renteria",
+    "Rep?blica": "Republica",
+    "Revoluci?n": "Revolucion",
+    "Rinc?n": "Rincon",
+    "Robert?s": "Robert's",
+    "Roc?o": "Rocio",
+    "Rodr?guez": "Rodriguez",
+    "Ru?z": "Ruiz",
+    "S?enz": "Saenz",
+    "S?nchez": "Sanchez",
+    "S?per": "Super",
+    "Sa?l": "Saul",
+    "Sa?nz": "Sainz",
+    "Secci?n": "Seccion",
+    "Serd?n": "Serdan",
+    "Sim?n": "Simon",
+    "sim?n": "simon",
+    "Su?rez": "Suarez",
+    "Tec?mac": "Tecamac",
+    "Tecnol?gico": "Tecnologico",
+    "Teotihuac?n": "Teotihuacan",
+    "Tonal?": "Tonala",
+    "Torre?n": "Torreon",
+    "Tortiller?a": "Tortilleria",
+    "Tortiller?as": "Tortillerias",
+    "Tr?fico": "Trafico",
+    "Tr?nsito": "Transito",
+    "Tradici?n": "Tradicion",
+    "Tul?m": "Tulum",
+    "Tultitl?n": "Tultitlan",
+    "Uni?n": "Union",
+    "V?veres": "Viveres",
+    "V?zquez": "Vazquez",
+    "Vel?zquez": "Velazquez",
+    "Vi?a": "Viña",
+    "Vild?sola": "Vildosola",
+    "Villasunci?n": "Villasuncion",
+    "Xoxocotl?n": "Xoxocotlan",
+    "Zahuatl?n": "Zahuatlan",
+}
+
+# Los cinco typos de la fuente que parten una tienda en dos y que no son codificación:
+# singular contra plural y mayúscula contra minúscula, dentro del mismo año. Elegidos a
+# mano y no por frecuencia, que se equivocaría en tres de los cinco.
+#
+# Por columna y no en un solo mapa, y esto importa: "Central de Abasto" en singular es
+# también un `giro`, y ahí es la llave de `CANAL` en gold. Renombrarlo al plural con el de
+# `cadena_comercial` dejaría a gold sin canal para 2,225 filas de precio.
+TYPOS = {
+    "cadena_comercial": {
+        "Central de Abasto": "Central de Abastos",
+        "Neto (super Precio)": "Neto (Super Precio)",
+        "Loyep (uniformes)": "Loyep (Uniformes)",
+        "San Francisco de Asis (ropa y Telas)": "San Francisco de Asis (Ropa y Telas)",
+    },
+    "giro": {
+        "Tienda Departamentales": "Tiendas Departamentales",
+    },
+}
+
+# Los únicos no-ASCII que el texto de tienda puede traer después de normalizar, medidos en
+# las 62 quincenas: ñ, el grado de "N° 3600", la exclamación invertida y los dos ordinales.
+PERMITIDOS = "ñÑ°¡ºª"
+
+# Lo que detiene la corrida: fuera del ASCII imprimible y de PERMITIDOS, o un "?" que
+# sobrevivió a PALABRAS. El "?" va prohibido a propósito —en estas columnas es acento
+# perdido, no signo— así que si queda uno es una palabra nueva que hay que resolver.
+PROHIBIDO = rf"[^\x20-\x7E{PERMITIDOS}]|\?"
+
+# Las columnas que identifican la fila en el mensaje de una compuerta que truena.
+CONTEXTO = ("_quincena", "nombre_comercial", "direccion")
+
+# El único import propio del notebook: lo demás llega por `%run nb_00_config`.
+import re
+
+# Una UDF y no `regexp_replace`: el mapa va de palabra a palabra y Spark no sabe sustituir
+# contra un diccionario —serían 191 `regexp_replace` encadenados, que es lo que de verdad
+# no escala—. La palabra se delimita con el mismo regex con que se derivó el mapa, para que
+# lo que resuelve el mapa y lo que exige la compuerta sean la misma noción de palabra.
+_PALABRA = re.compile(r"[A-Za-zñÑ'?]+")
+
+
+@F.udf("string")
+def canoniza(valor: str) -> str:
+    """Cada palabra a su forma canónica, dejando la puntuación y los números donde están."""
+    if valor is None:
+        return None
+    return _PALABRA.sub(lambda m: PALABRAS.get(m.group(0), m.group(0)), valor)
+
+
+def normaliza(sdf):
+    """El texto de tienda a su forma canónica, antes de cualquier compuerta y de `clave()`.
+
+    Va aquí y no en la ingesta porque bronze no castea ni corrige: guarda lo que publicó la
+    fuente, y el sha256 del manifiesto describe ese CSV (decisión #9). Resolver identidad es
+    de silver.
+    """
+    plegado = sdf.withColumns({
+        c: canoniza(F.translate(F.col(c), *ACENTOS)) for c in COLUMNAS_TEXTO
+    })
+    for columna, typos in TYPOS.items():
+        plegado = plegado.replace(typos, subset=[columna])
+    return plegado
+
+
+def exige_caracteres(
+    sdf, columnas: list[str], contexto: tuple[str, ...], muestra: int = 4
+) -> None:
+    """Truena si queda un carácter que la normalización no conoce.
+
+    Es la compuerta que caza la deriva de codificación de la fuente sola. La "ð" de hoy la
+    encontré inventariando a mano los no-ASCII de los 62 archivos; el día que Profeco emita
+    otro carácter roto esto lo detiene en vez de dejarlo partir identidades en silencio.
+
+    El mensaje lleva el carácter y su punto de código junto con la fila, porque el conteo no
+    alcanza: hay que ver qué llegó y en qué tienda para decidir si va a ACENTOS o a PALABRAS.
+    """
+    for c in columnas:
+        rotas = sdf.filter(F.col(c).rlike(PROHIBIDO))
+        if rotas.take(1):
+            raise RuntimeError(
+                f"`{c}`: carácter que la normalización no conoce en {rotas.count():,} filas — "
+                + muestra_filas(
+                    rotas.withColumns({
+                        "_raro": F.regexp_extract(c, PROHIBIDO, 0),
+                        "_punto": F.ascii(F.regexp_extract(c, PROHIBIDO, 0)),
+                    }),
+                    [*contexto, c, "_raro", "_punto"],
+                    muestra,
+                )
+            )
+
 
 def ultimo_intento(filas):
     """Un `intento` > 1 es una quincena rebajada: gana el mayor. Bronze conserva los dos
@@ -163,7 +485,7 @@ def a_recalcular(canasta, parametro: str) -> list[str]:
 
 bronze_precios = de_bronze("precios")
 canasta = (
-    ultimo_intento(bronze_precios)
+    normaliza(ultimo_intento(bronze_precios))
     .filter(~F.col("presentacion").isin(EXCLUIDOS))
     .cache()
 )
@@ -184,12 +506,20 @@ apunta(
 # no encuentra nada que insertar y no commitea versión. No hace falta cortar aquí, y un
 # solo punto de salida se lee mejor.
 
-# Compuertas de entrada. Lo vacío se ataja aquí y no con un `NOT NULL` sobre el id: las
-# llaves no se castean, se hashean, y `xxhash64` salta los nulos en vez de propagarlos — una
-# `direccion` vacía da una llave válida y equivocada, fusionada con otra tienda.
+# Compuertas de entrada, y los caracteres van primero: si la normalización dejó uno que no
+# conoce, todo lo que sigue estaría hasheando una grafía que no es la canónica y partiría la
+# tienda en dos (decisión #39).
+CONTEXTO_PRECIO = ("_quincena", "presentacion", "nombre_comercial")
+
+exige_caracteres(lote, COLUMNAS_TEXTO, CONTEXTO_PRECIO)
+
+# Lo vacío se ataja aquí y no con un `NOT NULL` sobre el id: las llaves no se castean, se
+# hashean, y `xxhash64` salta los nulos en vez de propagarlos — una `direccion` vacía da una
+# llave válida y equivocada, fusionada con otra tienda.
 exige_completo(
     lote,
     LLAVE_PRODUCTO + ATRIBUTOS_PRODUCTO + ["nombre_comercial", "direccion", "precio"],
+    CONTEXTO_PRECIO,
 )
 exige_uno_por_clave(lote, LLAVE_PRODUCTO, ATRIBUTOS_PRODUCTO)
 
@@ -245,12 +575,23 @@ dim_producto = (
 # la dimensión quedaría sesgada a las que venden pastelillos (decisión #2). Por eso este
 # bloque no lee `lote` sino su propia tabla, acotada a las mismas quincenas del lote.
 bronze_tiendas = de_bronze("tiendas")
-tiendas_lote = (
+tiendas_crudas = (
     ultimo_intento(bronze_tiendas)
     .filter(F.col("_quincena").isin(quincenas_lote))
 )
+tiendas_lote = normaliza(tiendas_crudas)
 
 apunta("bronze_tiendas", filas=bronze_tiendas.count())
+
+# Cuánto texto llegó con el acento perdido. Es métrica del lote y no compuerta: mide si la
+# fuente se está degradando o recuperando —junio de 2026 trajo 4,378 filas y julio ninguna—
+# y eso se mira, no detiene la corrida, porque PALABRAS ya lo resuelve.
+apunta(
+    "normaliza",
+    filas_con_interrogacion=tiendas_crudas.filter(
+        " OR ".join(f"`{c}` LIKE '%?%'" for c in COLUMNAS_TEXTO)
+    ).count(),
+)
 
 # La clave de una tienda es `(nombre_comercial, direccion)` y es la única: búsqueda
 # exhaustiva de los 255 subconjuntos de los 8 campos sobre las 46 quincenas. `direccion`
@@ -259,10 +600,23 @@ apunta("bronze_tiendas", filas=bronze_tiendas.count())
 LLAVE_TIENDA = ["nombre_comercial", "direccion"]
 ATRIBUTOS_TIENDA = ["cadena_comercial", "giro", "estado", "municipio", "latitud", "longitud"]
 
-exige_completo(tiendas_lote, LLAVE_TIENDA + ATRIBUTOS_TIENDA)
+# La coordenada es atributo geográfico, no identidad, y desde 2026-04_q2 la fuente da de alta
+# tiendas sin geocodificar —7 Bodega Aurrera del Valle de México—. Exigirla detendría la
+# cadena por tiendas que ni siquiera venden del catálogo objetivo (decisión #38).
+SIN_COORDENADA = ["latitud", "longitud"]
 
-# Ningún atributo cambia bajo la clave en 46 quincenas, y por eso dim_tienda no lleva SCD2.
-# Que empiece a cambiar es lo que haría falsa esa decisión: se mira, no se desempata.
+exige_caracteres(tiendas_lote, COLUMNAS_TEXTO, CONTEXTO)
+
+exige_completo(
+    tiendas_lote,
+    [c for c in LLAVE_TIENDA + ATRIBUTOS_TIENDA if c not in SIN_COORDENADA],
+    CONTEXTO,
+)
+
+# Ningún atributo cambia bajo la clave en las 62 quincenas, y por eso dim_tienda no lleva
+# SCD2. Sigue siendo cierto después de normalizar: los ~700 conflictos que trae 2026 son
+# grafías de la fuente —acento, "?" y cinco typos— y no atributos que cambien de verdad
+# (decisión #39). Que uno cambie es lo que haría falsa esa decisión: se mira, no se desempata.
 exige_uno_por_clave(tiendas_lote, LLAVE_TIENDA, ATRIBUTOS_TIENDA)
 
 dim_tienda = (
