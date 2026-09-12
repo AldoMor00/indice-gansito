@@ -279,13 +279,13 @@ profesional por oficio, de `albanileria` a `zapatero`.
 - **La serie mensual crece en tandas anuales.** El catálogo la declara `Anual` y así se
   comporta: llega hasta `2026-01` y el paquete se modificó en marzo de 2026. Publican la
   serie completa una vez al año, cuando entra el salario nuevo en enero.
-- **Aun así cubre la ventana de precios completa.** Los 23 meses de `2024-01` a `2025-11`
-  están todos, y la serie llega dos meses más allá del último dato de Profeco.
+- **Cubría la ventana de 46 quincenas y no cubre la de 62.** Los 23 meses de `2024-01` a
+  `2025-11` están todos, pero los precios llegan a `2026-07` y la serie para en `2026-01`:
+  doce quincenas se quedan sin mes, y la página del salario termina ahí (decisión #40).
 - **El deflactor viene dentro:** `smg_nominal / smg_real` es el INPC entre 100, verificado
-  contra el 133.554 que INEGI publicó para `2024-01`.
-- **Ese deflactor es mensual**, así que las dos quincenas de un mes comparten el suyo. El
-  INPC quincenal existe y sería lo correcto, pero sólo sale por la API de indicadores de
-  INEGI, con token de registro.
+  contra el 133.554 que INEGI publicó para `2024-01`. Es mensual, así que las dos quincenas
+  de un mes compartían el suyo. Ya no se usa: el deflactor sale del INPC quincenal de INEGI
+  (decisiones #35 y #40).
 - **Hay tres cifras de salario para 2025 y no se contradicen**: son tres conceptos en tres
   archivos.
 
@@ -344,6 +344,13 @@ la última observación.
   que promedian 133.5550 contra el 133.554 que el proyecto ya tenía medido desde CONASAMI
   (`hechos.md`). Es la comprobación de que cambiar de fuente el deflactor no mueve la
   cadena: una milésima de redondeo.
+- **El tercer campo de `TIME_PERIOD` es el ordinal de la quincena, no el día.** `2026/08/02`
+  es la segunda quincena de agosto. Las 928 observaciones tienen la forma `AAAA/MM/0Q`.
+- **Los decimales de la historia son reales, no ruido.** De 2024 en adelante INEGI publica
+  tres decimales y el resto es serialización de flotante (`145.53100000000001`), pero la
+  serie rebaseada de antes de 2000 trae decimales de verdad: `1997/01/01` vale 29.3608215011194.
+  `decimal(12,6)` deja exacta la ventana del índice y redondea la cola vieja con una pérdida
+  máxima de 5e-7.
 - **La respuesta es estable byte a byte** entre llamadas seguidas: no trae marca de tiempo
   de la petición. Por eso el `sha256` sirve para decidir si hay algo que escribir.
 - **`LASTUPDATE` viene dentro de la serie** y dice cuándo la actualizó INEGI, que no es lo

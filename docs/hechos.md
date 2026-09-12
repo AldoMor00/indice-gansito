@@ -14,6 +14,16 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   prender por sesión** con `spark.conf.set("spark.sql.ansi.enabled", "true")` desde
   `nb_00_config`, y con eso `cast` truena y `try_cast` sigue dando nulo: son dos decisiones
   distintas en vez de la misma (decisión #16). Bronze corrió con ANSI sin cambiar nada.
+- **Con `readHeavyForPBI`, el V-Order de la tabla entra como un commit de Delta aparte.**
+  Detrás de cada escritura que commitea, Fabric agrega una versión más con
+  `operation = 'AUTOSET VORDER TBLPROPERTY'` y `operationMetrics` **vacío**: en
+  `hechos_ic_indice`, el MERGE quedó en la v3 y el V-Order en la v4, 373 ms después. Eso
+  rompe cualquier lectura de métricas que dé por hecho que `history(1)` es la escritura
+  propia —`upsert` de `nb_00_config` tronaba con `KeyError: 'numTargetRowsInserted'`— y sólo
+  se ve en un MERGE que de verdad cambia filas: el que no cambia nada no commitea versión, y
+  la rama que crea la tabla no lee métricas. El perfil documenta V-Order, optimize write y
+  bin de 1 GB, y **no** menciona este commit
+  ([perfiles](https://learn.microsoft.com/fabric/data-engineering/configure-resource-profile-configurations#default-configuration-values-by-profile)).
 - **Las constraints CHECK de Delta funcionan sobre tabla por ruta.**
   `ALTER TABLE delta.\`abfss://...\` ADD CONSTRAINT` engancha sin lakehouse por defecto, y las
   puestas salen en `DeltaTable.forPath(...).detail()["properties"]` como `delta.constraints.<nombre>`,
@@ -450,6 +460,34 @@ celdas en 508 tiendas.
   `2025-01_q1` y ahí se queda las 22 restantes. Contra un precio que sube todo el año, los
   Gansitos por día bajan de 15.6 a un piso de **13.1** en `2024-11_q2`, rebotan a 14.8 con el
   escalón de enero y vuelven a bajar a 13.9. El máximo de la serie es la quincena base.
+- **En junio de 2026 el Gansito bajó a $15.00 en el autoservicio, y es precio, no defecto.**
+  Con la ventana en 62 quincenas el índice llega a **124.40** en `2025-11_q2` —el +24.40% de
+  arriba, al centésimo— y cierra en **106.94** en `2026-07_q2`: +6.94% nominal, −1.83% real
+  contra +8.93% del INPC quincenal. Casi toda la caída está en tres eslabones, `2026-05_q2`
+  −5.93%, `2026-06_q1` −8.63% y `2026-06_q2` −2.22%; los otros ocho SKUs se mueven ±1% en
+  esas mismas quincenas.
+
+  Ninguna tienda marcaba exactamente $15.00 en `2026-05_q1`; en `2026-07_q2` son 133 de 332
+  (40%). La cohorte —227 tiendas que tocan $15.00 desde `2026-05_q2`— sigue la trayectoria
+  del resto del panel durante dos años y medio antes de separarse. Venía de $22 o $23, así
+  que el recorte es de −32% a −35%; los descuentos de ~−19% que aparecen son visitas mezcladas
+  dentro de la quincena, porque `precio_promedio` promedia visitas y 18.50 = (22 + 15) / 2.
+  Es del canal moderno y no de una región: en `2026-07_q2` está en $15.00 el 54% de
+  supermercado, el 6% de conveniencia y el 0% de tradicional —Chedraui 91%, Soriana 72%,
+  Wal-mart 56%, Bodega Aurrera 53%; Oxxo, farmacias, mercados públicos y Superissste en 0%—,
+  y aparece en 26 de los 27 estados con al menos cinco tiendas.
+
+  Se descartaron las tres lecturas de defecto. **No es otro producto**: en las 62 quincenas
+  hay una sola presentación con "Gansito", la misma cadena de siempre. **No es la identidad
+  de tienda**: en las 75 tiendas donde el Gansito cae más de 10% en `2026-06_q1`, los otros
+  ocho SKUs tienen mediana 0.0% y sólo 4 de 548 observaciones caen más de 10%. **No es el
+  archivo de junio** (decisión #36): pegaría a los nueve SKUs. Fuera de los datos, hay
+  supermercados anunciando el Gansito a $15 y en farmacia sigue arriba de $20.
+
+  Se da por bueno y no se filtra. Lo que queda abierto es si dura: la serie tiene cuatro
+  quincenas después del escalón, seguían entrando tiendas en la última (22) y ahí el 54% de
+  los supermercados en $15.00 viene de un 59%. Las cifras de 62 quincenas se publican como
+  provisionales.
 
 ## El corte transversal
 

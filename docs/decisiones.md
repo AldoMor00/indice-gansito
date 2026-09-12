@@ -898,3 +898,42 @@ Cambiar la llave obliga a recalcular: `pendientes_silver` compara `(_quincena, _
 contra bronze, que no se movió, así que la corrida normal no vería nada pendiente. Va con
 `quincenas_pedidas = "todas"`, y las dimensiones se dropean antes porque el `upsert` es
 acumulativo y a propósito no borra: dejaría las dos generaciones de llaves conviviendo.
+
+## 40. El deflactor viaja en la quincena, y el salario se queda con su ventana
+
+La #35 decidió de dónde sale el deflactor; faltaba decidir dónde vive. Mientras gold no se
+tocó, siguió deflactando con `smg_nominal / smg_real` por `dim_mes`, y la compuerta de
+"quincenas sin mes" detuvo la primera corrida de 62 quincenas: la serie mensual de CONASAMI
+para en `2026-01` y las doce quincenas siguientes se caían del `inner join`.
+
+**El INPC es columna de `dim_tiempo_quincena`, no una novena tabla.** A grano de quincena
+hay exactamente una fila por fila de la dimensión, y un hecho 1:1 con su dimensión es un
+join que no puede abanicar ni filtrar nada. Gold se queda en ocho tablas y `INPC` e
+`Inflación acumulada %` pierden sus `TREATAS`: leen la columna de la quincena.
+
+**`hechos_salario_mensual` pierde `inpc`**, así que el deflactor ya no se materializa en
+ninguna capa desde CONASAMI y gold lo toma sólo de INEGI. Silver conserva `smg_nominal` y
+`smg_real` enteras, como llegaron. La columna vieja valía el INPC entre 100 (1.435867 en
+enero de 2026) y la nueva va en base 2018=100 (143.589): las medidas que dividen no se
+enteran, la que lo muestra a pelo cambia de escala.
+
+**El mes se vuelve opcional.** `id_mes` entra por `left join` y queda nulo en las quincenas
+que la serie salarial no alcanza, así que la página del salario termina en enero de 2026 y
+el índice no. `Gansitos por día` se va en blanco sola, porque divide por una medida vacía.
+Se descartó completar el mes: con el INPC quincenal adentro, `smg_real` de 2026 sería
+derivable, pero la tabla dejaría de ser la serie de la fuente para ser una extendida por
+nosotros, y eso no se cruza para que una página llegue seis meses más lejos.
+
+**Las compuertas se cambian de lugar, no se quitan.** La dura ahora es "quincenas sin INPC",
+porque sin deflactor el índice real no existe. Las quincenas sin mes pasan al resumen de la
+corrida como `sin_mes`: es la ventana de una fuente, se mira y no bloquea (#15).
+
+Silver de INEGI va en `nb_12_inegi` y `nb_22_inegi`, con el mismo trato que CONASAMI, más
+una compuerta que ningún cast cubre: `FREQ` y `UNIT` de la serie tienen que seguir diciendo
+quincenal y nivel. Casi todos los indicadores vecinos de `910420` son variación porcentual;
+si el id se moviera, el deflactor valdría ~0.3 en vez de ~145 y ni el `cast` ni `inpc > 0`
+lo verían.
+
+El costo fue recrear `dim_tiempo_quincena` y `hechos_salario_mensual` en gold, porque el
+`upsert` no cambia esquema: con una columna de más en el origen el MERGE truena, y con una de
+menos la vieja se habría quedado con sus valores sin que nadie la volviera a escribir.
