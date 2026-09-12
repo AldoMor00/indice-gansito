@@ -806,3 +806,95 @@ Lo detectado se guarda en el manifiesto junto al `sha256`, no sólo en el log: e
 lo saca de la categoría de fallo silencioso, porque deja rastro durable de que esa quincena
 se leyó distinto. Las 62 líneas quedaron selladas —60 en `utf-8`, 2 en `cp1252`— y ningún
 parquet se movió al hacerlo.
+
+## 38. La coordenada es atributo, no obligación
+
+`exige_completo` pedía los ocho campos del corte de tiendas, coordenada incluida, y eso fue
+cierto mientras la fuente geocodificó todo. Desde `2026-04_q2` da de alta tiendas sin
+coordenada —24 filas, siete Bodega Aurrera del Valle de México— y la cadena se detenía por
+tiendas que ni siquiera venden del catálogo objetivo.
+
+`latitud` y `longitud` salen de la compuerta de completitud y se quedan en todo lo demás: el
+`cast` a `decimal(9,6)` sigue tronando con una coordenada ilegible, y `exige_uno_por_clave`
+sigue exigiendo que no cambie bajo la clave. Lo que se relaja es sólo que exista, porque ya
+estaba documentado que no identifica: el 10.1% de las filas comparte coordenada porque
+Profeco geocodifica el mercado y no el local.
+
+La distinción que deja escrita es entre **falta un dato que necesito** y **falta un dato que
+uso si está**. La coordenada pinta el mapa de P2; una tienda sin ella no aporta punto y sí
+aporta precio, y detener la corrida por eso confunde presentación con medición.
+
+## 39. El texto de tienda se normaliza en silver, y la identidad depende de ello
+
+`id_tienda` es `xxhash64(nombre_comercial, direccion)`, así que la identidad de una tienda es
+exactamente su grafía. Y Profeco escribe la misma tienda de varias formas: con acento y sin
+él, oscilando entre quincenas, y desde 2026 también con el acento perdido como `?`. Resultado
+medido sobre los 62 archivos: **4,484 identidades donde hay 2,956**.
+
+El reparto por era importa, y es limpio: **en las 46 quincenas originales no hay una sola
+identidad partida** —2,392 llaves crudas y 2,392 canónicas—, y las 1,497 aparecen con el lote
+que empieza en `2025-12_q1`. Así que esto no era un defecto viejo que nadie vio: es el cuarto
+defecto que trae la fuente al volver, junto con las columnas de más, la codificación y la
+coordenada. La medición de la decisión #13 sobre las 46 era correcta.
+
+Lo que sí cruza el límite son las tiendas: **1,317 de los 1,341 grupos partidos ya existían
+antes de `2025-12_q1` con una sola grafía**, y la fuente les publicó una segunda después. Y
+**1,016 de las 2,392 llaves originales cambian al normalizar**, porque en esa era la fuente
+las escribía con acento. Por eso la migración no es incremental: `dim_tienda` se dropea.
+
+Lo destapó una pregunta sobre si desempatar por recencia crearía inconsistencias —la respuesta
+era sí— y no una corrida fallida.
+
+La normalización son tres piezas y ninguna imputa. `ACENTOS` pliega las vocales acentuadas a
+ASCII y repara dos caracteres nombrados: `ð`, que es una `ñ` mal decodificada, y `´`, que es
+un apóstrofo. `PALABRAS` lleva cada palabra con `?` a su forma limpia, y **el destino sale de
+la propia fuente**: el valor limpio que Profeco publica en otra quincena, casado por longitud
+tratando el `?` como comodín. `TYPOS` unifica los cinco pares que la fuente se contradice
+sola, y va por columna porque `Central de Abasto` es también un `giro` y ahí es la llave de
+`CANAL` en gold: renombrarlo al plural dejaría 2,225 filas de precio sin canal.
+
+Se pliega y no se acentúa porque sólo esa dirección es determinista, y porque `CLAVE_ESTADO`
+espera los 30 estados sin acento, como el TopoJSON del mapa. Va en silver y no en la ingesta
+porque bronze no castea ni corrige: guarda lo que publicó la fuente, y el `sha256` del
+manifiesto describe ese CSV (decisión #9). Resolver identidad es de silver.
+
+`PALABRAS` va **congelado y no derivado en cada corrida**, y eso es lo contrario de lo
+cómodo. Un mapa que se recalcula puede resolver distinto al llegar una quincena nueva y
+mover `id_tienda` en silencio, que es el fallo que esta decisión existe para cerrar. El
+precio es mantenimiento: una palabra nueva detiene la corrida hasta que se agregue.
+
+De las 190 palabras con `?`, 179 tenían un único candidato limpio. Las once restantes se
+desempataron con la cadena gemela completa y **no con la frecuencia global, que se habría
+equivocado en cuatro**: `Vi?a` da `Viga` por frecuencia y `Viña` por contexto, `R?o` da `Rio`
+frente a `Roo`, y en `Sa?nz` y `Mor?n` la gemela limpia es literalmente la misma dirección
+mientras que el candidato frecuente vive en otra ciudad. Es la diferencia entre desempatar
+con estadística y desempatar con evidencia.
+
+La entrada 191 es la única sin `?` y la única puesta a mano. `Mar?n` resolvía a `Maron`
+porque ésa es la grafía limpia que la fuente publica —una vez— para `Papelería Marín`, y se
+fijó a `Marin`. Eso obligó a mapear también `Maron`: sin ello la forma sucia y la limpia
+dejan de coincidir y esa papelería se vuelve a partir en dos, que es exactamente lo que la
+decisión evita. Corregir un nombre a mano cuesta dos entradas, no una.
+
+Dos cosas quedan escritas como riesgo y no como resuelto. La primera: el mapa es por palabra
+y **generaliza**, así que un valor nuevo cuya palabra ya esté en el mapa no dispara compuerta
+—un `Quintana R?o` quedaría `Quintana Rio`—. Un mapa por cadena completa no tendría ese
+riesgo a cambio de no resolver nada nuevo nunca, y se eligió generalizar. La segunda: seis
+entradas copian un typo de la fuente (`Nuemero`, `Costitucion`, `Oregon`, `Cuatitlan`,
+`Nezahualcoyothl`, `Agaleria`), porque el trabajo es reparar codificación y no corregirle la
+ortografía a Profeco.
+
+Lo que cierra el ciclo es la compuerta, `exige_caracteres`: fuera del ASCII imprimible, de
+`ñÑ°¡ºª` y de lo que `PALABRAS` resolvió, nada pasa. El `?` cuenta como prohibido porque en
+estas columnas es acento perdido y no signo. Esa compuerta es la que habría encontrado la
+`ð` sola —la hallé inventariando a mano los no-ASCII de los 62 archivos— y la que va a cazar
+el siguiente carácter roto sin que nadie lo busque.
+
+La premisa de la decisión #13 sobrevive: **ningún atributo cambia bajo la clave**. Los ~700
+conflictos de 2026 son grafías, no atributos, y una vez normalizados vuelven a cero, así que
+`dim_tienda` sigue sin necesitar SCD2.
+
+Cambiar la llave obliga a recalcular: `pendientes_silver` compara `(_quincena, _intento)`
+contra bronze, que no se movió, así que la corrida normal no vería nada pendiente. Va con
+`quincenas_pedidas = "todas"`, y las dimensiones se dropean antes porque el `upsert` es
+acumulativo y a propósito no borra: dejaría las dos generaciones de llaves conviviendo.
