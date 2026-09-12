@@ -613,10 +613,12 @@ exige_completo(
     CONTEXTO,
 )
 
-# Ningún atributo cambia bajo la clave en las 62 quincenas, y por eso dim_tienda no lleva
-# SCD2. Sigue siendo cierto después de normalizar: los ~700 conflictos que trae 2026 son
-# grafías de la fuente —acento, "?" y cinco typos— y no atributos que cambien de verdad
-# (decisión #39). Que uno cambie es lo que haría falsa esa decisión: se mira, no se desempata.
+# Ningún atributo cambia bajo la clave, y por eso dim_tienda no lleva SCD2. En las 46
+# quincenas originales eso es cero conflictos en los seis atributos; el lote que empieza en
+# 2025-12 trae 618, y juntar las 62 en crudo da 1,225 —los 851 de `estado` sólo chocan
+# cruzando el límite, porque la fuente lo acentuó—. Todos son grafías y ninguno es un atributo
+# distinto, así que normalizados vuelven a cero (decisión #39). Que uno cambie de verdad es lo
+# que haría falsa esa decisión: se mira, no se desempata.
 exige_uno_por_clave(tiendas_lote, LLAVE_TIENDA, ATRIBUTOS_TIENDA)
 
 dim_tienda = (
