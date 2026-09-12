@@ -46,7 +46,9 @@ quincenas_pedidas = ""
 #
 # Ocho tablas. Cuatro hechos y cuatro dimensiones; `dim_mes` concilia los dos granos de
 # tiempo —el precio es quincenal y el salario mensual— como shrunken conformed dimension,
-# así que ninguno de los dos hechos se desnaturaliza para caber en el otro.
+# así que ninguno de los dos hechos se desnaturaliza para caber en el otro. Por ahí ya no
+# pasa el deflactor: desde la decisión #35 el INPC es quincenal y viaja en
+# `dim_tiempo_quincena`, así que del mes ya sólo cuelga el salario.
 #
 # `hechos_ic_indice` es la excepción del patrón: no proyecta silver, resume la serie entera
 # con un bootstrap que DAX no puede hacer. Por eso se calcula al final y sobre gold escrito.
@@ -467,18 +469,26 @@ dim_producto = productos_silver.withColumn(
 salario_silver = de_silver("hechos_salario_mensual")
 dim_mes = salario_silver.select("id_mes", "mes_inicio", "anio", "mes")
 
+# Sin `inpc`: el deflactor salía de dividir estas dos columnas —el INPC entre 100— y desde
+# la decisión #35 sale del indicador quincenal de INEGI. CONASAMI se queda con lo que vino
+# a responder, que es cuántos Gansitos compra un día de trabajo.
 hechos_salario_mensual = salario_silver.select(
     "id_mes",
     "smg_nominal",
     "smg_real",
     "smgr_indice",
-    # Aquí sí se materializa: es la división que silver dejó pendiente a propósito porque
-    # es derivable de dos columnas que ya están, y esa división es de gold (decisión #12).
-    (F.col("smg_nominal") / F.col("smg_real")).cast("decimal(12,6)").alias("inpc"),
 )
 
-# El calendario quincenal: 46 filas, con su ordinal y su mes. El `id_mes` se resuelve por
-# join contra dim_mes y no recalculando la llave, por lo dicho arriba.
+# El deflactor, al grano de la quincena y no del mes. Va como columna de la dimensión y no
+# como tabla de hechos aparte porque hay exactamente una fila por quincena: un hecho 1:1
+# con su dimensión sería un join que no puede abanicar ni filtrar nada.
+deflactor = de_silver("hechos_inpc_quincenal").select(
+    F.col("_quincena").alias("quincena"), "inpc"
+)
+
+# El calendario quincenal: una fila por quincena de silver, con su ordinal, su deflactor y
+# su mes. El `id_mes` se resuelve por join contra dim_mes y no recalculando la llave, por
+# lo dicho arriba.
 quincenas = (
     spark.createDataFrame([(q,) for q in todas], "_quincena string")
     .select(
@@ -495,17 +505,34 @@ quincenas = (
         F.substring("_quincena", 6, 2).cast("int").alias("mes"),
     )
 )
-dim_tiempo_quincena = quincenas.join(dim_mes.select("id_mes", "anio", "mes"), ["anio", "mes"])
 
-# Un `join` que pierde filas dejaría quincenas sin mes y el deflactor mudo justo ahí. Es
-# posible de verdad: CONASAMI publica una vez al año y la ventana de precios podría
-# adelantarse a la del salario.
-if dim_tiempo_quincena.count() != len(todas):
-    faltan = quincenas.join(dim_mes.select("anio", "mes"), ["anio", "mes"], "left_anti")
+# `left` contra el mes, a propósito: la serie mensual de CONASAMI se publica una vez al año
+# y para en enero de 2026 mientras los precios llegan a julio, así que las quincenas de en
+# medio se quedan sin mes. Eso acorta la página del salario —`Gansitos por día` divide por
+# una medida vacía y se va en blanco, sin publicar un cero— y no toca al índice, que ya no
+# pasa por `dim_mes` para deflactarse. El `inner` que estaba antes las tiraba, y entonces
+# la compuerta detenía la corrida por lo que es la ventana de la fuente y no un defecto.
+dim_tiempo_quincena = (
+    quincenas.join(deflactor, ["quincena"], "left")
+    .join(dim_mes.select("id_mes", "anio", "mes"), ["anio", "mes"], "left")
+)
+
+# El INPC sí es obligatorio, y es el que ahora detiene la corrida: es el divisor del índice
+# real, así que una quincena sin él lo publicaría mudo justo donde el nominal se ve bien.
+# Que falte es posible de verdad —INEGI publica por quincena y el bundle de precios podría
+# adelantársele—, y el mensaje lleva cuáles para no tener que abrir el SQL endpoint.
+faltan_inpc = dim_tiempo_quincena.filter(F.col("inpc").isNull())
+if faltan_inpc.take(1):
     raise RuntimeError(
-        "quincenas sin mes en la serie salarial — "
-        + ", ".join(f["quincena"] for f in faltan.collect())
+        "quincenas sin INPC — "
+        + ", ".join(f["quincena"] for f in faltan_inpc.orderBy("orden").collect())
     )
+
+apunta(
+    "dim_tiempo",
+    # Métrica del lote y no compuerta: es la ventana de CONASAMI, que se mira y no bloquea.
+    sin_mes=dim_tiempo_quincena.filter(F.col("id_mes").isNull()).count(),
+)
 
 # ---------------------------------------------------------------- hechos
 
@@ -631,8 +658,13 @@ upsert(hechos_ic_indice.drop("orden"), TABLA_IC, ["id_quincena", "id_producto"],
 exige_clustering(ruta_tabla(TABLA_HECHOS, GOLD), CLUSTER_HECHO)
 exige_clustering(ruta_tabla(TABLA_RELATIVOS, GOLD), CLUSTER_HECHO)
 
-# `smg_real` es el divisor del deflactor y `precio_promedio` el del relativo: un cero castea
-# perfecto y ANSI no lo ve. Son predicados de una fila, que es lo único que Delta expresa.
+# Los divisores del modelo: `inpc` el del índice real y `precio_promedio` el del relativo.
+# Un cero castea perfecto y ANSI no lo ve. Son predicados de una fila, que es lo único que
+# Delta expresa. `smg_real` ya no divide nada —el deflactor salía de ahí hasta la decisión
+# #35— pero un salario real de cero sigue siendo dato roto y la constraint se queda.
+exige_invariantes(
+    ruta_tabla("dim_tiempo_quincena", GOLD), {"inpc_positivo": "inpc > 0"}
+)
 exige_invariantes(
     ruta_tabla("hechos_salario_mensual", GOLD), {"smg_real_positivo": "smg_real > 0"}
 )

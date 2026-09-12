@@ -98,14 +98,12 @@ table Medidas
 		displayFolder: Cobertura y guarda
 		lineageTag: 1d60ba97-4f22-48ce-b3a5-c9e7d418206f
 
-	/// El INPC del mes que contiene a la quincena. Cruza el grano con TREATAS y no con una
-	/// relación bidireccional: el filtro pasa sólo donde esta medida lo pide.
+	/// El nivel del INPC de la quincena, base 2018=100. Es columna de
+	/// `dim_tiempo_quincena` desde la decisión #35: el deflactor pasó a ser quincenal, así
+	/// que ya no hay grano que cruzar. Antes valía esto entre 100, porque salía de dividir
+	/// las dos columnas del salario de CONASAMI.
 	/// Sin uso: hoy no la llama ninguna página del reporte ni ninguna otra medida.
-	measure INPC =
-			CALCULATE(
-			    AVERAGE( hechos_salario_mensual[inpc] ),
-			    TREATAS( VALUES( dim_tiempo_quincena[id_mes] ), dim_mes[id_mes] )
-			)
+	measure INPC = AVERAGE( dim_tiempo_quincena[inpc] )
 		formatString: #,##0.000
 		displayFolder: Inflación y salario
 		lineageTag: 7e159c30-62db-4a85-90f1-3b4c8ad7e562
@@ -116,24 +114,20 @@ table Medidas
 			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
 			VAR OrdenBase =
 			    CALCULATE( MIN( dim_tiempo_quincena[orden] ), REMOVEFILTERS( dim_tiempo_quincena ) )
-			VAR MesBase =
+			VAR Base =
 			    CALCULATE(
-			        SELECTEDVALUE( dim_tiempo_quincena[id_mes] ),
+			        SELECTEDVALUE( dim_tiempo_quincena[inpc] ),
 			        REMOVEFILTERS( dim_tiempo_quincena ),
 			        dim_tiempo_quincena[orden] = OrdenBase
 			    )
-			VAR MesActual =
+			VAR Actual =
 			    CALCULATE(
-			        SELECTEDVALUE( dim_tiempo_quincena[id_mes] ),
+			        SELECTEDVALUE( dim_tiempo_quincena[inpc] ),
 			        REMOVEFILTERS( dim_tiempo_quincena ),
 			        dim_tiempo_quincena[orden] = Hasta
 			    )
-			VAR Base =
-			    CALCULATE( AVERAGE( hechos_salario_mensual[inpc] ), TREATAS( { MesBase }, dim_mes[id_mes] ) )
-			VAR Actual =
-			    CALCULATE( AVERAGE( hechos_salario_mensual[inpc] ), TREATAS( { MesActual }, dim_mes[id_mes] ) )
 			RETURN
-			    // `BLANK() - 1` es -1 en DAX, así que sin esta guarda un contexto sin mes publicaba
+			    // `BLANK() - 1` es -1 en DAX, así que sin esta guarda un contexto sin INPC publicaba
 			    // -100% y arrastraba a `Índice INPC` hasta 0, dibujando una caída que no existe.
 			    IF( NOT ISBLANK( Base ) && NOT ISBLANK( Actual ), DIVIDE( Actual, Base ) - 1 )
 		formatString: #,##0.00%

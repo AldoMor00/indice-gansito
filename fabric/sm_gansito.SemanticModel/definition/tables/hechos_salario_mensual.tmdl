@@ -57,19 +57,6 @@ table hechos_salario_mensual
 
 		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
 
-	column inpc
-		dataType: double
-		lineageTag: e5dc26a4-72f3-453b-9611-f9f986de84e1
-		sourceLineageTag: inpc
-		summarizeBy: none
-		sourceColumn: inpc
-
-		changedProperty = SummarizeBy
-
-		annotation SummarizationSetBy = User
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
-
 	partition hechos_salario_mensual = entity
 		mode: directLake
 		source

@@ -393,17 +393,32 @@ def upsert(nuevas, tabla: str, llaves: list[str], lakehouse: str = SILVER) -> No
         .execute()
     )
 
-    despues = DeltaTable.forPath(spark, ruta).history(1).first()
-    if despues["version"] == antes:
+    log = DeltaTable.forPath(spark, ruta).history()
+    ultima = log.first()["version"]
+    if ultima == antes:
         apunta(tabla, insertadas=0, actualizadas=0, version=antes)
         return
 
-    metricas = despues["operationMetrics"]
+    # El MERGE no es forzosamente la última entrada del log: con el perfil readHeavyForPBI,
+    # Fabric marca el V-Order de la tabla en un commit propio detrás de la escritura
+    # —`AUTOSET VORDER TBLPROPERTY`, con `operationMetrics` vacío (medido, en hechos.md)— y
+    # leer `history(1)` daba un KeyError justo en la corrida que sí había cambiado filas. Se
+    # busca el MERGE entre las versiones que dejó esta llamada; si no está, el mensaje dice
+    # qué se commiteó en su lugar.
+    commits = log.filter(f"version > {antes}")
+    merge = commits.filter("operation = 'MERGE'").orderBy(F.desc("version")).first()
+    if merge is None:
+        raise RuntimeError(
+            f"{tabla}: de la versión {antes} a la {ultima} sin MERGE en medio — "
+            + ", ".join(f["operation"] for f in commits.collect())
+        )
+
+    metricas = merge["operationMetrics"]
     apunta(
         tabla,
         insertadas=int(metricas["numTargetRowsInserted"]),
         actualizadas=int(metricas["numTargetRowsUpdated"]),
-        version=despues["version"],
+        version=ultima,
     )
 
 # METADATA ********************

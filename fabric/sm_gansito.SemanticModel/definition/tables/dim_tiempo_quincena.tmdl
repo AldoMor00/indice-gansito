@@ -86,6 +86,19 @@ table dim_tiempo_quincena
 
 		annotation SummarizationSetBy = Automatic
 
+	column inpc
+		dataType: decimal
+		isHidden
+		formatString: #,##0.000
+		lineageTag: 24f8d896-19a9-4417-a340-41d29e1553a0
+		sourceLineageTag: inpc
+		summarizeBy: none
+		sourceColumn: inpc
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
 	partition dim_tiempo_quincena = entity
 		mode: directLake
 		source
