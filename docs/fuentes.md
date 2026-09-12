@@ -112,7 +112,9 @@ Consultado el 2026-09-09 en <https://www.profeco.gob.mx/precios/quienesquie_nvo.
   de Abasto de Iztapalapa que sólo `direccion` separa. Profeco geocodifica el mercado, no el
   local —hasta 20 tiendas bajo el punto de Ecatepec, y el 10.1% de las filas cae en una
   coordenada compartida—. A cambio, las 2,392 tiendas conservan su coordenada exacta las 46
-  quincenas: es atributo geográfico para gold, no identidad.
+  quincenas: es atributo geográfico para gold, no identidad. **Eso dejó de bastar en 2026**:
+  desde `2026-04_q2` la fuente da de alta tiendas sin geocodificar —24 filas, siete Bodega
+  Aurrera del Valle de México— así que la coordenada ya no se exige completa (decisión #38).
 - **Una visita no es una quincena.** Las 213,772 filas caen en 126,963 celdas
   tienda-SKU-quincena y sólo 49,411 traen una sola observación: Profeco visita la misma
   tienda hasta cinco veces por quincena. `catalogo` no desempata —separa 82 filas de 86,809—
@@ -130,6 +132,10 @@ Consultado el 2026-09-09 en <https://www.profeco.gob.mx/precios/quienesquie_nvo.
   constantes en las 2,392 tiendas por 46 quincenas, y normalizar —trim, mayúsculas, espacios
   colapsados— no fusiona ni una clave ni deja nulos. Lo que sí rota es el panel: sólo 581
   tiendas (24.3%) aparecen en las 46, con una media de 31.
+- **Sigue sin cambiar nada en las 62, pero ya hay que normalizar para verlo.** Los ~700
+  conflictos que aparecen en 2026 son grafías de la fuente y no atributos distintos: acentos,
+  el acento perdido como `?`, y cinco typos de singular y mayúscula. Ninguna tienda cambió de
+  cadena, giro, municipio ni estado (decisión #39).
 
 ## Lo que cambió en 2026
 
@@ -194,6 +200,49 @@ presentaciones distintas, así que la canasta de 9 pasó a 11 y `nb_20` detuvo l
 La ingesta comprueba la codificación antes de leer y se cae a cp1252 cuando hace falta
 (decisión #37). El síntoma vale como aviso general: **una fuente puede corromperse sin que
 nada falle**, y lo único que lo cazó fue una regla de calidad que contaba SKUs.
+
+## Ni la misma grafía, y ahí sí se parte la identidad
+
+La codificación es lo que se rompe de golpe; la grafía se mueve sola y no avisa. Profeco
+escribe la misma tienda con acento y sin él, y oscila quincena a quincena:
+
+```
+'Pescaderia el Charal'   2024-01_q2 .. 2026-07_q2     la tienda
+'Pescadería el Charal'   2026-05_q2 .. 2026-05_q2     la misma, una quincena
+```
+
+Como `id_tienda` es `xxhash64(nombre_comercial, direccion)`, cada oscilación da de alta una
+tienda nueva. Medido sobre los 62 archivos: **4,484 identidades donde hay 2,956**.
+
+El reparto por era es limpio y confirma lo medido arriba sobre las 46:
+
+```
+46 originales (.. 2025-11_q2)     2,392 crudas   2,392 canónicas   0 partidas
+16 nuevas     (2025-12 ..)        4,182          2,685         1,497
+las 62                            4,484          2,956         1,528
+```
+
+Lo trajo el lote nuevo, igual que los otros defectos de esta tanda. Lo que sí cruza el límite
+son las tiendas: **1,317 de los 1,341 grupos partidos ya existían antes de `2025-12_q1` con
+una sola grafía** y la fuente les publicó una segunda después. Llega a los hechos: 161 de las
+700 tiendas con precio tienen identidad partida.
+
+A eso se le suman los `?` del apartado anterior, que también caen en las columnas de la
+llave: 607 valores de `nombre_comercial` y 289 de `direccion`. Mapearlos colapsa **más**
+identidades que plegar los acentos: el plegado colapsa 707 y el mapa otras 821.
+
+Hay dos caracteres que no son acento y conviene tener nombrados. `ð` es una `ñ` mal
+decodificada —0xF0 por 0xF1, en `Pescaderia Muðoz` y `Viða del Mar`— y `´` es un acento
+suelto usado como apóstrofo, en `O´farril` y `Hiliana´s`. Ese segundo es el que vuelve
+resoluble el `?` de esas tiendas.
+
+Y una inconsistencia que no es de codificación: la fuente se contradice dentro del mismo año
+con `Central de Abasto` contra `Central de Abastos` en `cadena_comercial`, `Tienda` contra
+`Tiendas Departamentales` en `giro`, y tres pares que sólo cambian una mayúscula. Son cinco
+en total y no se pueden desempatar por frecuencia: la más frecuente es la mal escrita en tres
+de los cinco.
+
+Cómo se resuelve todo esto —y por qué en silver y no en la ingesta— está en la decisión #39.
 
 ---
 
