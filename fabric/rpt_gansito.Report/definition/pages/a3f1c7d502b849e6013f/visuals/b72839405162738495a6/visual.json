@@ -4,10 +4,10 @@
   "position": {
     "x": 972,
     "y": 304,
-    "z": 700,
+    "z": 7000,
     "height": 740,
     "width": 912,
-    "tabOrder": 700
+    "tabOrder": 7000
   },
   "visual": {
     "visualType": "clusteredBarChart",
@@ -192,6 +192,41 @@
                   "Value": "true"
                 }
               }
+            },
+            "labelMatchSeriesColor": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "barWidth": {
+              "expr": {
+                "Literal": {
+                  "Value": "1D"
+                }
+              }
+            },
+            "markerShape": {
+              "expr": {
+                "Literal": {
+                  "Value": "'longDash'"
+                }
+              }
+            },
+            "markerSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "5D"
+                }
+              }
+            },
+            "labelBackground": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
             }
           },
           "selector": {
@@ -246,34 +281,6 @@
   },
   "filterConfig": {
     "filters": [
-      {
-        "name": "09a2934c7b3892a180dd",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "dim_tienda"
-              }
-            },
-            "Property": "cadena_comercial"
-          }
-        },
-        "type": "Categorical"
-      },
-      {
-        "name": "e05d3ac601bb3656198b",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Precio al inicio"
-          }
-        },
-        "type": "Advanced"
-      },
       {
         "name": "ee00172839405162738c",
         "field": {

@@ -4,10 +4,10 @@
   "position": {
     "x": 36,
     "y": 132,
-    "z": 100,
+    "z": 1000,
     "height": 140,
     "width": 444,
-    "tabOrder": 100
+    "tabOrder": 1000
   },
   "visual": {
     "visualType": "cardVisual",
@@ -153,20 +153,6 @@
           ]
         },
         "howCreated": "User"
-      },
-      {
-        "name": "abb52ba57b745e4cd980",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Cambio encadenado %"
-          }
-        },
-        "type": "Advanced"
       }
     ]
   }

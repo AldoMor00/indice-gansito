@@ -19,7 +19,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "Índice de Jevons sobre pares tienda-SKU: cada quincena contra la inmediata anterior, sobre quien esté en las dos, y los 45 eslabones multiplicados. El IC 95% sale de 2,000 remuestreos bootstrap de tiendas.",
+                    "value": "Índice de Jevons sobre pares tienda-SKU: cada quincena contra la inmediata anterior, sobre quien esté en las dos, y los 61 eslabones multiplicados. El IC 95% sale de 2,000 remuestreos bootstrap de tiendas.",
                     "textStyle": {
                       "fontSize": "12pt"
                     }

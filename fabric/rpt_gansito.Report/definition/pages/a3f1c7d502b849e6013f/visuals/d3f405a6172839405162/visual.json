@@ -4,10 +4,10 @@
   "position": {
     "x": 504,
     "y": 132,
-    "z": 200,
+    "z": 2000,
     "height": 140,
     "width": 444,
-    "tabOrder": 200
+    "tabOrder": 2000
   },
   "visual": {
     "visualType": "cardVisual",
@@ -23,11 +23,11 @@
                       "Entity": "Medidas"
                     }
                   },
-                  "Property": "Cambio encadenado %"
+                  "Property": "Pareo mínimo"
                 }
               },
-              "queryRef": "Medidas.Cambio encadenado %",
-              "nativeQueryRef": "Cambio encadenado %"
+              "queryRef": "Medidas.Pareo mínimo",
+              "nativeQueryRef": "Pareo mínimo"
             }
           ]
         }
@@ -81,7 +81,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Conveniencia'"
+                  "Value": "'Conveniencia · no publica índice'"
                 }
               }
             },
@@ -153,20 +153,6 @@
           ]
         },
         "howCreated": "User"
-      },
-      {
-        "name": "ac5da67960ed4409693a",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Cambio encadenado %"
-          }
-        },
-        "type": "Advanced"
       }
     ]
   }

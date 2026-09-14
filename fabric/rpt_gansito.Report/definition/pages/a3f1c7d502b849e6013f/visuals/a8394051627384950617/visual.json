@@ -4,10 +4,10 @@
   "position": {
     "x": 36,
     "y": 686,
-    "z": 600,
+    "z": 6000,
     "height": 358,
     "width": 912,
-    "tabOrder": 600
+    "tabOrder": 6000
   },
   "visual": {
     "visualType": "lineChart",
@@ -177,37 +177,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "1a4f7c02e5b8319d6042",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "dim_tiempo_quincena"
-              }
-            },
-            "Property": "quincena"
-          }
-        },
-        "type": "Categorical"
-      },
-      {
-        "name": "2b5a8d13f6c942ae7153",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "dim_tienda"
-              }
-            },
-            "Property": "canal"
-          }
-        },
-        "type": "Categorical"
-      }
-    ]
   }
 }

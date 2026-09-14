@@ -4,10 +4,10 @@
   "position": {
     "x": 972,
     "y": 132,
-    "z": 300,
+    "z": 3000,
     "height": 140,
     "width": 444,
-    "tabOrder": 300
+    "tabOrder": 3000
   },
   "visual": {
     "visualType": "cardVisual",
@@ -153,20 +153,6 @@
           ]
         },
         "howCreated": "User"
-      },
-      {
-        "name": "cbb3e004031794d11d0e",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Medidas"
-              }
-            },
-            "Property": "Pareo mínimo"
-          }
-        },
-        "type": "Advanced"
       }
     ]
   }
