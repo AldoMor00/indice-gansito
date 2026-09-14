@@ -488,11 +488,21 @@ celdas en 508 tiendas.
   quincenas después del escalón, seguían entrando tiendas en la última (22) y ahí el 54% de
   los supermercados en $15.00 viene de un 59%. Las cifras de 62 quincenas se publican como
   provisionales.
+- **Con 62 quincenas conveniencia deja de publicar el cambio del periodo, por un solo
+  eslabón.** Sobre las 46 publicaba +11.35% con pareo mínimo de 31; `2025-12_q1` parea 29
+  contra el umbral de 30. El pareo mediano es 50: es un eslabón flaco, no muestra
+  insuficiente. `Cambio encadenado %` aplica la guarda al corte entero y se va en blanco;
+  `Índice encadenado` la aplica punto por punto, así que la serie sólo pierde ese punto y
+  cierra en **109.65**, acumulando también el eslabón que no dibujó. Tradicional sigue en 7.
+- **La página del salario mide 50 quincenas, hasta `2026-01_q2`.** Ahí el Gansito sube
+  **+24.86%** contra **+25.48%** del salario mínimo, y un día de salario pasa de 15.6 a
+  **15.4** Gansitos: el escalón de enero de 2026 casi empata el precio acumulado.
 
 ## El corte transversal
 
-Medido con `executeQueries` sobre el modelo, para la última quincena —`2025-11_q2`— y el
-Gansito, que es como dejan el contexto los slicers de P2.
+Medido con `executeQueries` sobre el modelo, para `2025-11_q2` y el Gansito, que era como
+dejaban el contexto los slicers de P2 con 46 quincenas. Con 62, P2 arranca en `2026-07_q2`
+y estas cifras no se volvieron a medir.
 
 - **220 tiendas y 316 visitas**, promedio **$20.83**, mediana **$21.50**, de **$16.00** a
   **$26.00**, con p90/p10 en **1.28**.
