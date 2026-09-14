@@ -658,9 +658,10 @@ ilegible el historial que la decisión #14 cuida.
 V-Ordena hacia atrás lo que decide no reescribir ([`hechos.md`](hechos.md)), así que esperar a la
 corrida semanal dejaría a gold sin él. Lo pone el perfil `readHeavyForPBI` en `nb_30`. El
 `VORDER` va igual en el comando del mantenimiento, pero para **conservarlo**: esa sesión corre en
-`writeHeavy`, que trae el V-Order apagado, y la sesión le gana a la propiedad de tabla. Los tres
-notebooks de escritura declaran su perfil explícito por la misma razón: con High concurrency los
-notebooks de un pipeline comparten sesión, así que el perfil del que corrió antes seguiría puesto.
+`writeHeavy`, que trae el V-Order apagado, y la sesión le gana a la propiedad de tabla. Todo
+notebook que escribe datos en Delta declara su perfil explícito por la misma razón: con High
+concurrency los notebooks de un pipeline comparten sesión, así que el perfil del que corrió antes
+seguiría puesto.
 
 Qué le va a dar trabajo de verdad no son las tres tablas migradas —a este volumen `OPTIMIZE` se
 las salta— sino `hechos_ic_indice`, que el `MERGE` deja en siete archivos para 414 filas, y las
