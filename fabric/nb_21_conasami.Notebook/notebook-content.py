@@ -35,6 +35,9 @@ from pyspark.sql import Window  # sólo este notebook lo usa: el cierre de vigen
 #
 # `de_bronze`, `clave`, `upsert` y las compuertas vienen de nb_00_config.
 
+# El de silver, explícito: en pl_silver corre detrás de nb_20 en la misma sesión (decisión #33).
+spark.conf.set("spark.fabric.resourceProfile", "readHeavyForSpark")
+
 # La vigencia abierta se cierra con centinela y no con nulo: `es_vigente` sale de comparar
 # contra ella, y el BETWEEN de gold no tiene que arrastrar un `OR IS NULL`.
 ABIERTA = "9999-12-31"
