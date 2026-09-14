@@ -627,6 +627,13 @@ y estas cifras no se volvieron a medir.
   El `ReadWrite` de OneLake security acotaría la escritura de dev, pero está en preview y no
   dice si alcanza para borrar un directorio. Sin verificar: que el despliegue de `.schedules`
   pase con Contributor.
+- **Un schedule guardado apagado se commitea con `"enabled": false`**, y `.schedules` no lleva
+  los avisos de falla (b2cce6e). Fabric exige fecha de fin ([pipeline runs](https://learn.microsoft.com/fabric/data-factory/pipeline-runs#scheduled-pipeline-runs));
+  sin fin, escribe `9999-12-31`. La zona `Central Standard Time` es la de Estados Unidos, con
+  horario de verano; la de México es `Central Standard Time (Mexico)`.
+- **`fabric-cicd` 1.3.0 parametriza `.schedules` como cualquier archivo de la definición.** La
+  regla de `parameter.yml` deja `true` en `prod` y `false` en `dev`, simulada con las funciones
+  de la librería y con la validación del archivo en verde.
 - **`sempy.fabric.resolve_workspace_id` funciona en corridas de service principal**: está en la
   lista soportada ([semantic link + SPN](https://learn.microsoft.com/fabric/data-science/semantic-link-service-principal-support#supported-semantic-link-functions)).
   De `notebookutils.fs` y `notebookutils.lakehouse` los docs no dicen nada; se ve en la primera

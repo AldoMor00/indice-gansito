@@ -25,3 +25,10 @@ key_value_replace:
       _ALL_: "$items.SemanticModel.sm_gansito.$id"
     item_type: "DataPipeline"
     item_name: "pl_mantenimiento"
+  # Los schedules se commitean apagados y se encienden solo en prod: encendidos en dev,
+  # el despliegue los llevaria igual y correrian los dos.
+  - find_key: $.schedules[?(@.jobType=="Execute")].enabled
+    replace_value:
+      prod: true
+    item_type: "DataPipeline"
+    file_path: "**/.schedules"
