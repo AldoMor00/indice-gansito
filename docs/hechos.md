@@ -610,6 +610,12 @@ y estas cifras no se volvieron a medir.
   `$items.SemanticModel.sm_gansito.$id`, que `fabric-cicd` resuelve al publicar
   ([parameterization](https://microsoft.github.io/fabric-cicd/latest/how_to/parameterization/)).
   Validado con `validate_parameter_file` de la 1.3.0, y cada `find_key` pega en un solo campo.
+- **El Direct Lake de `sm_gansito` también guarda GUIDs de dev.** `expressions.tmdl` apunta a
+  OneLake con el workspace y el `lh_gold` de dev literales; desplegado así, el modelo de prod
+  leería el gold de dev. Dos `find_replace` por regex, uno por GUID, los cambian por
+  `$workspace.$id` y `$items.Lakehouse.lh_gold.$id`. Este último resuelve aunque Lakehouse no esté
+  en alcance: la 1.3.0 busca en todos los items del workspace destino. Validado y simulado con las
+  funciones de la librería contra los IDs reales de prod.
 - **La git integration de Fabric corta el mensaje del commit.** Cabe el asunto y poco más:
   un mensaje de 302 caracteres se truncó a media palabra, sin avisar. Los commits que salen
   del UI se escriben de una línea y el porqué se deja en los comentarios del notebook o en

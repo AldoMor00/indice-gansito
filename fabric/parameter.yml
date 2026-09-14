@@ -32,3 +32,19 @@ key_value_replace:
       prod: true
     item_type: "DataPipeline"
     file_path: "**/.schedules"
+
+# El Direct Lake de sm_gansito apunta a OneLake con el workspace y el lh_gold de dev como
+# GUIDs literales. Cada regex captura uno solo de los dos.
+find_replace:
+  - find_value: 'onelake\.dfs\.fabric\.microsoft\.com/([0-9a-f-]{36})/[0-9a-f-]{36}'
+    replace_value:
+      _ALL_: "$workspace.$id"
+    is_regex: "true"
+    item_type: "SemanticModel"
+    item_name: "sm_gansito"
+  - find_value: 'onelake\.dfs\.fabric\.microsoft\.com/[0-9a-f-]{36}/([0-9a-f-]{36})'
+    replace_value:
+      _ALL_: "$items.Lakehouse.lh_gold.$id"
+    is_regex: "true"
+    item_type: "SemanticModel"
+    item_name: "sm_gansito"
