@@ -31,3 +31,5 @@ y en prod:
   `pl_mantenimiento`. Cada pipeline la referencia por ID en `externalReferences.connection`; si se recrea, cambia
   el ID y hay que volver a elegirla en las dos actividades. Con que identidad la usa prod, que
   despliega un service principal, no esta verificado.
+- **Los avisos de falla de los schedules**, en `pl_master` y `pl_mantenimiento` (Home >
+  Schedule > Failure notifications). `.schedules` guarda el horario pero no a quien avisar.
