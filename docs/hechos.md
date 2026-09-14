@@ -549,14 +549,21 @@ y estas cifras no se volvieron a medir.
 
 ## CI y despliegue
 
-- **`parameter.yml` se queda vacío**: con el clon de la decisión #5, dev y prod comparten
-  rutas y no hay nada que sustituir al desplegar. Las referencias entre items tampoco:
+- **`parameter.yml` sólo lleva el refresh de `pl_gold`**: con el clon de la decisión #5, dev y
+  prod comparten rutas y no hay nada que sustituir al desplegar. Las referencias a notebooks tampoco:
   medido con `pl_bronze`, al commitear desde la UI la git integration reescribe el
   `workspaceId` de la actividad al GUID nulo —"el workspace donde corro"— y el `notebookId`
   al `logicalId` del notebook, y `fabric-cicd` los resuelve al publicar porque los notebooks
   van en el mismo despliegue y antes que el pipeline. Verificado en el pipeline ya desplegado:
   trae el GUID del notebook **de prod** y el workspace de prod. El JSON que muestra la UI
   **no** es el que se despliega: ahí los dos campos son GUIDs literales del workspace vivo.
+- **La actividad *Semantic model refresh* no se convierte al commitear.** En `pl_gold` el
+  `groupId` y el `datasetId` llegan a git como los GUIDs de dev, y la conexión como
+  `externalReferences.connection`. Desplegado así, prod refrescaría el modelo de dev. Se
+  reemplazan con `key_value_replace` por JSONPath hacia `$workspace.$id` y
+  `$items.SemanticModel.sm_gansito.$id`, que `fabric-cicd` resuelve al publicar
+  ([parameterization](https://microsoft.github.io/fabric-cicd/latest/how_to/parameterization/)).
+  Validado con `validate_parameter_file` de la 1.3.0, y cada `find_key` pega en un solo campo.
 - **La git integration de Fabric corta el mensaje del commit.** Cabe el asunto y poco más:
   un mensaje de 302 caracteres se truncó a media palabra, sin avisar. Los commits que salen
   del UI se escriben de una línea y el porqué se deja en los comentarios del notebook o en

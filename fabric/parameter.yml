@@ -1,10 +1,17 @@
 # Reasignacion de referencias entre items al desplegar dev -> prod (fabric-cicd).
-# Plantilla: los GUID se llenan cuando existan los dos workspaces.
 #
-# find_replace:
-#   - find_value: "<guid de lh_bronze en dev>"
-#     replace_value:
-#       prod: "<guid de lh_bronze en prod>"
-#     item_type: ["DataPipeline"]
+# La actividad de refresh de pl_gold no sale del commit con logicalId: guarda el
+# workspace y el modelo de dev como GUIDs literales. Se reemplazan por clave, asi que
+# ningun GUID de dev vive aqui. Ver docs/hechos.md.
 
-find_replace: []
+key_value_replace:
+  - find_key: $.properties.activities[?(@.name=="refresh_sm_gansito")].typeProperties.groupId
+    replace_value:
+      _ALL_: "$workspace.$id"
+    item_type: "DataPipeline"
+    item_name: "pl_gold"
+  - find_key: $.properties.activities[?(@.name=="refresh_sm_gansito")].typeProperties.datasetId
+    replace_value:
+      _ALL_: "$items.SemanticModel.sm_gansito.$id"
+    item_type: "DataPipeline"
+    item_name: "pl_gold"
