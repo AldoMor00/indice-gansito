@@ -33,7 +33,7 @@
         "name": "pl_silver",
         "dependsOn": [
           {
-            "activity": "pl_bronze",
+            "activity": "espera_sesion_bronze",
             "dependencyConditions": [
               "Succeeded"
             ]
@@ -54,6 +54,36 @@
           "secureInput": false
         },
         "name": "pl_gold",
+        "dependsOn": [
+          {
+            "activity": "espera_sesion_silver",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Wait",
+        "typeProperties": {
+          "waitTimeInSeconds": 120
+        },
+        "name": "espera_sesion_bronze",
+        "dependsOn": [
+          {
+            "activity": "pl_bronze",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Wait",
+        "typeProperties": {
+          "waitTimeInSeconds": 120
+        },
+        "name": "espera_sesion_silver",
         "dependsOn": [
           {
             "activity": "pl_silver",
