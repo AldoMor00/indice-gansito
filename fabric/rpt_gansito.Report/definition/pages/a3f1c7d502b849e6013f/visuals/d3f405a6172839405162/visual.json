@@ -23,11 +23,11 @@
                       "Entity": "Medidas"
                     }
                   },
-                  "Property": "Pareo mínimo"
+                  "Property": "Cambio encadenado %"
                 }
               },
-              "queryRef": "Medidas.Pareo mínimo",
-              "nativeQueryRef": "Pareo mínimo"
+              "queryRef": "Medidas.Cambio encadenado %",
+              "nativeQueryRef": "Cambio encadenado %"
             }
           ]
         }
@@ -81,7 +81,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Conveniencia · no publica índice'"
+                  "Value": "'Conveniencia'"
                 }
               }
             },

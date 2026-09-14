@@ -19,7 +19,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "El nivel compara todas las tiendas de la cadena en cada punta, no un panel pareado. Por eso el dumbbell pide cinco tiendas en las dos y no exige el umbral de pareo: ninguna cadena lo alcanza."
+                    "value": "El nivel compara todas las tiendas de la cadena en cada punta, no un panel pareado. Por eso el dumbbell pide cinco tiendas en las dos y no la guarda del índice, que la mayoría de las cadenas no pasa."
                   }
                 ]
               }

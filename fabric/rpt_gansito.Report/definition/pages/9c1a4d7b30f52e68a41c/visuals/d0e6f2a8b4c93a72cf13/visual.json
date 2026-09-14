@@ -65,11 +65,11 @@
                       "Entity": "Medidas"
                     }
                   },
-                  "Property": "Pareo mediano"
+                  "Property": "Pareo efectivo"
                 }
               },
-              "queryRef": "Medidas.Pareo mediano",
-              "nativeQueryRef": "Pareo mediano"
+              "queryRef": "Medidas.Pareo efectivo",
+              "nativeQueryRef": "Pareo efectivo"
             },
             {
               "field": {
@@ -112,7 +112,7 @@
                     "Entity": "Medidas"
                   }
                 },
-                "Property": "Pareo mínimo"
+                "Property": "Pareo efectivo"
               }
             },
             "direction": "Descending"
@@ -135,7 +135,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Por cadena · el cambio aparece cuando el pareo mínimo alcanza el umbral'"
+                  "Value": "'Por cadena · el cambio aparece cuando el pareo efectivo alcanza el umbral y ningún eslabón baja de 10'"
                 }
               }
             }

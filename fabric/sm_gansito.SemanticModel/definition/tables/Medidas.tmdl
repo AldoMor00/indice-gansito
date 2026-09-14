@@ -19,11 +19,7 @@ table Medidas
 			        CALCULATE( AVERAGE( hechos_relativos[log_relativo] ) )
 			    )
 			RETURN
-			    IF(
-			        [Pareo mínimo] >= [Umbral de pareo Value],
-			        EXP( Suma ) - 1,
-			        BLANK()
-			    )
+			    IF( [Publica índice], EXP( Suma ) - 1 )
 		formatString: #,##0.00%
 		displayFolder: Índice
 		lineageTag: 244c97c8-1df8-43f7-9daf-e5566e7647b1
@@ -44,6 +40,14 @@ table Medidas
 			        REMOVEFILTERS( dim_tiempo_quincena ),
 			        dim_tiempo_quincena[orden] <= Hasta
 			    )
+			// El punto es el acumulado desde la base, así que la guarda mira esos mismos eslabones y
+			// no sólo el del punto: si no, la serie publicaba un acumulado que la tarjeta rechazaba.
+			VAR Publica =
+			    CALCULATE(
+			        [Publica índice],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] <= Hasta
+			    )
 			RETURN
 			    // La quincena base no produce eslabón —no hay anterior contra la cual parear— así
 			    // que la guarda no tiene qué exigirle y el índice es 100 por definición. Sin esta
@@ -54,7 +58,7 @@ table Medidas
 			    IF(
 			        Hasta = Base,
 			        IF( NOT ISBLANK( [Precio promedio] ), 100 ),
-			        IF( [Pareo mínimo] >= [Umbral de pareo Value], EXP( Suma ) * 100, BLANK() )
+			        IF( Publica, EXP( Suma ) * 100 )
 			    )
 		formatString: #,##0.00
 		displayFolder: Índice
@@ -89,24 +93,6 @@ table Medidas
 		formatString: #,0
 		displayFolder: Cobertura y guarda
 		lineageTag: 5a83d2c1-9e64-4b70-a1f8-70c25de91b83
-
-	/// Visitas, no celdas: Profeco visita la misma tienda hasta cinco veces por quincena y
-	/// el hecho las promedia. La diferencia contra el conteo de filas dice cuánto se promedió.
-	/// Sin uso: hoy no la llama ninguna página del reporte ni ninguna otra medida.
-	measure Observaciones = SUM( hechos_precios[observaciones] )
-		formatString: #,0
-		displayFolder: Cobertura y guarda
-		lineageTag: 1d60ba97-4f22-48ce-b3a5-c9e7d418206f
-
-	/// El nivel del INPC de la quincena, base 2018=100. Es columna de
-	/// `dim_tiempo_quincena` desde la decisión #35: el deflactor pasó a ser quincenal, así
-	/// que ya no hay grano que cruzar. Antes valía esto entre 100, porque salía de dividir
-	/// las dos columnas del salario de CONASAMI.
-	/// Sin uso: hoy no la llama ninguna página del reporte ni ninguna otra medida.
-	measure INPC = AVERAGE( dim_tiempo_quincena[inpc] )
-		formatString: #,##0.000
-		displayFolder: Inflación y salario
-		lineageTag: 7e159c30-62db-4a85-90f1-3b4c8ad7e562
 
 	/// Inflación general entre la base de la serie y la quincena en curso. Se acumula desde
 	/// el inicio igual que el índice, para que las dos series sean comparables punto a punto.
@@ -178,8 +164,8 @@ table Medidas
 		displayFolder: Cobertura y guarda
 		lineageTag: e05f31a8-46d2-49b7-8c60-7a13e9b524fd
 
-	/// El pareo típico del corte, contra el mínimo que decide la guarda. Juntos dicen si un
-	/// corte quedó sin índice por un solo eslabón flaco o por muestra insuficiente en general.
+	/// El pareo típico del corte, junto al mínimo y al efectivo que deciden la guarda. Juntos
+	/// dicen si un corte tiene un eslabón flaco aislado o muestra insuficiente en general.
 	measure 'Pareo mediano' =
 			MEDIANX(
 			    FILTER(
@@ -192,19 +178,6 @@ table Medidas
 		displayFolder: Cobertura y guarda
 		lineageTag: a7361de4-9b02-4c85-b1e3-05d7248fa6b0
 
-	/// Explica el blanco que deja la guarda, en vez de dejar al lector adivinando por qué
-	/// una serie no se dibuja.
-	/// Sin uso: hoy no la llama ninguna página del reporte ni ninguna otra medida.
-	measure 'Nota de cobertura' =
-			IF(
-			    [Pareo mínimo] < [Umbral de pareo Value],
-			    "Muestra insuficiente para publicar índice: " & [Pareo mínimo]
-			        & " tiendas pareadas en el eslabón más flaco, contra un umbral de "
-			        & [Umbral de pareo Value] & "."
-			)
-		displayFolder: Cobertura y guarda
-		lineageTag: f4820ac7-3e61-4b09-95d2-6c8017ae3b45
-
 	/// El bootstrap de `nb_30` está tabulado por SKU y remuestrea el padrón entero de tiendas
 	/// de ese SKU. Pide entonces un solo producto en contexto —entre SKUs no se agrega, y sin
 	/// filtro habría nueve intervalos distintos— y se apaga ante cualquier filtro de tienda,
@@ -213,7 +186,7 @@ table Medidas
 	measure 'Intervalo aplica' =
 			NOT ISCROSSFILTERED( dim_tienda )
 			    && HASONEVALUE( dim_producto[id_producto] )
-			    && [Pareo mínimo] >= [Umbral de pareo Value]
+			    && [Publica índice]
 		isHidden
 		displayFolder: Intervalo
 		lineageTag: 0d4f7b26-8a51-4c93-b7e0-46129df3a8c5
@@ -460,10 +433,10 @@ table Medidas
 		displayFolder: Cobertura y guarda
 		lineageTag: e5187630-7608-46c8-bc85-68bd5557c0d2
 
-	/// Cuántos de los 45 eslabones no llegan al umbral. Al grano nacional son cero para
-	/// cualquier umbral razonable —el eslabón más flaco de los nueve SKUs trae 162 tiendas
-	/// pareadas—, y ése es el punto: la guarda existe y aquí no tiene que actuar. Donde actúa
-	/// es por canal y por cadena. Los eslabones sin una sola tienda pareada no cuentan porque
+	/// Cuántos eslabones no llegan al umbral. No decide la publicación —eso lo hace el pareo
+	/// efectivo—, pero dice cuántos eslabones flacos carga un corte. Al grano nacional son cero:
+	/// el más flaco de los nueve SKUs trae 151 tiendas pareadas. Los que no tienen una sola
+	/// tienda pareada no cuentan porque
 	/// no existen, y el `+ 0` publica el cero en vez de un blanco, que aquí sí es dato.
 	measure 'Eslabones bajo el umbral' =
 			COUNTROWS(
@@ -542,6 +515,41 @@ table Medidas
 		lineageTag: dc83af65-7c1d-4f25-9058-a5a6df648069
 
 		annotation PBI_FormatHint = {"isCustom":true}
+
+	/// El n que tendría una cadena de eslabones iguales con el mismo ruido: la media armónica de
+	/// las tiendas pareadas, porque el ruido del encadenado crece con la suma de 1/n. Un eslabón
+	/// flaco entre muchos gruesos casi no la mueve; muchos flacos, o uno muy flaco, sí.
+	measure 'Pareo efectivo' =
+			
+			VAR Eslabones =
+			    FILTER(
+			        ADDCOLUMNS(
+			            VALUES( dim_tiempo_quincena[id_quincena] ),
+			            "@pareadas", CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) )
+			        ),
+			        [@pareadas] > 0
+			    )
+			RETURN
+			    DIVIDE( COUNTROWS( Eslabones ), SUMX( Eslabones, 1 / [@pareadas] ) )
+		formatString: #,0.0
+		displayFolder: Cobertura y guarda
+		lineageTag: f48276b2-592e-469e-8f67-bc2f087d150c
+
+	/// Con menos de diez tiendas una sola pesa más del 10% del eslabón, y un error de captura deja
+	/// de ser ruido que el pareo efectivo promedie. Fijo y no parámetro: es robustez, no muestra.
+	measure 'Piso de pareo' = 10
+		formatString: #,0
+		isHidden
+		displayFolder: Cobertura y guarda
+		lineageTag: ba499025-222f-4f0a-a787-e2c308b9c780
+
+	/// La guarda del índice, compartida por la tarjeta, la línea y el intervalo para que no puedan
+	/// divergir. Mira el conjunto de eslabones del contexto y no el más flaco: con el mínimo, un
+	/// solo eslabón de 29 apagaba dos años de conveniencia (decisión #42).
+	measure 'Publica índice' = [Pareo efectivo] >= [Umbral de pareo Value] && [Pareo mínimo] >= [Piso de pareo]
+		isHidden
+		displayFolder: Cobertura y guarda
+		lineageTag: f73487eb-4a60-4bdd-9c9f-864ae26e3362
 
 	column Column
 		isHidden

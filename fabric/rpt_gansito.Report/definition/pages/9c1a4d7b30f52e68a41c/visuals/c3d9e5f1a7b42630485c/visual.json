@@ -125,7 +125,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Umbral de pareo · tiendas mínimas por eslabón'"
+                  "Value": "'Umbral de pareo · tiendas por eslabón en el pareo efectivo'"
                 }
               }
             }
