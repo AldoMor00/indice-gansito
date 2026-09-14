@@ -937,3 +937,27 @@ lo verían.
 El costo fue recrear `dim_tiempo_quincena` y `hechos_salario_mensual` en gold, porque el
 `upsert` no cambia esquema: con una columna de más en el origen el MERGE truena, y con una de
 menos la vieja se habría quedado con sus valores sin que nadie la volviera a escribir.
+
+## 41. `pl_master` encadena las capas con una espera fija entre pipelines
+
+`pl_master` invoca `pl_bronze` → `pl_silver` → `pl_gold` con *on success*, así que una capa
+roja detiene las siguientes (#7). Las tres siguen existiendo por separado para poder rehacer
+una sola.
+
+**Con *Invoke pipeline (Legacy)*, no la nueva.** La nueva invoca entre workspaces y muestra
+los hijos en el monitoreo, pero exige una conexión fuera de git, como el refresh de `pl_gold`.
+Los tres pipelines viven en el mismo workspace, y el invoke Legacy sale del commit con
+`logicalId`. El costo es leer los hijos desde la corrida del padre.
+
+**Con un `Wait` de 120 s entre invokes.** Contradice lo medido al armar `pl_bronze` —ahí un
+`Wait` fijo no cubría nada ([`hechos.md`](hechos.md))—, y la diferencia es la causa. Dentro de un pipeline el 430 dependía de
+qué más consumiera la capacidad; entre pipelines lo que ocupa la capacidad es la sesión del
+anterior, que tarda de 68 a 101 s en cerrar después de que su pipeline termina. Es una
+espera que se puede medir, y la trial no encola. Apoyarse sólo en el reintento funciona, pero
+gasta en cada corrida el único reintento de la primera actividad, que queda sin red para un
+fallo de verdad. La espera va en `pl_master` y no dentro de cada pipeline, que corrido solo
+no la necesita.
+
+**No con un `sessionTag` común.** Bronze y silver suman seis notebooks contra un límite de
+cinco por sesión, y subirlo exige un Environment, que la regla #5 excluye. Que un pipeline se
+enganche a la sesión de otro, además, no se midió.
