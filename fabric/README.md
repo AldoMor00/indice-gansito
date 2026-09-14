@@ -7,8 +7,9 @@ sincronizacion.
 La unica excepcion es `parameter.yml`, que traduce al desplegar a prod lo que la cadena
 no resuelve sola. Casi nada lo necesita: la git integration guarda las referencias a
 notebooks como `logicalId` y el workspace como GUID nulo, y `fabric-cicd` los resuelve al
-publicar. La excepcion es el refresh de `pl_gold` y `pl_mantenimiento`, que guarda el workspace y el modelo de
-dev como GUIDs literales. Ver `docs/hechos.md`.
+publicar. Las excepciones son el refresh de `pl_gold` y `pl_mantenimiento`, que guarda el workspace y el modelo de
+dev como GUIDs literales, y el Direct Lake de `sm_gansito`, que guarda el workspace y el `lh_gold`.
+Ver `docs/hechos.md`.
 
 ## Lo que el workspace necesita configurado
 
