@@ -354,6 +354,7 @@ flaco del corte no junta el umbral, que arranca en 30 tiendas y se expone como p
 lista negra: se evalúa en el contexto de filtro, así que protege igual a una cadena chica, a un
 estado chico o a un subperiodo corto. Es lo que decide que el corte de canal sean tres
 categorías y no los cinco `giro` de la fuente, de los que sólo uno pasa el umbral.
+El criterio del eslabón más flaco lo corrige la decisión #42.
 
 ## 20. El intervalo del índice se materializa en gold, tabulado por SKU
 
@@ -961,3 +962,26 @@ no la necesita.
 **No con un `sessionTag` común.** Bronze y silver suman seis notebooks contra un límite de
 cinco por sesión, y subirlo exige un Environment, que la regla #5 excluye. Que un pipeline se
 enganche a la sesión de otro, además, no se midió.
+
+## 42. La guarda del índice mira el conjunto de eslabones, no el más flaco
+
+La guarda de la decisión #19 exigía 30 tiendas pareadas al eslabón más flaco, y la tarjeta y la
+línea la aplicaban distinto: la tarjeta sobre el periodo, la línea sólo sobre el eslabón de cada
+punto, que sin embargo acumula todos los anteriores. Con 62 quincenas conveniencia lo destapó:
+un solo eslabón de 29 dejaba la tarjeta en blanco mientras la línea cerraba en 109.65.
+
+**Se publica si el pareo efectivo alcanza el umbral y ningún eslabón tiene menos de 10 tiendas.**
+El pareo efectivo es la media armónica de las tiendas pareadas por eslabón: el ruido del
+encadenado crece con la suma de 1/n, así que es el n de una cadena uniforme igual de ruidosa.
+Un eslabón de 29 entre sesenta de ~50 casi no la mueve; muchos flacos, o uno muy flaco, sí.
+Toda cadena que la regla vieja aceptaba sigue pasando. El piso es robustez y no muestra: con
+menos de 10 tiendas una sola pesa más del 10% del eslabón. `Publica índice` es la única guarda,
+y la línea la evalúa sobre los eslabones de la base al punto, así que su último punto es la
+tarjeta. Una serie apagada por el piso no vuelve.
+
+**No se excluyen los eslabones flacos.** Omitir uno equivale a suponer que el precio no se
+movió esa quincena; en Wal-mart eso borraba una bajada del 11% y subía su cambio de +10% a
++23%. Tampoco se calibró la guarda con bootstrap por corte: mide mejor, pero exige materializar
+márgenes por canal y cadena en gold, y el proyecto es de ingeniería de datos. El límite de la
+media armónica —no ve la dispersión de precios dentro del corte— queda medido en
+[`hechos.md`](hechos.md).
