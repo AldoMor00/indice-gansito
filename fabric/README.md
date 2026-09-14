@@ -30,7 +30,8 @@ y en prod:
   ultimo paso. Ver `docs/hechos.md`.
 - **Una conexion de Power BI** para la actividad `refresh_sm_gansito` de `pl_gold` y
   `pl_mantenimiento`. Cada pipeline la referencia por ID en `externalReferences.connection`; si se recrea, cambia
-  el ID y hay que volver a elegirla en las dos actividades. Con que identidad la usa prod, que
-  despliega un service principal, no esta verificado.
+  el ID y hay que volver a elegirla en las dos actividades. **Compartida con la cuenta del
+  despliegue con rol User** (Manage connections and gateways > Manage users): sin eso, el
+  despliegue no publica ninguno de los dos pipelines, ni `pl_master`.
 - **Los avisos de falla de los schedules**, en `pl_master` y `pl_mantenimiento` (Home >
   Schedule > Failure notifications). `.schedules` guarda el horario pero no a quien avisar.

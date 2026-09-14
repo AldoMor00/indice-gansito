@@ -631,8 +631,15 @@ y estas cifras no se volvieron a medir.
   y alcanza para escribir en un lakehouse; Admin agrega borrar el workspace y administrar
   accesos, que nada usa ([permission model](https://learn.microsoft.com/fabric/security/permission-model)).
   El `ReadWrite` de OneLake security acotaría la escritura de dev, pero está en preview y no
-  dice si alcanza para borrar un directorio. Sin verificar: que el despliegue de `.schedules`
-  pase con Contributor.
+  dice si alcanza para borrar un directorio. Con Contributor también se publican los `.schedules`:
+  en prod quedaron encendidos, martes y domingo a las 03:00.
+- **Publicar un pipeline que usa una conexión exige acceso a esa conexión.** El primer
+  despliegue de `pl_gold` y `pl_mantenimiento` tronó con `User does not have access to the
+  connection used in the Pipeline` y arrastró a `pl_master`, que invoca a `pl_gold`. La conexión
+  la creó un usuario, así que hay que compartirla con el service principal
+  ([how it works](https://learn.microsoft.com/fabric/cicd/git-integration/automate-git-integration-with-service-principal#how-it-works)).
+  Con el rol **User** en la conexión, la nueva corrida publicó todo. En prod, el refresh apunta al
+  workspace y al modelo de prod, y el Direct Lake al `lh_gold` de prod.
 - **Un schedule guardado apagado se commitea con `"enabled": false`**, y `.schedules` no lleva
   los avisos de falla (b2cce6e). Fabric exige fecha de fin ([pipeline runs](https://learn.microsoft.com/fabric/data-factory/pipeline-runs#scheduled-pipeline-runs));
   sin fin, escribe `9999-12-31`. La zona `Central Standard Time` es la de Estados Unidos, con
