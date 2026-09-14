@@ -23,6 +23,10 @@ y en prod:
 - **Spark settings > Runtime version > 2.0**, la misma en los dos workspaces. Las tablas
   que crea Delta 4.2 nacen en un protocolo que un Delta 3.x no lee, asi que un workspace
   rezagado no podria clonar el bronze del otro. Ver decision #11.
+- **La cuenta del despliegue como Contributor, en dev y en prod.** En prod publica los items;
+  en dev la necesita `nb_91_clona_bronze`, que dentro de `pl_mantenimiento` de prod corre con
+  esa identidad y escribe el bronze de dev. Sin el rol en dev, el pipeline sale rojo en su
+  ultimo paso. Ver `docs/hechos.md`.
 - **Una conexion de Power BI** para la actividad `refresh_sm_gansito` de `pl_gold` y
   `pl_mantenimiento`. Cada pipeline la referencia por ID en `externalReferences.connection`; si se recrea, cambia
   el ID y hay que volver a elegirla en las dos actividades. Con que identidad la usa prod, que

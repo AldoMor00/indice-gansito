@@ -666,6 +666,13 @@ Qué le va a dar trabajo de verdad no son las tres tablas migradas —a este vol
 las salta— sino `hechos_ic_indice`, que el `MERGE` deja en siete archivos para 414 filas, y las
 deletion vectors que va dejando cada recálculo de quincenas.
 
+**El re-clon corre desde prod y escribe en dev.** `nb_91` resuelve origen y destino por nombre,
+no por el workspace de la corrida: hace lo mismo lanzado por el pipeline de prod que a mano desde
+dev, y su `rm` sólo puede caer en dev. En prod corre con la cuenta del despliegue, que por eso es
+Contributor en dev ([`hechos.md`](hechos.md)). Depende del refresh con `Succeeded` y no con
+`Completed`: el pipeline sale verde o rojo por su última actividad, y un clon exitoso taparía un
+refresh tronado justo después del `VACUUM`. El costo es una semana sin re-clon, que se corre a mano.
+
 ## 34. Profeco se lee del portal, por bundle anual
 
 `repodatos.atdt.gob.mx` sirvió un CSV por quincena hasta `2025-11_q2` y desde entonces

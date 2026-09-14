@@ -64,8 +64,7 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   workspaces**. Medido con las 213,772 filas de precios: `_delta_log` sin un solo parquet
   propio y el origen intacto después de escribirle al clon. El clon hereda el protocolo del
   origen, así que dev sigue a prod sin administrarlo aparte. Es lo que sostiene la
-  decisión #5. `currentWorkspaceName` existe en el context del notebook, así que el guard
-  que impide correr una utilidad de dev en prod está probado allá.
+  decisión #5.
 - **El clon por ruta no reemplaza: hay que borrar el destino.** `CREATE OR REPLACE TABLE` con
   `SHALLOW CLONE` truena con `DELTA_UNSUPPORTED_NON_EMPTY_CLONE` en cuanto el destino tiene
   filas —sobre tablas por ruta el `OR REPLACE` no engancha la semántica de reemplazo—, así que
@@ -75,6 +74,11 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   sus propias corridas. Verificado con las cuatro tablas, dos de ellas en v2 y con parquets
   propios, que volvieron a v0. `notebookutils.fs.exists` distingue existe de no existe sin
   tronar, así que la primera corrida sobre bronze vacío no necesita caso aparte.
+- **Con origen y destino por nombre, el clon sale igual.** Corrido a mano en dev, dejó las
+  cuatro tablas de prod en v0 con `operation = CLONE`, `sourceVersion` 1 —la última de prod—,
+  cero archivos copiados y la ruta de origen con el GUID de prod. `inpc_quincenal`, que prod
+  todavía no tiene, quedó intacta: el `rm` sólo toca lo que prod va a volver a clonar. Falta
+  verlo corriendo en prod, con la cuenta del despliegue.
 - **La capacidad de trial no aguanta dos sesiones de Spark a la vez.** `pl_bronze` disparó
   sus dos actividades en el mismo segundo: una consiguió sesión de Livy y la otra se fue con
   `430 TooManyRequestsForCapacity`. Por eso las actividades del pipeline van encadenadas
@@ -117,6 +121,9 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   se leen con `queryactivityruns` sobre la corrida del padre, cuyo `output.pipelineRunId`
   lleva a las actividades del hijo. Al commitear, el `referenceName` del invoke queda como
   `logicalId` del pipeline, igual que el `notebookId`, así que no pasa por `parameter.yml`.
+- **Un pipeline sale verde o rojo por sus actividades finales.** Si la última se saltó, cuenta
+  la anterior ([error handling](https://learn.microsoft.com/azure/data-factory/tutorial-pipeline-failure-error-handling#error-handling)).
+  Con `Completed` antes de la última, un fallo intermedio queda verde si la final pasa.
 - **Un workspace se resuelve por nombre con `sempy`, no con notebookutils**:
   `fabric.resolve_workspace_id(nombre)` da el GUID —verificado contra `currentWorkspaceId`—
   y truena con `WorkspaceNotFoundException` si el nombre no existe, así que no devuelve
@@ -607,6 +614,23 @@ y estas cifras no se volvieron a medir.
   un mensaje de 302 caracteres se truncó a media palabra, sin avisar. Los commits que salen
   del UI se escriben de una línea y el porqué se deja en los comentarios del notebook o en
   estos documentos, que es donde de todos modos se busca.
+- **Un notebook dentro de un pipeline corre como quien modificó el pipeline al último**, no
+  como el dueño del pipeline ni el del notebook ([security context](https://learn.microsoft.com/fabric/data-engineering/how-to-use-notebook#security-context-of-running-notebook)).
+  Un service principal que actualiza la definición por la API pasa a ser ese `LastModifiedBy`
+  ([set pipeline owner](https://learn.microsoft.com/fabric/data-factory/set-pipeline-owner-tutorial)),
+  así que en prod los notebooks de los pipelines corren con la cuenta del despliegue y en dev
+  con quien editó el pipeline en el UI. Lo que un notebook hace en prod no se prueba desde dev.
+- **La cuenta del despliegue es Contributor en los dos workspaces.** Es el mínimo que documenta
+  `fabric-cicd` ([PBIP con fabric-cicd](https://learn.microsoft.com/power-bi/developer/projects/projects-deploy-fabric-cicd#prerequisites))
+  y alcanza para escribir en un lakehouse; Admin agrega borrar el workspace y administrar
+  accesos, que nada usa ([permission model](https://learn.microsoft.com/fabric/security/permission-model)).
+  El `ReadWrite` de OneLake security acotaría la escritura de dev, pero está en preview y no
+  dice si alcanza para borrar un directorio. Sin verificar: que el despliegue de `.schedules`
+  pase con Contributor.
+- **`sempy.fabric.resolve_workspace_id` funciona en corridas de service principal**: está en la
+  lista soportada ([semantic link + SPN](https://learn.microsoft.com/fabric/data-science/semantic-link-service-principal-support#supported-semantic-link-functions)).
+  De `notebookutils.fs` y `notebookutils.lakehouse` los docs no dicen nada; se ve en la primera
+  corrida de prod.
 - **`fab` se instala con `uv tool install --python 3.12`**; con 3.14 truena con pyyaml.
 - **Los workflows sólo se registran desde la rama por defecto**: `workflow_dispatch` y
   `schedule` no existen mientras el archivo viva sólo en `dev`.
