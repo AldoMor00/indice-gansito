@@ -513,6 +513,26 @@ celdas en 508 tiendas.
   insuficiente. `Cambio encadenado %` aplica la guarda al corte entero y se va en blanco;
   `Índice encadenado` la aplica punto por punto, así que la serie sólo pierde ese punto y
   cierra en **109.65**, acumulando también el eslabón que no dibujó. Tradicional sigue en 7.
+- **Con el pareo efectivo (decisión #42) publican conveniencia +9.65%, supermercado +4.65%,
+  Hipermercado Soriana +0.74%, Wal-mart +10.04% y Ciudad de México +12.98%.** Sus pareos
+  efectivos son 46.3, 194.2, 32.2, 31.7 y 44.0; tradicional (17.0), Bodega Aurrera (24.7),
+  Chedraui (19.9) y Oxxo (17.3) no. Los nueve SKUs no cambian: su pareo efectivo va de 230 a
+  301. En la línea, Bodega Aurrera y Estado de México se dibujan hasta `2025-04_q2` y ninguna
+  serie reaparece después de apagarse. Medido con `executeQueries` sobre el modelo.
+- **Excluir los eslabones de menos de 30 sesga el cambio en vez de limpiarlo.** Omitir uno
+  equivale a asignarle cambio cero, y en los cortes chicos los eslabones flacos no caen al
+  azar. En Wal-mart los 15 excluidos coinciden con una bajada del Gansito de **−11.13%** en
+  todos los canales, y su cambio pasa de +10.04% a **+22.82%**; en Bodega Aurrera, de
+  +11.78% a +17.34%. En conveniencia, con un solo eslabón excluido, da +9.27%.
+- **El pareo efectivo sigue al error del bootstrap sólo a medias.** Con el bootstrap de
+  tiendas de `nb_30` repetido por corte —en local, sobre los relativos del Gansito, y el
+  nacional reproduce el IC de gold: 103.27–110.78 contra 103.20–110.60—, la correlación de
+  rangos entre el error estándar y la suma de 1/n es **0.71** en 40 cortes. No ve la
+  dispersión de precios: Oxxo, con pareo efectivo de 17, tiene error de **3.02 pp**, y
+  Wal-mart, con 32, de **5.58**. Soriana, Wal-mart, Ciudad de México, Bodega Aurrera,
+  Chedraui y tradicional miden igual —de 5.38 a 6.15 pp, márgenes de ±10.5 a ±12.1— y el
+  umbral publica a tres. Sumar varianzas en cuadratura sigue mejor al bootstrap (0.82), pero
+  sobreestima el doble: el factor mediano bootstrap/cuadratura es 0.51, de 0.41 a 0.73.
 - **La página del salario mide 50 quincenas, hasta `2026-01_q2`.** Ahí el Gansito sube
   **+24.86%** contra **+25.48%** del salario mínimo, y un día de salario pasa de 15.6 a
   **15.4** Gansitos: el escalón de enero de 2026 casi empata el precio acumulado.
