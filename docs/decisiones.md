@@ -166,7 +166,7 @@ forma medible. El reintento se queda para la primera, que sí pide sesión.
 
 `on completion` sola miente: en ADF una actividad que falla y sólo tiene camino de completion
 se da por manejada, y el pipeline reporta éxito con una fuente sin cargar. Por eso
-`ambas_fuentes_ok`, un `Wait` de un segundo que depende de las dos con `on success`. Las
+`fuentes_ok`, un `Wait` de un segundo que depende de todas con `on success`. Las
 dependencias múltiples se evalúan con AND, así que un fallo deja su camino de éxito sin tomar y
 el pipeline truena, como manda la decisión #7.
 
