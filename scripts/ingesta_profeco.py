@@ -91,7 +91,7 @@ COLUMNAS_PRECIOS = [
     "longitud",
 ]
 
-# Lo que se guarda de cada tienda. La llave es (latitud, longitud, nombre_comercial);
+# Lo que se guarda de cada tienda. La llave es (nombre_comercial, direccion) (decisión #13);
 # el resto viaja para que silver arme dim_tienda sin volver a la fuente.
 COLUMNAS_TIENDA = [
     "nombre_comercial",
