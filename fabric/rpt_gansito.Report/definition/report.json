@@ -9,6 +9,15 @@
         "page": "2.3.1"
       },
       "type": "SharedResources"
+    },
+    "customTheme": {
+      "name": "GansitoMigajon.json",
+      "reportVersionAtImport": {
+        "visual": "2.12.0",
+        "report": "3.4.0",
+        "page": "2.3.1"
+      },
+      "type": "RegisteredResources"
     }
   },
   "objects": {
@@ -53,6 +62,17 @@
           "name": "mexico.states.topo",
           "path": "Shapemaps/mexico.states.topo.json",
           "type": "ShapeMap"
+        }
+      ]
+    },
+    {
+      "name": "RegisteredResources",
+      "type": "RegisteredResources",
+      "items": [
+        {
+          "name": "GansitoMigajon.json",
+          "path": "GansitoMigajon.json",
+          "type": "CustomTheme"
         }
       ]
     }

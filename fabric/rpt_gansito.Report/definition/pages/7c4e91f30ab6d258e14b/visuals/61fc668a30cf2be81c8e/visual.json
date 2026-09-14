@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "79a24e6e150e6b126e82",
+  "name": "61fc668a30cf2be81c8e",
   "position": {
     "x": 36,
-    "y": 30,
-    "z": 3000,
-    "height": 78,
-    "width": 1848,
-    "tabOrder": 3000
+    "y": 1052,
+    "z": 900,
+    "height": 22,
+    "width": 444,
+    "tabOrder": 900
   },
   "visual": {
     "visualType": "textbox",
@@ -19,20 +19,9 @@
               {
                 "textRuns": [
                   {
-                    "value": "¿Cuánto subió el Gansito?",
+                    "value": "Aldo Moreno Mandujano",
                     "textStyle": {
-                      "fontWeight": "bold",
-                      "fontSize": "24pt"
-                    }
-                  }
-                ]
-              },
-              {
-                "textRuns": [
-                  {
-                    "value": "Índice Jevons encadenado · 62 quincenas · enero 2024 – julio 2026 · precios de Profeco · cifras provisionales: en junio de 2026 el autoservicio bajó a $15",
-                    "textStyle": {
-                      "fontSize": "14pt"
+                      "fontSize": "10pt"
                     }
                   }
                 ]
