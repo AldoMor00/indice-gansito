@@ -98,6 +98,25 @@ Los dos workspaces corren **Runtime 2.0** —Spark 4.1.1, Python 3.13.11, Delta 
   ahorro; `nb_11_conasami` quedó en 32s con y sin HC. Lo que cambia es que la segunda
   actividad deja de pedir sesión —se engancha— y el 430 entre las dos pasa de intermitente a
   imposible.
+- **La sesión HC sobrevive a su pipeline entre 68 y 101 segundos.** Medido con `livySessions`
+  en seis cierres de `pl_bronze`, `pl_silver` y `pl_gold`: 68, 75, 78, 80, 87 y 101 s entre el
+  fin del pipeline y el `endDateTime` de la sesión. No es el timeout de inactividad, que son
+  20 minutos. El primer notebook del pipeline siguiente pide sesión ~25 s después de arrancar,
+  así que encadenados sin espera chocan: en la primera corrida de `pl_master`, `nb_20` entró
+  por su reintento de 90 s y `nb_30` tronó con 430 porque su reintento era de 30 s y pidió
+  **2 segundos** antes de que cerrara la sesión de silver. Con `Wait` de 120 s entre invokes,
+  la corrida siguiente entró a la primera con 56 y 67 s de margen.
+- **La trial no encola: el 430 es rechazo, no espera.** Los jobs de Spark disparados por
+  pipeline se encolan en SKUs F y P, pero la cola no existe en trial
+  ([job queueing](https://learn.microsoft.com/fabric/data-engineering/job-queueing-for-fabric-spark#queue-sizes)).
+- **El límite de 5 notebooks por sesión HC se sube sólo desde un Environment**, con
+  `spark.highConcurrency.max` de 2 a 50
+  ([high concurrency](https://learn.microsoft.com/fabric/data-engineering/high-concurrency-overview#dynamic-session-sharing-limit)).
+- **Los pipelines invocados con *Invoke pipeline (Legacy)* no aparecen en su propio
+  historial.** `fab job run-list` de `pl_gold` no lista las corridas que dispara `pl_master`;
+  se leen con `queryactivityruns` sobre la corrida del padre, cuyo `output.pipelineRunId`
+  lleva a las actividades del hijo. Al commitear, el `referenceName` del invoke queda como
+  `logicalId` del pipeline, igual que el `notebookId`, así que no pasa por `parameter.yml`.
 - **Un workspace se resuelve por nombre con `sempy`, no con notebookutils**:
   `fabric.resolve_workspace_id(nombre)` da el GUID —verificado contra `currentWorkspaceId`—
   y truena con `WorkspaceNotFoundException` si el nombre no existe, así que no devuelve
