@@ -1,0 +1,21 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/schedules/1.0.0/schema.json",
+  "schedules": [
+    {
+      "enabled": false,
+      "jobType": "Execute",
+      "configuration": {
+        "type": "Weekly",
+        "startDateTime": "2026-09-14T00:00:00",
+        "endDateTime": "9999-12-31T23:59:59.9999999",
+        "localTimeZoneId": "Central Standard Time (Mexico)",
+        "times": [
+          "03:00"
+        ],
+        "weekdays": [
+          "Tuesday"
+        ]
+      }
+    }
+  ]
+}
