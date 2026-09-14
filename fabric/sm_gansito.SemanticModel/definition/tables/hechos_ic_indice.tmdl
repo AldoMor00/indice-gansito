@@ -1,0 +1,85 @@
+table hechos_ic_indice
+	lineageTag: 5b1f4a2c-9d38-4e07-b6a1-3c5e82f4d190
+	sourceLineageTag: [dbo].[hechos_ic_indice]
+
+	column id_quincena
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: c47a9e13-2b60-4f85-91d2-7e30ab6c5f48
+		sourceLineageTag: id_quincena
+		summarizeBy: none
+		sourceColumn: id_quincena
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column ic_inferior
+		dataType: double
+		isHidden
+		lineageTag: 8e2d6b04-5f19-4a73-bc85-1d97e0432a6f
+		sourceLineageTag: ic_inferior
+		summarizeBy: none
+		sourceColumn: ic_inferior
+
+		changedProperty = SummarizeBy
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column ic_superior
+		dataType: double
+		isHidden
+		lineageTag: 3a75c8f2-6e41-4d90-8b23-95f6b0e17c4b
+		sourceLineageTag: ic_superior
+		summarizeBy: none
+		sourceColumn: ic_superior
+
+		changedProperty = SummarizeBy
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column ee_cambio_pp
+		dataType: double
+		isHidden
+		lineageTag: 6f90b3d7-4c28-45e1-a97f-2b84d05e6318
+		sourceLineageTag: ee_cambio_pp
+		summarizeBy: none
+		sourceColumn: ee_cambio_pp
+
+		changedProperty = SummarizeBy
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column id_producto
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: d18b6c2a-7e34-4905-b1c6-93a0f57e2d84
+		sourceLineageTag: id_producto
+		summarizeBy: none
+		sourceColumn: id_producto
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition hechos_ic_indice = entity
+		mode: directLake
+		source
+			entityName: hechos_ic_indice
+			schemaName: dbo
+			expressionSource: 'DirectLake - lh_gold'
+

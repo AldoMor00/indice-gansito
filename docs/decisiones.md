@@ -58,18 +58,37 @@ ambientes; un shortcut no daría eso, porque es de sólo lectura. A cambio, el c
 foto —se refresca re-clonando— y un `VACUUM` en prod puede romperlo. Es la letra chica del
 clon zero-copy de Snowflake y del shallow clone de Databricks.
 
-## 6. Dos modelos semánticos
+## 6. Dos modelos semánticos, y gold sale a git para el público
 
-Direct Lake exige capacidad y no se puede mover a una cuenta gratuita. El de Fabric es
-Direct Lake sobre `lh_gold`; el público es un PBIX en modo import que lee los agregados
-exportados a CSV por URL anónima. El costo es que el DAX vive duplicado.
+Direct Lake exige capacidad y la del proyecto es una trial que expira. Cuando eso pase, los
+workspaces vuelven a Pro: los items de Fabric —lakehouses, notebooks, pipelines— quedan
+inutilizables y se borran a los siete días, mientras que **los items de Power BI no se tocan**.
+Un modelo import y su reporte son items de Power BI, así que un PBIX import en My Workspace
+sigue vivo indefinidamente sin capacidad de por medio. Se necesita capacidad para *producir*
+gold, no para *mostrarlo*.
+
+El de Fabric es Direct Lake sobre `lh_gold`. El público es un PBIX en modo import, armado en
+local desde un `.pbip` que reusa el TMDL y el PBIR tal cual —sólo cambian las particiones— y
+lee las ocho tablas de gold como parquet desde `indice-gansito-datos/publico`, por URL anónima.
+No son agregados nuevos: gold ya *es* el agregado, y exportarlo verbatim deja que las 37
+medidas y las cinco páginas se copien sin reescribir una línea. Parquet y no CSV porque pesa la
+quinta parte y Power Query lo lee directo. Los escribe `nb_50_export`, a mano.
+
+Gold va a git y bronze y silver no, y el criterio no es el espacio: es que **algo aguas abajo lo
+necesita como origen**. El modelo público tiene que leer de algo que sobreviva a la capacidad, y
+git es lo único que hay. Bronze ya está en el repo —no castea, así que la tabla contiene lo
+mismo que el parquet (decisión #8)— y silver es derivado determinista de raw más `nb_20` y
+`nb_21`. Guardar capas derivadas además debilita lo que el repo afirma: que con el raw y el
+código se reconstruye todo.
+
+El costo es que el DAX vive duplicado, pero como copia y no como reescritura.
 
 ## 7. Nada de wheels: `%run` y pruebas en notebook
 
 Publicar una wheel a un Environment de Fabric toma minutos y mata la iteración. Los
-notebooks comparten helpers con `%run nb_00_config`; las pruebas de código van en
-`nb_90_pruebas` y las de datos en `nb_40_dq`, que escribe su veredicto en
-`dq_resultados` en vez de tronar con un assert suelto.
+notebooks comparten helpers con `%run nb_00_config` y las pruebas de código van en
+`nb_90_pruebas`. Las de datos son las compuertas de la decisión #16, dentro del notebook que
+escribe la tabla: son precondiciones de esa escritura y por eso viven junto a ella.
 
 El Python que corre en GitHub Actions es caso aparte: nunca entra a Fabric, así que ahí
 sí hay `pytest` y `ruff` normales.
@@ -78,7 +97,10 @@ El grueso del esfuerzo de pruebas va sobre **datos**, no sobre código. La lógi
 un pipeline es poca y sus errores salen a la primera corrida; los incidentes de verdad
 vienen de la fuente —una columna que cambia, un lote a medias, un null donde nunca hubo—.
 Por eso `nb_90_pruebas` se queda chico y se corre a mano con `%run`, y lo sistemático es
-validar cada corrida.
+validar cada corrida. La observabilidad —tasas, deriva, los conflictos de mismo día— **no
+lleva notebook propio**: son métricas del lote que el notebook que escribe ya tiene en
+memoria, y salen por `apunta()` al resumen de la corrida. Uno aparte tendría que releer
+bronze entero para recalcular lo que aquí ya está calculado.
 
 Cada tipo de fallo se trata distinto, y esa es la parte que no se improvisa:
 
@@ -86,8 +108,9 @@ Cada tipo de fallo se trata distinto, y esa es la parte que no se improvisa:
 - **carga incompleta** → truena el job. Bronze reconcilia su conteo por
   `(quincena, intento)` contra `filas_filtradas` del manifiesto, y un descuadre es un
   `raise`: no es un dato malo, es un pipeline roto;
-- **dato malo** → cuarentena, y el pipeline sigue (regla dura #3). Tirar un lote de 4,530
-  filas por 12 inválidas cuesta más de lo que evita.
+- **dato malo** → no existe como categoría propia: truena igual que una carga incompleta
+  (decisión #15). El pipeline no distingue entre "la fuente cambió" y "el pipeline se rompió",
+  porque el arreglo es el mismo en los dos casos y lo hace la misma persona.
 
 ## 8. Bronze lee por HTTPS, no por shortcut
 
@@ -143,10 +166,830 @@ forma medible. El reintento se queda para la primera, que sí pide sesión.
 
 `on completion` sola miente: en ADF una actividad que falla y sólo tiene camino de completion
 se da por manejada, y el pipeline reporta éxito con una fuente sin cargar. Por eso
-`ambas_fuentes_ok`, un `Wait` de un segundo que depende de las dos con `on success`. Las
+`fuentes_ok`, un `Wait` de un segundo que depende de todas con `on success`. Las
 dependencias múltiples se evalúan con AND, así que un fallo deja su camino de éxito sin tomar y
 el pipeline truena, como manda la decisión #7.
 
 El costo es que el tag no basta solo: hay que prender *High concurrency* en los settings de
 cada workspace, y eso vive fuera de git. Queda en `fabric/README.md` como requisito de
 reconstrucción.
+
+## 11. Los dos workspaces van en la misma versión de runtime
+
+Las tablas nacen en el protocolo (3,7) con `deletionVectors`, y un runtime más viejo no puede
+leerlas. Como el `SHALLOW CLONE` de la decisión #5 es lo que pone el bronze de prod en dev, un
+workspace rezagado dejaría de poder clonar al otro. El switch del runtime es reversible; el
+protocolo de una tabla no, así que el desempate es obvio: se suben los dos o no se sube
+ninguno.
+
+El requisito queda en `fabric/README.md` junto a High concurrency, porque vive fuera de git.
+
+## 12. El grano de silver es la quincena, y el precio es un promedio
+
+Silver lee de bronze el `intento` máximo de cada quincena y agrega a tienda-SKU-quincena.
+Promediar varias visitas ya es el caso normal —de las 126,493 celdas de la canasta, sólo 49,179
+traen una sola observación—, así que los 177 grupos con dos precios distintos el mismo día
+dejan de ser un caso especial en cuanto el grano deja de intentar ser diario. No fallan ninguna
+regla de calidad y ninguno se tira. Qué los produce no se sabe y no hace falta saberlo, medido
+en [`fuentes.md`](fuentes.md). Cuál de los dos se tome es inmaterial: el bajo,
+el alto o el promedio mueven el cambio del Gansito entre la primera y la última quincena 0.07
+puntos porcentuales. Se promedia porque conserva las dos observaciones en vez de escoger una
+sin criterio.
+
+La columna se llama `precio_promedio`, no `precio`, y va con `observaciones`, `precio_min` y
+`precio_max` de la misma agregación. Con eso quien consuma silver sabe si el número se observó
+de verdad —`precio_min = precio_max`, cierto en el 92.65% de las celdas— sin una bandera
+booleana, que sería derivable de columnas que ya están ahí y habría que mantener al día. Las
+observaciones exactas nunca se pierden: viven en bronze, que no filtra ni deduplica, para
+quien necesite la serie diaria en vez de la quincenal.
+
+## 13. La identidad sale de la fuente
+
+Una tienda es `(nombre_comercial, direccion)` y un SKU es `(presentacion, marca)`: las únicas
+claves mínimas de las 46 quincenas, medidas en [`fuentes.md`](fuentes.md). `producto` y
+`categoria` son constantes en las 213,772 filas, y la coordenada no identifica aunque nunca se
+mueva. De `presentacion` se parsean piezas y gramaje, que entran como atributos —
+`precio_por_gramo` es lo que hace comparable un Gansito de 50 Gr. contra un Panqué de 280—, no
+como clave: `(piezas, gramos)` colisiona en los dos Panqués y en las dos Barritas. Que los 11
+SKUs parseen es regla de DQ.
+
+La canasta son 9 SKUs en las 46 quincenas: las Barritas Fresa y Piña se excluyen de toda la
+serie, porque Profeco las reclasificó a Galletas Dulces y salen del corte en `2025-03_q2`.
+La exclusión va en silver y no en `objetivo.yml`, porque el filtro de ingesta es por `producto`
+y ahí comparten valor con el resto.
+
+## 14. Un patrón de escritura por tipo de tabla, y nunca `overwrite`
+
+El patrón lo decide la tabla, no el tamaño del dato. A esta escala reconstruir `hechos_precios`
+entero tardaría lo mismo que actualizarlo, así que se elige el que se usaría en producción: el
+volumen de la muestra es un accidente del dataset público, no el caso que se está resolviendo.
+
+| tabla | patrón | por qué |
+|---|---|---|
+| bronze | `append`, `mergeSchema` apagado | no castea ni deduplica, y una columna nueva es alarma de lote (decisión #8) |
+| dimensión | `MERGE` por clave, con condición de cambio | es acumulativa: una tienda que salió del panel no deja de existir y los hechos viejos la siguen apuntando |
+| dimensión SCD2 | `MERGE`, cerrando vigencias con `LEAD` | CONASAMI reexpide la historia completa cada año, así que la vigencia se deriva del lote y el mismo MERGE la cierra |
+| hecho | `replaceWhere` sobre las quincenas recalculadas | la quincena está completa o no está; un MERGE leería la tabla entera buscando filas que por construcción no existen |
+
+`overwrite` de la tabla completa no se usa en ninguna. Reescribirlo todo esconde justo lo que
+hay que ver —qué cambió en esta corrida— y deja el historial de la tabla sin nada que comparar.
+
+La condición de cambio del MERGE —`NOT (d.col <=> n.col)` sobre los atributos— es la mitad que
+carga peso. Sin ella la corrida sin novedades reescribe archivos y el log deja de distinguir
+"no pasó nada" de "se recalculó todo"; con ella un MERGE que no cambia nada no commitea versión.
+
+El `replaceWhere` del hecho no depende de cómo esté acomodada la tabla por debajo: sobre qué
+layout se apoya es la decisión #32.
+
+## 15. Silver es fail fast: pasa o truena, sin cuarentena ni bandera
+
+El proyecto nació con `precios_cuarentena` —la fila que no casteaba se apartaba a una tabla
+paralela y el pipeline seguía— y se probaron en el camino las dos alternativas intermedias: un
+contador de inválidas en el hecho, y una bandera de válido con su motivo en la propia fila. Las
+tres comparten el defecto: dejan aterrizar dato que todavía no se confía, y a partir de ahí todo
+conteo depende de que alguien se acuerde del `WHERE`. Números que no cuadran es exactamente lo
+que este proyecto no puede permitirse, porque lo único que publica son números.
+
+El tradeoff real no es "datos contra nada". `replaceWhere` sólo toca las quincenas pendientes, así
+que una corrida que truena deja las anteriores intactas: es **viejo pero cuadrado** contra
+**fresco pero descuadrado**, y con un solo consumidor —el índice— y una sola tolerancia, la
+bandera no le sirve a nadie. Una bandera gana cuando hay varios consumidores con tolerancias
+distintas, o un SLA que hace que el dato parcial valga más que ninguno. Aquí no hay ni uno ni
+otro: un operador, y la fuente lleva nueve meses sin publicar.
+
+Lo que se pierde es el registro persistente de qué falló, y se compensa solo: con cuarentena las
+filas malas se acumulan calladas durante meses y hacen falta una tabla y una consulta para
+encontrarlas; con fail fast la corrida se detiene ahí, en un notebook, sobre un lote conocido y
+con la columna nombrada en el error. No hay que buscar porque no te moviste del lugar. Y como
+nada se escribió, la quincena sigue pendiente: se arregla el notebook, se vuelve a correr y entra
+sola, sin dropear tablas ni parámetro de backfill.
+
+Tampoco hay tier de aviso. La prueba es "¿publicarías el dato con esto sin resolver?": si la
+respuesta es no, es un error diferido y es peor que un error; si es sí, entonces no era un aviso
+sino un atributo del dato o una métrica del lote, y las dos ya tienen dónde vivir.
+
+Las mediciones respaldan la elección más de lo que la inspiraron: 27.2 millones de filas leídas,
+213,772 al corte, y ni un solo valor que no castee. Construir maquinaria para el caso sucio era
+construir para algo que no ha pasado nunca.
+
+## 16. Dónde vive cada compuerta, y por qué ninguna se repite
+
+`nb_00_config` enciende ANSI —Fabric lo trae apagado, contra el default de Spark 4—, así que un
+`cast` fallido truena y `try_cast` sigue dando nulo. Con eso los dos dejan de ser sinónimos y
+pasan a ser una decisión visible por columna: `cast` es "esto tiene que pasar", `try_cast` es
+"esto puede faltar". En `nb_20` sobrevive un solo `try_cast`, en `piezas`, donde la ausencia es
+legítima. El tipado deja de necesitar compuerta propia.
+
+Lo demás se reparte por lo que cada mecanismo alcanza a ver, y nada se valida en dos:
+
+| compuerta | qué revisa | por qué ahí |
+|---|---|---|
+| ANSI | que el valor castee | es el cast mismo; no hay nada que escribir |
+| entrada, sobre el lote crudo | obligatoria vacía, un atributo por clave, formato del que cuelga un regex | es sobre la **fuente**, y el mensaje —"`direccion`: 12 filas vacías"— es lo que se repara |
+| salida, sobre el DataFrame armado | llave sin colisión | sólo existe después de transformar |
+| constraint CHECK de Delta | `precio_min > 0`, `gramos > 0`, `piezas > 0` | es predicado de **una fila del resultado**, lo único que Delta sabe expresar |
+
+La corrida va en tres tiempos —armar, validar, escribir— con las escrituras al final. Spark es
+perezoso, así que mientras nadie llame `.write` los DataFrames son la etapa de staging: se
+validan con sus llaves ya calculadas y una compuerta que truena no deja nada a medias. Es
+Write-Audit-Publish sin la tabla intermedia ni el swap.
+
+Las constraints las aplica el notebook y no un DDL a mano, porque una constraint puesta fuera
+desaparece al recrear la tabla y una protección que crees tener y no tienes es peor que ninguna.
+Se descartaron a propósito las que no pueden fallar: `NOT NULL` sobre un `id` es teatro —
+`xxhash64` nunca devuelve nulo, y el riesgo real de esa llave es que sea válida y **equivocada**
+cuando la clave natural viene vacía, que es cosa de la compuerta de entrada.
+
+## 17. La zona del salario mínimo son 6 identidades de 7 literales, y su vigencia se cierra global
+
+`resto del pais` (2019-2024) y `general` (2025-) son la misma zona renombrada, medido en
+[`fuentes.md`](fuentes.md), así que la identidad va sobre el nombre normalizado y el literal se
+queda de atributo: es justo lo que la SCD2 versiona. `unica` (2015-2018) **no** se fusiona con
+ellas aunque cubriera el mismo país: al crearse la ZLFN en 2019 se le recortó territorio, y eso
+es cambio real y no cambio de nombre. `a`, `b`, `c` son zonas históricas propias.
+
+El cierre de vigencias es **global y no por zona** porque CONASAMI reexpide el tabulador
+completo: una vigencia termina cuando entra el siguiente, no cuando esa zona cambia de salario.
+Partido por zona, `a`, `b`, `c` y `unica` quedarían abiertas para siempre —su último renglón no
+tiene siguiente— y una quincena de 2024 haría match con las seis. El punto ciego es la zona que
+sale de un tabulador y vuelve en el siguiente, que abriría un hueco sin salario; en las 42 filas
+no pasa nunca ([`hechos.md`](hechos.md)) y una compuerta de `nb_21` truena si empieza a pasar.
+
+La vigencia abierta se cierra con `9999-12-31` y no con nulo: `es_vigente` sale de comparar
+contra el centinela, y el `BETWEEN` de gold no tiene que arrastrar un `OR IS NULL`.
+
+## 18. Ni variable library ni user data functions
+
+`fabric-cicd` soporta los dos tipos, así que el descarte es de diseño. La variable library
+parametriza lo que cambia entre ambientes, y aquí no cambia nada: mismos nombres y mismas rutas
+en los dos workspaces, resueltos en vivo por `ruta_tabla` (regla #1, decisión #5). Encima
+cobraría, porque el value set activo es setting del workspace y no viaja en el item.
+
+La user data function centraliza lógica reutilizable, que es lo que hace `nb_00_config`, pero
+sin sesión de Spark y por REST, y los helpers toman y devuelven DataFrames: sólo `manifiesto_de`
+cruzaría. Paga con write-back translytical o consumidores externos, y no hay ninguno. Lo medido,
+en [`hechos.md`](hechos.md).
+
+## 19. El cambio de precio se publica con Jevons encadenado, no con un promedio
+
+El panel de Profeco rota, así que comparar el promedio de la primera quincena contra el de la
+última mezcla cambio de precio con cambio de muestra. El índice se arma pareando: cada quincena
+contra la inmediata anterior, sobre las tiendas presentes en ambas, y los 45 eslabones se
+encadenan. Ninguna tienda necesita sobrevivir dos años para aportar, y se retiene el 86% del n
+—el panel balanceado, que parece la corrección obvia, retiene el 9% y sale sesgado por
+supervivencia—. Las cuatro variantes con sus intervalos, en [`hechos.md`](hechos.md).
+
+Del par de medias que sobreviven —Dutot y Jevons quedan a medio punto, y Carli se descarta
+porque sobreestima 12— se elige **Jevons**: vive en logaritmos, y los logaritmos son aditivos.
+Eso es lo que deja que el índice sea una sola medida DAX en vez de una tabla pre-agregada. Y ahí
+está la razón de que `hechos_relativos` se materialice **al grano de tienda**: el encadenado no
+es aditivo entre cortes —el de «supermercados en Jalisco» no se deriva del de «supermercados»—,
+así que pre-agregar eslabones por corte congelaría los cortes para siempre. Al grano de tienda
+son ~13,000 filas y cualquier corte sale gratis.
+
+La muestra insuficiente se ataja en la medida y no filtrando gold: el dato entra completo
+—filtrarlo sería compuerta de silver en la capa equivocada, y rompería los cortes
+transversales, que no necesitan pareo— y el índice devuelve `BLANK()` cuando el eslabón más
+flaco del corte no junta el umbral, que arranca en 30 tiendas y se expone como parámetro. No es
+lista negra: se evalúa en el contexto de filtro, así que protege igual a una cadena chica, a un
+estado chico o a un subperiodo corto. Es lo que decide que el corte de canal sean tres
+categorías y no los cinco `giro` de la fuente, de los que sólo uno pasa el umbral.
+El criterio del eslabón más flaco lo corrige la decisión #42.
+
+## 20. El intervalo del índice se materializa en gold, tabulado por SKU
+
+El IC 95% no se puede calcular en DAX. El error del encadenado no es función de los agregados
+del eslabón: las mismas tiendas reaparecen eslabón tras eslabón y sus errores se telescopan, así
+que sumar varianzas en cuadratura da 2.62 pp contra los 1.60 del bootstrap. Una banda calculada
+así saldría 64% más ancha de lo que dicen los datos, que es peor que no publicarla.
+
+`nb_30_gold` lo resuelve con el mismo bootstrap de la exploración —2,000 réplicas, semilla fija
+para que dos corridas publiquen el mismo intervalo— y deja `hechos_ic_indice`. Remuestrea
+**tiendas** y no celdas, porque la tienda es la unidad de muestreo de Profeco y las celdas de una
+misma tienda no son independientes; el sorteo se expresa como pesos multinomiales, que es el
+mismo bootstrap escrito de forma que el join lo pueda aplicar sin explotar.
+
+El grano es **SKU × quincena**, no quincena. El índice que se publica es el de un SKU —el
+titular es el Gansito, no la canasta— y el intervalo de la canasta no se le parece: promedia
+nueve series y sale en ±0.37 pp contra los ±1.60 del Gansito. Cada SKU se remuestrea contra su
+propio padrón de tiendas, porque el n del que depende el ancho es el suyo. Entre SKUs no se
+agrega, así que la medida exige un solo producto en contexto y se apaga ante cualquier filtro de
+tienda: el bootstrap corrió sobre el padrón entero y no sobre el corte.
+
+Es la única tabla de gold que no proyecta silver, y por eso se calcula al final y sobre gold ya
+escrito: cada quincena nueva alarga la cadena y mueve el intervalo de todas las anteriores.
+
+## 21. El nombre comercial del SKU se deriva en gold, con diccionario
+
+Profeco declara los nueve SKUs con el mismo `producto` —"Pastelillos y Pan Dulce
+Empaquetado"— y la misma `categoria`, así que lo único que los distingue es la cadena cruda de
+`presentacion` (decisión #13). El reporte necesita "Gansito", no `Paquete con 1 Gansito
+(50 Gr.)`, así que `dim_producto` gana una columna `nombre`.
+
+Diccionario explícito y no regex: dos de los nueve no siguen el patrón `Paquete con N <nombre>
+(M Gr.)` sino `Paquete 280 Gr. Panqué ...`. Y a diferencia de `CANAL`, aquí el diccionario es lo
+correcto y no la excepción, porque la canasta está cerrada: una presentación nueva es una alarma,
+no un caso que absorber.
+
+La compuerta mira el universo completo de la dimensión y no sólo lo que trae precio. Silver ya
+ataja el SKU nuevo —truena si el lote pasa de nueve presentaciones— pero no ve el **renombre**:
+con nueve presentaciones y el regex casando, pasa limpio, pero la clave es `xxhash64` sobre la
+cadena, así que nace otro `id_producto` y la dimensión, que es acumulativa, queda con la vieja y
+la nueva. Llegaría aquí sin nombre y `coalesce` la dejaría en nulo: un blanco en el slicer y P1
+sin encontrar su producto. `nombre` y no `nombre_comercial`, que ya es media identidad de una
+tienda.
+
+## 22. El histograma sale de una tabla de bins desconectada
+
+Power BI no trae histograma nativo, y las salidas del UI tampoco sirven aquí: el binning
+—*New group → bin size*— crea una **columna calculada**, y las tablas Direct Lake no las
+admiten. Las alternativas eran binear en gold, que congela el ancho del bin dentro de los datos
+y obliga a recorrer `nb_30` para cambiarlo, o un visual de AppSource, que mete una dependencia
+externa en una pieza que se va a enseñar. Se elige una **tabla de constantes desconectada**,
+`Rango de precio`: no referencia Direct Lake y por eso es legal, y es la forma que el modelo ya
+usaba para `Umbral de pareo`.
+
+Bins de un peso con el borde en el medio peso. El ancho no es gusto —Freedman-Diaconis sobre el
+corte real pide $0.99— y el borde resuelve algo concreto: los precios de anaquel se apilan en
+pesos redondos, y con el corte en `x.50` la moda cae al centro de la barra en vez de partirse
+entre dos. `Tiendas en rango` devuelve **cero adentro del rango observado y `BLANK` afuera**;
+sin esa rama la serie sale con 76 barras y ceros a los lados, y devolviendo `BLANK` a secas los
+bins vacíos de en medio se colapsan y la forma del histograma miente.
+
+## 23. Los cortes transversales llevan un mínimo de cinco tiendas, y va en el visual
+
+P2 no compara periodos, así que no hay pareo ni guarda del índice (decisión #19) y los cinco
+giros de la fuente valen completos. Pero ordenar por precio con la muestra entera pone el ruido
+arriba: la cadena más cara de la última quincena es una farmacia con dos tiendas. El mínimo de
+cinco es un **filtro de visual** y no un filtro de gold, por la misma razón que la guarda del
+índice —el dato entra completo y quien decide es la medida en su contexto—, y por eso convive
+con visuales de la misma página que no lo llevan.
+
+Donde más pesa es en el mapa: un coropleta pinta área, y el área se lee como peso. Un estado con
+una sola tienda saldría del color más intenso del mapa. Los que no alcanzan el umbral se quedan
+sin pintar, que es lo que de verdad dicen los datos.
+
+La tabla de municipios lleva el estado como columna aparte, y eso no es formato: los nombres de
+municipio se repiten entre estados, así que agregarlos por nombre inventa una fila.
+
+## 24. La clave del mapa se deriva en gold, con diccionario
+
+El mapa es un `shapeMap` y no Azure Maps. Azure Maps sólo opera en las regiones de Estados
+Unidos y la Unión Europea; fuera de ahí hace falta encender además el switch que deja procesar
+los datos fuera de la región del tenant, y una pieza de portafolio no debería depender de dos
+palancas de administración ni de que el dato salga del tenant para dibujarse. Además dibuja
+tiendas y no estados, y las burbujas se amontonan en el Valle de México. Se paga que `shapeMap`
+siga en preview.
+
+`shapeMap` casa la ubicación contra las claves de su TopoJSON. 28 de los 30 estados que declara
+Profeco casan por nombre —la fuente los escribe sin acentos, igual que el mapa—, pero los dos
+que no casan son los dos más grandes del padrón. De ahí `clave_estado` en `dim_tienda`, con el
+mismo patrón de la decisión #21: diccionario explícito, los 32 y no los 30 observados para que
+Colima y Nayarit pinten el día que aparezcan, y compuerta que detiene la corrida ante un estado
+que no esté. Se guarda el ID del TopoJSON y no el ISO ni el nombre en inglés, porque es la llave
+del propio mapa; `estado` se queda como lo escribe Profeco, igual que `giro` junto a `canal`.
+
+Agregar la columna obligó a **reconstruir** `dim_tienda` en gold, no a evolucionar su esquema:
+el MERGE de `upsert` exige que origen y destino tengan las mismas columnas. La alternativa
+—`autoMerge` de sesión— la desaconseja la propia documentación, y convertiría cualquier cambio
+de esquema futuro en algo que entra callado, que es lo contrario de cómo este repo los trata.
+Gold es una proyección de silver: se dropea la tabla y se vuelve a correr.
+
+## 25. Por cadena se publica nivel, no índice
+
+El plan de la fase le daba a P3 tres visuales, y el tercero eran barras de cambio encadenado por
+cadena. No existe: medido contra el modelo, **ninguna de las 37 cadenas alcanza el umbral de
+pareo**. La mejor es Hipermercado Soriana con 26 tiendas pareadas en su peor eslabón contra las
+30 que exige la guarda (decisión #19), y de ahí para abajo Wal-mart 20, Chedraui 16 y Bodega
+Aurrera 15. El visual habría salido en blanco las 37 veces.
+
+Es el mismo resultado que ya había dado el `giro` crudo de Profeco y que obligó a colapsar a tres
+canales: **el umbral decide la granularidad publicable, no el gusto**, y la cadena queda por
+debajo de esa línea para cualquier índice.
+
+Lo que sí sostiene es el **nivel**: precio al inicio contra precio al cierre, que no encadena
+nada y por eso no le debe nada al pareo. Ahí la guarda que aplica es la de los cinco (decisión
+#23), con una vuelta de tuerca —cinco tiendas **en las dos puntas**, no en el promedio de las
+dos, porque con una sola punta pasan cadenas que en la otra no existen—. Quedan 12 cadenas. Por
+eso la página cierra con dos visuales y no con tres, y el dumbbell se lleva el ancho que sobró.
+
+El precio de la elección se dice en la página y no en una nota al pie: las dos puntas no son las
+mismas tiendas, así que el dumbbell mide nivel de cadena y no cambio pareado.
+
+## 26. El dumbbell se dibuja con error bars, no con un visual de AppSource
+
+Power BI no trae dumbbell, y la pieza es la que carga el hallazgo de P3: dónde arrancó y dónde
+terminó cada cadena, en un solo renglón. Las salidas eran tres. Un visual certificado de
+AppSource mete una dependencia de tenant en un reporte que se escribe entero a mano, y que la
+copia import de la decisión #6 tendría que renderizar también. Un scatter de inicio contra
+cierre con *symmetry shading* es nativo y analíticamente más fuerte —la distancia a la diagonal es el
+encarecimiento— pero se lee frío y encima con doce etiquetas. Barras pareadas se leen solas y
+pierden la línea que une las dos puntas, que es lo que hace legible la brecha.
+
+Se arma con lo que el reporte ya tenía probado: **una barra clusterizada con error bars**, que la
+documentación soporta en barra y columna clusterizada, línea y combo. El valor es `Precio al
+inicio`, las cotas son `Precio al inicio` y `Precio al cierre` con `isRelative: false`, y los
+caps encendidos son las dos pesas —al revés que la banda de P1, donde con 46 puntos tapaban el
+relleno y hubo que apagarlos—. La barra se apaga con `fillTransparency` al 100, que es propiedad
+del punto: apagarla pintándola del color del lienzo la habría dejado dependiendo del tema.
+
+Dos detalles que no son cosméticos. El eje va fijo de $12 a $24, porque arrancando en cero las
+doce mancuernas se apelmazan en el cuarto derecho. Y el orden es por `Precio al inicio`, que es
+lo que deja ver que los que arrancaron baratos son los que más subieron; ordenando por el cierre
+las longitudes se revuelven y el patrón se pierde.
+
+## 27. El índice no publica 100 en la quincena base sin observación
+
+`Índice encadenado` devuelve 100 en la quincena base por definición: no hay eslabón anterior
+contra el cual parear, así que la guarda no tiene qué exigirle, y sin esa rama la serie arranca
+en blanco y entra un eslabón tarde. Pero la rama estaba escrita sin condición, y publicaba ese
+punto para cualquier corte, incluso uno sin una sola celda detrás.
+
+Se vio al partir por canal. `canal` es nulo para los giros que no venden pastelillos —1,429
+tiendas del padrón, cero celdas en `hechos_precios`— y ese grupo dibujaba una cuarta serie
+fantasma en la leyenda: un punto en 100 y nada más.
+
+Se arregla en la medida y no con un filtro de visual. El filtro tapaba el caso en esa página; la
+medida lo resuelve en cualquier corte que venga después, y P5 parte por nivel de cobertura. La
+rama pide ahora `NOT ISBLANK( [Precio promedio] )`: 100 por definición sigue pidiendo que haya
+algo definido. Las cuatro cifras de F4 no se movieron.
+
+## 28. El miembro en blanco se filtra en el slicer, no se promete integridad
+
+Los slicers mostraban una opción en blanco, y no son datos sucios: `dim_producto` tiene 9 filas y
+ninguna con nombre nulo, y las tres tablas de hechos apuntan todas a un producto que existe —el
+conteo no baja ni una fila al excluir la fila en blanco—. Es el *unknown member*, la fila virtual
+que el motor agrega del lado "uno" de cada relación regular al expandir con `LEFT OUTER JOIN`, y
+que en Direct Lake se queda puesta porque la integridad no se puede validar contra los Delta.
+Está en las tres dimensiones: producto da 10 miembros contra 9 filas, `cadena_comercial` 257
+contra 256 y quincena 47 contra 46.
+
+Se quita con un filtro de visual "is not blank" en cada slicer. La alternativa era marcar las
+relaciones con *Assume referential integrity*, que en Fabric sí se puede y de un golpe cambia el
+join a `INNER` y borra el miembro de todo el modelo. No se hace: es una promesa sobre los datos,
+y el día que se rompa —una llave de hecho sin su fila de dimensión— esas filas desaparecen
+calladas en vez de acumularse en el blanco. Silver está construida al revés (decisión #15), y el
+índice publica en blanco antes que publicar de más.
+
+## 29. El poder adquisitivo se publica en dos escalas, y ninguna se convierte en la otra
+
+P4 dice dos veces cuánto menos alcanza un día de trabajo, y las dos cifras no empatan. Por
+nivel: `Gansitos al inicio` da **15.6** y `Gansitos al cierre` **13.9**, un **−10.88%**. Por
+serie, con las dos curvas base 100: el salario llega a 111.96 y el Gansito a 124.40, un
+**−10.00%**. La diferencia es el pareo. El nivel sale de `Precio promedio`, que es transversal y
+no le debe nada a la guarda, y el promedio simple del Gansito va de $16.58 a $20.83, **+25.63%**;
+el encadenado da +24.40% porque sólo compara tiendas presentes en las dos puntas de cada eslabón.
+
+La gráfica base 100 usa `Índice encadenado` y no ese promedio rebasado. Es la serie del proyecto
+(decisión #19), y ya comparte eje con el INPC en P1: rebasar el promedio publicaría +25.63% a un
+clic de un +24.40% que P1 y P3 publican para lo mismo, y nada en la página diría por qué difieren.
+
+Los KPI no intentan reconciliar las dos escalas con una tercera medida. Publican los dos niveles
+y los dos cambios que explican la brecha —**+11.96%** el salario mínimo contra **+24.40%** el
+Gansito—, y ahí el lector hace la resta solo. Un "cambio de poder adquisitivo" en una tarjeta
+tendría que elegir entre −10.88% y −10.00% sin poder justificar la elección en el espacio de una
+tarjeta, que es exactamente el tipo de número que este reporte no publica.
+## 30. La cobertura del panel se mide por eslabón, no sobre el periodo
+
+P5 tiene que declarar cuánto de la muestra usa cada comparación, y eso se cuenta de dos maneras
+que dan números distintos. Sobre el periodo entero, 478 de las 508 tiendas que alguna vez
+vendieron Gansito aparecen en algún eslabón: 94.1%. Sobre el eslabón típico —mediana de los 45—
+es 86.3%.
+
+Se publica la mediana por eslabón. La razón del periodo contesta "¿alguien quedó excluido para
+siempre?", que es la pregunta menor: el índice no se calcula sobre el periodo sino eslabón a
+eslabón, así que lo que hay que declarar es cuánto usa cada comparación. Y esa cifra mejora sola
+con el tiempo —entre más quincenas, más fácil que una tienda pare en alguno— sin que el método
+haya mejorado en nada.
+
+El eje sale de `Nivel de cobertura`, una tabla desconectada de cuatro constantes leída con un
+`SWITCH`: tienda, cadena, municipio y estado son cuatro columnas de `dim_tienda` y no cuatro
+valores de una, y Direct Lake no admite columna calculada (decisiones #21, #22 y #24). El
+municipio se cuenta junto con su estado, porque los nombres se repiten entre estados.
+
+## 31. La observabilidad de las corridas es el monitoring hub
+
+F5 iba a llevar `lh_ops` con una tabla de corridas, para dejar rastro consultable del no-op: la
+corrida que no encontró nada pendiente. No se construye. La corrida sin pendientes no escribe,
+así que `DESCRIBE HISTORY` no la ve —el MERGE sin cambios ni siquiera commitea versión, y es a
+propósito (decisión #14)—, pero el hub sí: la actividad aparece con su estado y `pendientes=0`
+viaja en el exit value, que ya es el único lugar por donde sale un número (decisión #7).
+
+Lo que la tabla agregaba era retención y consulta como serie, y la retención no aprieta: el hub
+guarda 30 días de actividades y 60 del historial de notebook, contra una capacidad de trial que
+expira el 10 de octubre de 2026. Nunca llegaría a contener algo que el hub no tuviera. Aun sin
+esa fecha el rastro tampoco se pierde: bronze trae `_ingestado_utc` y `_corrida` por fila, así
+que qué aterrizó y cuándo se reconstruye del dato mismo; y para años de historial la respuesta
+de la plataforma es workspace monitoring o la Job API, no una tabla Delta a mano.
+
+Lo que el cron sí necesita es aviso de fallo, y eso es *Schedule failures*: un setting del hub
+sobre items programados, no un item. Queda pendiente hasta que exista el primer schedule —hoy
+`pl_bronze` se dispara a mano— y entonces va a `fabric/README.md`, con lo demás que el workspace
+necesita configurado fuera de git.
+
+## 32. El hecho se clusteriza, no se particiona
+
+Los tres hechos por quincena —`hechos_precios` en silver y en gold, y `hechos_relativos`— van con
+liquid clustering por `(_quincena, id_producto)` y sin `partitionBy`. El patrón de escritura de la
+decisión #14 no cambia: `replaceWhere` no exige que la columna de su predicado sea de partición.
+
+La partición venía del runtime 1.3, y ahí era lo correcto: en esa versión liquid clustering
+reescribía el Z-Cube entero en cada `OPTIMIZE` para tablas de menos de 100 GB —o sea toda la
+tabla, siempre—. El modo incremental que lo vuelve barato llegó con el runtime 2.0.
+
+Lo que decide el cambio es el criterio que Fabric publica ahora: **particionar es para aislar
+escritores concurrentes**, y pide al menos 1 GB por partición. Los dos fallan aquí. Escritor hay
+uno solo y por diseño: `pl_silver` encadena sus notebooks, y la capacidad ni siquiera aguanta dos
+sesiones de Spark. Y el tamaño falla **en producción**, no por la muestra: con todos los productos
+de Profeco son unas 590 mil filas por quincena, 24 quincenas al año, del orden de 3 a 6 GB en diez
+años. Eso deja particiones de 25 a 40 MB contra un objetivo adaptativo de 128 MB, y 24 particiones
+nuevas al año para siempre. La partición impide llegar al tamaño que el propio runtime calcula
+como bueno.
+
+En contra pesa que la doc de Direct Lake recomienda justo lo opuesto —particionar por una fecha
+de baja cardinalidad para que el mantenimiento toque pocas particiones y el modelo recargue
+poco—. Se le da menos peso porque esa misma doc pide row groups de entre 1 y 16 millones de
+filas, y una quincena de 590 mil no llega: el archivo por quincena queda corto justamente para el
+consumidor que la partición se supone que protege.
+
+Las columnas son las dos que aparecen en todo predicado —el eje del reporte y el grano del
+índice—, dentro de las una a cuatro que la doc recomienda. `id_tienda` queda fuera: alta
+cardinalidad y sólo aparece en joins que barren la tabla igual.
+
+Lo que costó comprobarlo, medido en [`hechos.md`](hechos.md): el `clusterBy` del writer **es un
+no-op silencioso** sobre tabla por ruta —no truena y la tabla queda sin clusterizar—, así que el
+layout se declara con un `ALTER` idempotente, `exige_clustering`, gemelo de `exige_invariantes`.
+El guard del `replaceWhere` sigue vivo. Y el write amplification que se le temía —recalcular una
+quincena obligando a reescribir a las vecinas por compartir archivo— **no ocurre**: las deletion
+vectors marcan las filas viejas en 833 bytes y las nuevas se escriben aparte.
+
+Queda una honestidad. A este volumen `OPTIMIZE` se salta la tabla entera, así que el clustering
+está **declarado y nunca aplicado**: lo que ordena las filas hoy es el V-Order de la escritura, no
+el clustering. El layout está elegido para el caso real, y sólo el caso real lo va a ejercer.
+
+## 33. El mantenimiento va programado y por notebook, y el V-Order no entra por ahí
+
+`pl_mantenimiento` corre semanal, aparte de la ingesta porque las cadencias no coinciden, y en
+este orden: `OPTIMIZE` → `VACUUM` → refresh de `sm_gansito` → re-clon del bronze de dev. El orden
+no es estético. Un modelo Direct Lake *frameado* referencia una versión concreta del commit, así
+que si `VACUUM` borra sus parquets antes del refresh, las queries del reporte truenan; y el
+shallow clone de la decisión #5 se rompe con `OPTIMIZE` seguido de `VACUUM` —el primero deja
+huérfanos los archivos que el clon referencia y el segundo los borra—, así que el re-clon va
+después de los dos y no entre ellos.
+
+**Va en notebook y no en la *Lakehouse maintenance activity* del pipeline**, que sería la pieza
+obvia: sus known issues dicen que no soporta lakehouses con esquemas, y los tres lo son. El
+notebook además es el único camino que deja usar `DRY RUN`, `VACUUM LITE` y la retención por
+sesión, y corre por ruta `abfss` como todo lo demás (regla #1).
+
+**`VACUUM` con `RETAIN 168 HOURS` escritos.** Es el mismo número que el default, pero escrito
+queda la intención en el código y no en la cabeza de quien lo eligió. Bajar de siete días exige
+apagar el seguro `retentionDurationCheck`, y no hay razón para apagarlo: lo que se gana es ver
+borrar antes, y lo que se arriesga es que un lector en curso pierda los archivos que está usando.
+
+**`OPTIMIZE` programado, y no auto compaction**, en contra de lo que Microsoft recomienda por
+defecto para tablas escritas por Spark. Su umbral son 50 archivos por debajo del mínimo, y una
+corrida quincenal escribe uno: no se dispararía nunca, ni con volumen de producción. La
+recomendación está escrita para streaming y microbatch, donde entran archivitos cada minuto.
+Y además commitearía versiones que no vienen de ninguna corrida, que es justo lo que hace
+ilegible el historial que la decisión #14 cuida.
+
+**El V-Order entra por la escritura de gold, no por el mantenimiento.** `OPTIMIZE … VORDER` no
+V-Ordena hacia atrás lo que decide no reescribir ([`hechos.md`](hechos.md)), así que esperar a la
+corrida semanal dejaría a gold sin él. Lo pone el perfil `readHeavyForPBI` en `nb_30`. El
+`VORDER` va igual en el comando del mantenimiento, pero para **conservarlo**: esa sesión corre en
+`writeHeavy`, que trae el V-Order apagado, y la sesión le gana a la propiedad de tabla. Todo
+notebook que escribe datos en Delta declara su perfil explícito por la misma razón: con High
+concurrency los notebooks de un pipeline comparten sesión, así que el perfil del que corrió antes
+seguiría puesto.
+
+Qué le va a dar trabajo de verdad no son las tres tablas migradas —a este volumen `OPTIMIZE` se
+las salta— sino `hechos_ic_indice`, que el `MERGE` deja en siete archivos para 414 filas, y las
+deletion vectors que va dejando cada recálculo de quincenas.
+
+**El re-clon corre desde prod y escribe en dev.** `nb_91` resuelve origen y destino por nombre,
+no por el workspace de la corrida: hace lo mismo lanzado por el pipeline de prod que a mano desde
+dev, y su `rm` sólo puede caer en dev. En prod corre con la cuenta del despliegue, que por eso es
+Contributor en dev ([`hechos.md`](hechos.md)). Depende del refresh con `Succeeded` y no con
+`Completed`: el pipeline sale verde o rojo por su última actividad, y un clon exitoso taparía un
+refresh tronado justo después del `VACUUM`. El costo es una semana sin re-clon, que se corre a mano.
+
+## 34. Profeco se lee del portal, por bundle anual
+
+`repodatos.atdt.gob.mx` sirvió un CSV por quincena hasta `2025-11_q2` y desde entonces
+contesta 503 a todo lo demás. Durante nueve meses eso se leyó como que el programa estaba
+suspendido. No lo estaba: Profeco se mudó a `datos.profeco.gob.mx/datos_abiertos/qqp.php`,
+donde publica mensual y con un mes de rezago, y donde la granularidad ya no es la quincena
+sino **un bundle por año**. La ingesta se mueve ahí y el canal viejo se descarta.
+
+No se re-ingesta nada. Las 46 quincenas que ya estaban tienen el mismo `sha256` que sus
+copias dentro de los bundles del portal —las 46, byte por byte— y el corte regenerado sale
+idéntico al parquet commiteado, así que la serie no se parte en dos y el manifiesto sigue
+siendo válido tal como está. Su `url_origen` apunta a un host caído, y se deja: es la
+bitácora de lo que pasó, no un catálogo de lo alcanzable. `docs/fuentes.md` explica por
+dónde se rehace hoy.
+
+Lo demás lo impone la forma del bundle. Se baja entero o nada —ignora `Range` y no manda
+`Last-Modified`, `ETag` ni `Content-Length`—, así que la corrida se decide antes con el CSV
+de metadatos, 877 bytes que declaran hasta qué mes cubre la fuente. El token de cada año es
+una cadena asignada a mano y no derivable, de modo que se resuelve leyendo el listado en
+cada corrida: es lo que hace que 2027 entre solo el día que aparezca su renglón, y lo que
+hace que la corrida truene —sin mapa de años— si algún día cambian la plantilla. Y como
+2025 se sirve en `.rar` mientras 2024 y 2026 van en `.zip`, el script no aprende a
+descomprimir rar: lleva `--local` para procesar CSV ya extraídos a mano, que es el camino
+de los años que no necesitan automatizarse.
+
+El bundle además regala algo que el canal viejo no daba: **el directorio central del zip
+trae el tamaño y el CRC32 de cada miembro sin descomprimir nada**, así que cotejarlos
+contra el manifiesto no cuesta ni una lectura extra. Con eso se detecta que Profeco
+reescribió una quincena ya procesada —el caso que el tamaño solo no ve, porque corregir un
+precio de 20 a 21 no mueve un byte de longitud—, y lo reescrito entra como `intento` nuevo
+sin pisar lo anterior. El manifiesto guarda el `crc32` junto al `sha256`; las 62 líneas que
+existían se sellaron de una vez, verificando antes el `sha256` de cada una.
+
+El alcance de esa comprobación es deliberado: **sólo se cotejan los años cuyo bundle hubo
+que bajar de todos modos**. Abrir uno nada más por revisar tiraría el ahorro de la sonda,
+y como la fuente publica mensual, cada publicación arrastra una quincena pendiente que
+obliga a abrir el año en curso y revisa sus catorce miembros de paso. Un año ya cerrado no
+se vuelve a mirar solo; para eso está `--rehacer`, que fuerza sin consultar sellos.
+
+## 35. El deflactor sale del INPC de INEGI, no de CONASAMI
+
+Hasta ahora el deflactor era implícito: `smg_nominal / smg_real` de la serie de CONASAMI
+es el INPC entre 100. Funcionaba y estaba medido, pero esa serie se detiene en enero de
+2026 mientras los precios de Profeco llegan a julio, y `nb_30_gold` truena a propósito
+cuando la ventana de precios se adelanta a la del salario. El deflactor pasa a salir del
+indicador `910420` de INEGI, que llega a la segunda quincena de agosto de 2026.
+
+No es sólo alcance, también es grano. El de CONASAMI es mensual, así que las dos quincenas
+de un mes compartían deflactor; el de INEGI es **quincenal** y empata uno a uno con
+`_quincena`. Eso era lo que `fuentes.md` ya declaraba como lo correcto y no se tenía. De
+paso el índice deja de pasar por `dim_mes` para deflactarse: hoy la cadena es quincena →
+mes → deflactor, y queda quincena → deflactor.
+
+El cambio de fuente está comprobado, no supuesto: el INPC de enero de 2024 es 133.5550
+promediando las dos quincenas de INEGI, contra el 133.554 que `hechos.md` tenía medido
+desde CONASAMI. Una milésima de redondeo.
+
+CONASAMI **se queda** como fuente del salario, que es lo que responde la página de cuántos
+Gansitos compra un día de trabajo. Que su serie mensual pare en enero no la deja coja: el
+salario mínimo es un dato que se fija una vez al año y sigue vigente hasta el siguiente,
+así que el nominal de 2026 se conoce completo.
+
+El costo es un token en la URL, y por eso vive como secreto del repositorio y el manifiesto
+guarda `{token}` en lugar del valor. Se pagó porque la alternativa sin credencial —el CSV
+de datos abiertos del programa INPC— se quedó en julio de 2024. Cómo se encontró el
+indicador, y los tres errores que dan el mismo 400 mudo, están en `fuentes.md`.
+
+## 36. El corte de precios declara sus columnas, y el catálogo del portal no se ingesta
+
+Junio de 2026 llegó con 18 columnas en vez de 15 —`folio`, `cv_producto` y `cv_marca`, las
+llaves internas de Profeco— y julio volvió a 15. `corte_precios` no declaraba qué columnas
+conserva, así que se las llevó al repo de datos, y bronze tumbó la corrida al escribir: es
+lo que la decisión #8 le pide con `mergeSchema` apagado. La alarma funcionó; lo que faltaba
+era la respuesta.
+
+`corte_precios` pasa a declarar sus 15 columnas y a tronar si falta alguna, igual que
+`corte_tiendas` con las suyas —esa asimetría era la causa—. El recorte va en la ingesta y
+no en bronze porque la regla #2 dice que bronze no filtra, y la zona raw ya es donde el
+proyecto concede recortes (decisión #2). Los dos parquets de junio se rehicieron desde el
+mismo CSV: no entraron como `intento` nuevo porque el `sha256` del manifiesto es el del CSV
+de origen, que no cambió, así que un intento 2 habría sido una línea idéntica a la primera.
+No fue una versión nueva de la fuente sino un defecto de extracción nuestro, y el historial
+de git conserva lo que produjo.
+
+Con las llaves a la vista se investigó de dónde salen, y salen de una API JSON pública del
+portal de consulta —`/api/productos/{catálogo}` y `/api/establecimientos`, sin credencial—
+cuyas claves son exactamente las de junio: el Gansito es `0008/002` ahí y fue
+`cv_producto=8`, `cv_marca=2` en el archivo. **No se ingesta.** No mete las llaves en la
+historia, que es lo que haría falta: los archivos masivos siguen sin traerlas, y enlazarlos
+con el catálogo exige unir por texto, que ya falla en 1 de los 9 SKUs del corte. El padrón
+de establecimientos tampoco sustituye a `dim_tienda` —sin dirección, con folios repetidos y
+sólo el padrón actual— y el endpoint de precios es del día, sin historia. Queda medido en
+`fuentes.md` por si algún día Profeco publica las llaves en los archivos, que es cuando
+cambiaría la identidad del modelo.
+
+## 37. La ingesta comprueba la codificación, no la supone
+
+`lee_csv` leía todo con `utf8-lossy`, que absorbe el BOM y nunca falla. Mayo de 2026 llegó
+en cp1252 y sin BOM —los dos únicos archivos así de los 62— y `lossy` hizo lo que promete:
+cambió cada byte inválido por `U+FFFD` y siguió. 15,125 celdas corruptas entraron al repo
+de datos sin que nada se quejara.
+
+Ahora se comprueba: si el archivo entero no decodifica como utf-8 —por trozos, sin cargarlo
+en memoria— se lee como cp1252 y se dice en la corrida. El camino normal no cambia, ni en
+código ni en bytes: el corte regenerado de `2026-07_q2` sale idéntico al commiteado.
+
+Las dos quincenas de mayo se rehicieron desde el mismo CSV, sin `intento` nuevo y por la
+misma razón que junio (#36): el `sha256` del manifiesto es el del archivo de origen, que no
+cambió, así que una línea nueva no diría nada.
+
+Lo que vale la pena dejar escrito no es el arreglo sino el síntoma. **Una fuente puede
+corromperse sin que nada falle**, y aquí nada falló: ni la descarga, ni el hash, ni el
+esquema, ni el conteo de filas. Lo cazó la compuerta de `nb_20` contando presentaciones,
+y lo cazó disfrazado —`Panqué Nuez` y `Panqu?  Nuez` son dos SKUs para cualquier `distinct`,
+así que la canasta de 9 se veía como 11—. Es el argumento de la regla #3 en su forma más
+literal: la compuerta no sabía nada de codificaciones y aun así detuvo la corrida.
+
+El orden de la comprobación no es decorativo. utf-8 va primero porque es autovalidante: una
+secuencia arbitraria de bytes casi nunca decodifica limpia por accidente, así que si pasa,
+es. Las de un byte no tienen esa propiedad —`cp1252` rechaza 5 bytes de 256 y `latin-1`
+ninguno—, por eso el respaldo es uno solo y nombrado, y por eso no es `latin-1`: una
+codificación que nunca falla nunca puede detectar que está equivocada.
+
+Eso es también lo que separa esto de una cascada de las que fallan en silencio: **al
+respaldo sólo se llega cuando el archivo ya demostró que no es utf-8**, así que un utf-8 no
+puede acabar leído como cp1252 por accidente. Si tampoco es cp1252, la ingesta truena.
+
+**El BOM no se mira.** Se evaluó usarlo como discriminador —en estos 62 archivos lo sería,
+perfecto: los 60 de utf-8 lo traen y los 2 de cp1252 no— y se descartó, porque es opcional
+y el estándar Unicode desaconseja ponerlo en utf-8. La regla "sin BOM ⇒ cp1252" convertiría
+el primer utf-8 generado fuera de Windows en mojibake, en silencio y al revés.
+
+Queda un riesgo aceptado y va escrito: un archivo que no sea utf-8 **ni** cp1252 pero que
+cp1252 acepte —otra codificación de un byte, o un utf-16, que decodifica como
+`ÿþP\x00a\x00n\x00`— pasaría con letras equivocadas. Es estrecho y no ha ocurrido; si
+ocurre, lo que lo va a cazar es una compuerta de silver, como esta vez.
+
+Lo detectado se guarda en el manifiesto junto al `sha256`, no sólo en el log: eso es lo que
+lo saca de la categoría de fallo silencioso, porque deja rastro durable de que esa quincena
+se leyó distinto. Las 62 líneas quedaron selladas —60 en `utf-8`, 2 en `cp1252`— y ningún
+parquet se movió al hacerlo.
+
+## 38. La coordenada es atributo, no obligación
+
+`exige_completo` pedía los ocho campos del corte de tiendas, coordenada incluida, y eso fue
+cierto mientras la fuente geocodificó todo. Desde `2026-04_q2` da de alta tiendas sin
+coordenada —24 filas, siete Bodega Aurrera del Valle de México— y la cadena se detenía por
+tiendas que ni siquiera venden del catálogo objetivo.
+
+`latitud` y `longitud` salen de la compuerta de completitud y se quedan en todo lo demás: el
+`cast` a `decimal(9,6)` sigue tronando con una coordenada ilegible, y `exige_uno_por_clave`
+sigue exigiendo que no cambie bajo la clave. Lo que se relaja es sólo que exista, porque ya
+estaba documentado que no identifica: el 10.1% de las filas comparte coordenada porque
+Profeco geocodifica el mercado y no el local.
+
+La distinción que deja escrita es entre **falta un dato que necesito** y **falta un dato que
+uso si está**. La coordenada pinta el mapa de P2; una tienda sin ella no aporta punto y sí
+aporta precio, y detener la corrida por eso confunde presentación con medición.
+
+## 39. El texto de tienda se normaliza en silver, y la identidad depende de ello
+
+`id_tienda` es `xxhash64(nombre_comercial, direccion)`, así que la identidad de una tienda es
+exactamente su grafía. Y Profeco escribe la misma tienda de varias formas: con acento y sin
+él, oscilando entre quincenas, y desde 2026 también con el acento perdido como `?`. Resultado
+medido sobre los 62 archivos: **4,484 identidades donde hay 2,956**.
+
+El reparto por era importa, y es limpio: **en las 46 quincenas originales no hay una sola
+identidad partida** —2,392 llaves crudas y 2,392 canónicas—, y las 1,497 aparecen con el lote
+que empieza en `2025-12_q1`. Así que esto no era un defecto viejo que nadie vio: es el cuarto
+defecto que trae la fuente al volver, junto con las columnas de más, la codificación y la
+coordenada. La medición de la decisión #13 sobre las 46 era correcta.
+
+Lo que sí cruza el límite son las tiendas: **1,317 de los 1,341 grupos partidos ya existían
+antes de `2025-12_q1` con una sola grafía**, y la fuente les publicó una segunda después. Y
+**1,016 de las 2,392 llaves originales cambian al normalizar**, porque en esa era la fuente
+las escribía con acento. Por eso la migración no es incremental: `dim_tienda` se dropea.
+
+Lo destapó una pregunta sobre si desempatar por recencia crearía inconsistencias —la respuesta
+era sí— y no una corrida fallida.
+
+La normalización son tres piezas y ninguna imputa. `ACENTOS` pliega las vocales acentuadas a
+ASCII y repara dos caracteres nombrados: `ð`, que es una `ñ` mal decodificada, y `´`, que es
+un apóstrofo. `PALABRAS` lleva cada palabra con `?` a su forma limpia, y **el destino sale de
+la propia fuente**: el valor limpio que Profeco publica en otra quincena, casado por longitud
+tratando el `?` como comodín. `TYPOS` unifica los cinco pares que la fuente se contradice
+sola, y va por columna porque `Central de Abasto` es también un `giro` y ahí es la llave de
+`CANAL` en gold: renombrarlo al plural dejaría 2,225 filas de precio sin canal.
+
+Se pliega y no se acentúa porque sólo esa dirección es determinista, y porque `CLAVE_ESTADO`
+espera los 30 estados sin acento, como el TopoJSON del mapa. Va en silver y no en la ingesta
+porque bronze no castea ni corrige: guarda lo que publicó la fuente, y el `sha256` del
+manifiesto describe ese CSV (decisión #9). Resolver identidad es de silver.
+
+`PALABRAS` va **congelado y no derivado en cada corrida**, y eso es lo contrario de lo
+cómodo. Un mapa que se recalcula puede resolver distinto al llegar una quincena nueva y
+mover `id_tienda` en silencio, que es el fallo que esta decisión existe para cerrar. El
+precio es mantenimiento: una palabra nueva detiene la corrida hasta que se agregue.
+
+De las 190 palabras con `?`, 179 tenían un único candidato limpio. Las once restantes se
+desempataron con la cadena gemela completa y **no con la frecuencia global, que se habría
+equivocado en cuatro**: `Vi?a` da `Viga` por frecuencia y `Viña` por contexto, `R?o` da `Rio`
+frente a `Roo`, y en `Sa?nz` y `Mor?n` la gemela limpia es literalmente la misma dirección
+mientras que el candidato frecuente vive en otra ciudad. Es la diferencia entre desempatar
+con estadística y desempatar con evidencia.
+
+La entrada 191 es la única sin `?` y la única puesta a mano. `Mar?n` resolvía a `Maron`
+porque ésa es la grafía limpia que la fuente publica —una vez— para `Papelería Marín`, y se
+fijó a `Marin`. Eso obligó a mapear también `Maron`: sin ello la forma sucia y la limpia
+dejan de coincidir y esa papelería se vuelve a partir en dos, que es exactamente lo que la
+decisión evita. Corregir un nombre a mano cuesta dos entradas, no una.
+
+Dos cosas quedan escritas como riesgo y no como resuelto. La primera: el mapa es por palabra
+y **generaliza**, así que un valor nuevo cuya palabra ya esté en el mapa no dispara compuerta
+—un `Quintana R?o` quedaría `Quintana Rio`—. Un mapa por cadena completa no tendría ese
+riesgo a cambio de no resolver nada nuevo nunca, y se eligió generalizar. La segunda: seis
+entradas copian un typo de la fuente (`Nuemero`, `Costitucion`, `Oregon`, `Cuatitlan`,
+`Nezahualcoyothl`, `Agaleria`), porque el trabajo es reparar codificación y no corregirle la
+ortografía a Profeco.
+
+Lo que cierra el ciclo es la compuerta, `exige_caracteres`: fuera del ASCII imprimible, de
+`ñÑ°¡ºª` y de lo que `PALABRAS` resolvió, nada pasa. El `?` cuenta como prohibido porque en
+estas columnas es acento perdido y no signo. Esa compuerta es la que habría encontrado la
+`ð` sola —la hallé inventariando a mano los no-ASCII de los 62 archivos— y la que va a cazar
+el siguiente carácter roto sin que nadie lo busque.
+
+La premisa de la decisión #13 sobrevive: **ningún atributo cambia bajo la clave**. Los ~700
+conflictos de 2026 son grafías, no atributos, y una vez normalizados vuelven a cero, así que
+`dim_tienda` sigue sin necesitar SCD2.
+
+Cambiar la llave obliga a recalcular: `pendientes_silver` compara `(_quincena, _intento)`
+contra bronze, que no se movió, así que la corrida normal no vería nada pendiente. Va con
+`quincenas_pedidas = "todas"`, y las dimensiones se dropean antes porque el `upsert` es
+acumulativo y a propósito no borra: dejaría las dos generaciones de llaves conviviendo.
+
+## 40. El deflactor viaja en la quincena, y el salario se queda con su ventana
+
+La #35 decidió de dónde sale el deflactor; faltaba decidir dónde vive. Mientras gold no se
+tocó, siguió deflactando con `smg_nominal / smg_real` por `dim_mes`, y la compuerta de
+"quincenas sin mes" detuvo la primera corrida de 62 quincenas: la serie mensual de CONASAMI
+para en `2026-01` y las doce quincenas siguientes se caían del `inner join`.
+
+**El INPC es columna de `dim_tiempo_quincena`, no una novena tabla.** A grano de quincena
+hay exactamente una fila por fila de la dimensión, y un hecho 1:1 con su dimensión es un
+join que no puede abanicar ni filtrar nada. Gold se queda en ocho tablas y `INPC` e
+`Inflación acumulada %` pierden sus `TREATAS`: leen la columna de la quincena.
+
+**`hechos_salario_mensual` pierde `inpc`**, así que el deflactor ya no se materializa en
+ninguna capa desde CONASAMI y gold lo toma sólo de INEGI. Silver conserva `smg_nominal` y
+`smg_real` enteras, como llegaron. La columna vieja valía el INPC entre 100 (1.435867 en
+enero de 2026) y la nueva va en base 2018=100 (143.589): las medidas que dividen no se
+enteran, la que lo muestra a pelo cambia de escala.
+
+**El mes se vuelve opcional.** `id_mes` entra por `left join` y queda nulo en las quincenas
+que la serie salarial no alcanza, así que la página del salario termina en enero de 2026 y
+el índice no. `Gansitos por día` se va en blanco sola, porque divide por una medida vacía.
+Se descartó completar el mes: con el INPC quincenal adentro, `smg_real` de 2026 sería
+derivable, pero la tabla dejaría de ser la serie de la fuente para ser una extendida por
+nosotros, y eso no se cruza para que una página llegue seis meses más lejos.
+
+**Las compuertas se cambian de lugar, no se quitan.** La dura ahora es "quincenas sin INPC",
+porque sin deflactor el índice real no existe. Las quincenas sin mes pasan al resumen de la
+corrida como `sin_mes`: es la ventana de una fuente, se mira y no bloquea (#15).
+
+Silver de INEGI va en `nb_12_inegi` y `nb_22_inegi`, con el mismo trato que CONASAMI, más
+una compuerta que ningún cast cubre: `FREQ` y `UNIT` de la serie tienen que seguir diciendo
+quincenal y nivel. Casi todos los indicadores vecinos de `910420` son variación porcentual;
+si el id se moviera, el deflactor valdría ~0.3 en vez de ~145 y ni el `cast` ni `inpc > 0`
+lo verían.
+
+El costo fue recrear `dim_tiempo_quincena` y `hechos_salario_mensual` en gold, porque el
+`upsert` no cambia esquema: con una columna de más en el origen el MERGE truena, y con una de
+menos la vieja se habría quedado con sus valores sin que nadie la volviera a escribir.
+
+## 41. `pl_master` encadena las capas con una espera fija entre pipelines
+
+`pl_master` invoca `pl_bronze` → `pl_silver` → `pl_gold` con *on success*, así que una capa
+roja detiene las siguientes (#7). Las tres siguen existiendo por separado para poder rehacer
+una sola.
+
+**Con *Invoke pipeline (Legacy)*, no la nueva.** La nueva invoca entre workspaces y muestra
+los hijos en el monitoreo, pero exige una conexión fuera de git, como el refresh de `pl_gold`.
+Los tres pipelines viven en el mismo workspace, y el invoke Legacy sale del commit con
+`logicalId`. El costo es leer los hijos desde la corrida del padre.
+
+**Con un `Wait` de 120 s entre invokes.** Contradice lo medido al armar `pl_bronze` —ahí un
+`Wait` fijo no cubría nada ([`hechos.md`](hechos.md))—, y la diferencia es la causa. Dentro de un pipeline el 430 dependía de
+qué más consumiera la capacidad; entre pipelines lo que ocupa la capacidad es la sesión del
+anterior, que tarda de 68 a 101 s en cerrar después de que su pipeline termina. Es una
+espera que se puede medir, y la trial no encola. Apoyarse sólo en el reintento funciona, pero
+gasta en cada corrida el único reintento de la primera actividad, que queda sin red para un
+fallo de verdad. La espera va en `pl_master` y no dentro de cada pipeline, que corrido solo
+no la necesita.
+
+**No con un `sessionTag` común.** Bronze y silver suman seis notebooks contra un límite de
+cinco por sesión, y subirlo exige un Environment, que la regla #5 excluye. Que un pipeline se
+enganche a la sesión de otro, además, no se midió.
+
+## 42. La guarda del índice mira el conjunto de eslabones, no el más flaco
+
+La guarda de la decisión #19 exigía 30 tiendas pareadas al eslabón más flaco, y la tarjeta y la
+línea la aplicaban distinto: la tarjeta sobre el periodo, la línea sólo sobre el eslabón de cada
+punto, que sin embargo acumula todos los anteriores. Con 62 quincenas conveniencia lo destapó:
+un solo eslabón de 29 dejaba la tarjeta en blanco mientras la línea cerraba en 109.65.
+
+**Se publica si el pareo efectivo alcanza el umbral y ningún eslabón tiene menos de 10 tiendas.**
+El pareo efectivo es la media armónica de las tiendas pareadas por eslabón: el ruido del
+encadenado crece con la suma de 1/n, así que es el n de una cadena uniforme igual de ruidosa.
+Un eslabón de 29 entre sesenta de ~50 casi no la mueve; muchos flacos, o uno muy flaco, sí.
+Toda cadena que la regla vieja aceptaba sigue pasando. El piso es robustez y no muestra: con
+menos de 10 tiendas una sola pesa más del 10% del eslabón. `Publica índice` es la única guarda,
+y la línea la evalúa sobre los eslabones de la base al punto, así que su último punto es la
+tarjeta. Una serie apagada por el piso no vuelve.
+
+**No se excluyen los eslabones flacos.** Omitir uno equivale a suponer que el precio no se
+movió esa quincena; en Wal-mart eso borraba una bajada del 11% y subía su cambio de +10% a
++23%. Tampoco se calibró la guarda con bootstrap por corte: mide mejor, pero exige materializar
+márgenes por canal y cadena en gold, y el proyecto es de ingeniería de datos. El límite de la
+media armónica —no ve la dispersión de precios dentro del corte— queda medido en
+[`hechos.md`](hechos.md).

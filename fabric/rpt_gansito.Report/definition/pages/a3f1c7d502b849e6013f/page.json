@@ -1,0 +1,45 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "a3f1c7d502b849e6013f",
+  "displayName": "Quién subió",
+  "displayOption": "FitToPage",
+  "height": 1080,
+  "width": 1920,
+  "visualInteractions": [
+    {
+      "source": "b72839405162738495a6",
+      "target": "c2e3f405a61728394051",
+      "type": "NoFilter"
+    },
+    {
+      "source": "b72839405162738495a6",
+      "target": "d3f405a6172839405162",
+      "type": "NoFilter"
+    },
+    {
+      "source": "b72839405162738495a6",
+      "target": "e405a617283940516273",
+      "type": "NoFilter"
+    },
+    {
+      "source": "b72839405162738495a6",
+      "target": "a6172839405162738495",
+      "type": "NoFilter"
+    },
+    {
+      "source": "a6172839405162738495",
+      "target": "c2e3f405a61728394051",
+      "type": "NoFilter"
+    },
+    {
+      "source": "a6172839405162738495",
+      "target": "d3f405a6172839405162",
+      "type": "NoFilter"
+    },
+    {
+      "source": "a6172839405162738495",
+      "target": "e405a617283940516273",
+      "type": "NoFilter"
+    }
+  ]
+}

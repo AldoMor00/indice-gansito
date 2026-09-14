@@ -1,0 +1,52 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "a88f1b65-8063-b962-47a6-f41ac9e08dba",
+          "workspaceId": "00000000-0000-0000-0000-000000000000"
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 90,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_30_gold",
+        "dependsOn": []
+      },
+      {
+        "type": "PBISemanticModelRefresh",
+        "typeProperties": {
+          "method": "POST",
+          "groupId": "1f87315a-f9e7-4cb2-a659-e6dd52f029e0",
+          "datasetId": "5c90c37b-ebdc-425b-a7cb-c0e8a3f43c4a",
+          "commitMode": "Transactional",
+          "waitOnCompletion": true,
+          "operationType": "SemanticModelRefresh"
+        },
+        "externalReferences": {
+          "connection": "c0e28211-72d4-4c4d-b1ec-9c9b64626e5c"
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "refresh_sm_gansito",
+        "dependsOn": [
+          {
+            "activity": "nb_30_gold",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

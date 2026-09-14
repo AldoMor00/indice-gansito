@@ -11,9 +11,9 @@
 
 # CELL ********************
 
-# Lo que comparten los notebooks de bronze. Se trae con `%run nb_00_config`, no con una
-# wheel: ver decisión #7. Aquí sólo entra lo que tiene más de un consumidor; lo que
-# cambia entre fuentes —dónde viven los archivos y cómo se bajan— se queda en cada uno.
+# Lo que comparten los notebooks. Se trae con `%run nb_00_config`, no con una wheel: ver
+# decisión #7. Aquí sólo entra lo que tiene más de un consumidor; lo que cambia entre
+# fuentes —dónde viven los archivos y cómo se bajan— se queda en cada uno.
 
 import io
 import json
@@ -36,6 +36,53 @@ if _runt_ctx["defaultLakehouseId"] is not None:
 
 CORRIDA = _runt_ctx["activityId"]
 RAW = "https://raw.githubusercontent.com/AldoMor00/indice-gansito-datos/main"
+BRONZE, SILVER, GOLD = "lh_bronze", "lh_silver", "lh_gold"
+
+# Las columnas de clustering de los hechos por quincena, en silver y en gold: las dos que
+# aparecen en todo predicado —el eje del reporte y el grano del índice—. Van aquí y no en
+# cada notebook para que las tres tablas no se separen entre capas.
+CLUSTER_HECHO = ("_quincena", "id_producto")
+
+# ANSI encendido. Fabric lo trae apagado, así que un `cast` fallido daría nulo en silencio;
+# con esto truena. Es lo que vuelve a `cast` y `try_cast` dos decisiones distintas y
+# visibles —"esto tiene que pasar" contra "esto puede faltar"— en vez de la misma escrita de
+# dos formas, y lo que hace que el tipado no necesite compuerta propia (decisión #15).
+spark.conf.set("spark.sql.ansi.enabled", "true")
+
+
+# El resumen de la corrida: un solo lugar por donde sale un número. El `print` se queda en
+# el snapshot del notebook; lo que el pipeline recibe y puede encadenar es el exit value,
+# así que todo lo que importe pasa por aquí y sale al final.
+RESUMEN = {}
+
+
+def apunta(paso: str, **datos) -> None:
+    """Al log del notebook y al resumen que se devuelve, de una sola escritura.
+
+    El paso repetido truena. Antes se pisaba: el log mostraba las dos líneas y el exit
+    value salía con una, sin avisar, que es justo el fallback callado que no se tolera.
+    """
+    if paso in RESUMEN:
+        raise RuntimeError(f"`{paso}` ya está en el resumen: dos apunta() con el mismo nombre")
+    RESUMEN[paso] = datos
+    legible = ", ".join(
+        # `type` y no `isinstance`: un bool es int en Python y saldría como 1.
+        f"{k}={v:,}" if type(v) is int else f"{k}={v}"
+        for k, v in datos.items()
+    )
+    print(f"{paso:<18}: {legible}")
+
+
+def termina() -> None:
+    """Último renglón del notebook: `exit` corta la ejecución, así que nada va después.
+    El pipeline lo lee en @activity('<notebook>').output.result.exitValue."""
+    notebookutils.notebook.exit(json.dumps({"corrida": CORRIDA, **RESUMEN}, ensure_ascii=False))
+
+
+def version_de(ruta: str) -> int:
+    """La versión que esta corrida dejó en la tabla. Es lo que empata el resumen con
+    DESCRIBE HISTORY, que ya es la bitácora de escrituras y no hay que duplicar."""
+    return DeltaTable.forPath(spark, ruta).history(1).first()["version"]
 
 
 def ruta_tabla(tabla: str, lakehouse: str, workspace_id: str | None = None) -> str:
@@ -114,6 +161,265 @@ def escribe(sdf, ruta: str) -> None:
     medido en docs/fuentes.md, así que una columna nueva es alarma de lote, no algo que
     se absorba en silencio."""
     sdf.write.format("delta").mode("append").option("mergeSchema", "false").save(ruta)
+
+
+# Las compuertas de silver. Corren antes de escribir: lo que no pasa no aterriza, y el
+# arreglo es el notebook y no la tabla (decisión #15). Con ANSI encendido el casteo truena
+# solo, así que aquí sólo va lo que un cast no puede ver.
+
+
+def muestra_filas(sdf, columnas: list[str], n: int = 5) -> str:
+    """Las primeras filas que rompieron una compuerta, para el mensaje del fallo.
+
+    El conteo dice cuánto y no qué: con `latitud: 24 filas` hay que abrir el SQL endpoint
+    para saber de qué tiendas habla. La evidencia va en el mensaje porque el mensaje es lo
+    que llega al `errorValue` del pipeline, y ahí se diagnostica sin consultar la tabla.
+    Acotada a `n`: el errorValue es una cadena, no un reporte.
+    """
+    return " | ".join(
+        ", ".join(f"{c}={f[c]!r}" for c in columnas)
+        for f in sdf.select(*columnas).take(n)
+    )
+
+
+def exige_completo(sdf, columnas: list[str], contexto: tuple[str, ...] = ()) -> None:
+    """Truena si una columna obligatoria viene vacía. Es el hueco que ANSI no tapa: el nulo
+    castea a nulo sin protestar, y las llaves naturales ni siquiera se castean —se hashean—.
+
+    La cadena vacía cuenta como faltante. Los CSV se leen con `keep_default_na=False` para
+    que bronze no castee (decisión #9), así que una celda vacía de CONASAMI llega como "" y
+    no como nulo; los parquets de Profeco sí traen nulo. Misma noticia, dos formas. Es para
+    las columnas de texto de bronze.
+
+    `contexto` son las columnas que identifican la fila en el mensaje del fallo —la quincena
+    y la clave natural— y que no necesariamente están entre las validadas.
+    """
+    VACIA = "(`{c}` IS NULL OR trim(`{c}`) = '')"
+    conteos = sdf.agg(*[
+        F.count_if(F.expr(VACIA.format(c=c))).alias(c) for c in columnas
+    ]).first()
+    vacias = {c: n for c, n in zip(columnas, conteos) if n}
+    if vacias:
+        # Segunda pasada sólo cuando ya va a tronar: la corrida sana paga el agg y nada más.
+        rotas = sdf.filter(" OR ".join(VACIA.format(c=c) for c in vacias))
+        raise RuntimeError(
+            "columnas obligatorias vacías — "
+            + "; ".join(f"{c}: {n:,} filas" for c, n in vacias.items())
+            + " — "
+            + muestra_filas(rotas, [*contexto, *vacias])
+        )
+
+
+def exige_uno_por_clave(sdf, llaves: list[str], atributos: list[str], muestra: int = 3) -> None:
+    """Truena si un atributo trae más de un valor bajo la misma clave natural.
+
+    Antes esto lo resolvía un `max_by` que se quedaba con el más reciente, callado. Que un
+    atributo cambie bajo su clave es la fuente cambiando —o la clave dejando de identificar—
+    y las dos cosas se miran antes de escribir, no se desempatan solas.
+
+    Los conflictos se cuentan sólo si los hay: en la corrida sana esto es una pasada y nada.
+
+    `collect_set` y no `count_distinct` porque el conteo no alcanza para diagnosticar: saber
+    que `giro` trae dos valores no dice que son 'Papeler?as' y 'Papelerias' —un defecto de
+    codificación de la fuente— y no dos giros de verdad. El mensaje lleva los valores.
+    """
+    conflictos = (
+        sdf.groupBy(*llaves)
+        .agg(*[F.collect_set(c).alias(c) for c in atributos])
+        .filter(" OR ".join(f"size(`{c}`) > 1" for c in atributos))
+    )
+    ejemplos = conflictos.take(muestra)
+    if ejemplos:
+        raise RuntimeError(
+            f"{conflictos.count():,} claves con un atributo cambiado debajo — "
+            + "; ".join(
+                # Sólo el atributo que cambió: los que traen un valor son ruido en el mensaje.
+                str({
+                    c: v for c, v in f.asDict().items()
+                    if c in llaves or len(v) > 1
+                })
+                for f in ejemplos
+            )
+        )
+
+
+def exige_invariantes(ruta: str, checks: dict[str, str]) -> None:
+    """Deja puestas las constraints CHECK de la tabla, sin repetir las que ya están.
+
+    Las aplica el notebook y no un DDL suelto porque una constraint puesta a mano desaparece
+    al recrear la tabla, y una protección que crees tener y no tienes es peor que ninguna.
+
+    Reparto: la constraint se queda con lo que es predicado de **una fila del resultado** —es
+    lo único que Delta sabe expresar, sin agregados ni subconsultas— y las compuertas de
+    arriba con todo lo que necesita ver la fuente, el lote o varias filas. Así nada se valida
+    dos veces (decisión #15).
+
+    En la corrida que crea la tabla el `ALTER` va después de escribir, así que un dato que
+    viole el invariante deja la tabla escrita y truena al ponerle la constraint: se dropea y
+    se vuelve a correr. De la segunda en adelante lo rechazado es la escritura misma.
+    """
+    puestas = {
+        k.rsplit(".", 1)[-1]
+        for k in DeltaTable.forPath(spark, ruta).detail().first()["properties"]
+        if k.startswith("delta.constraints.")
+    }
+    for nombre, predicado in checks.items():
+        if nombre not in puestas:
+            spark.sql(f"ALTER TABLE delta.`{ruta}` ADD CONSTRAINT {nombre} CHECK ({predicado})")
+            print(f"constraint {nombre}: puesta")
+
+
+def exige_clustering(ruta: str, columnas: tuple[str, ...]) -> None:
+    """Deja declarado el liquid clustering de la tabla, y no repite el DDL si ya está.
+
+    Va por `ALTER TABLE` y no en la escritura porque `DataFrameWriter.clusterBy` sobre una
+    tabla por ruta **se traga las columnas sin avisar**: no truena y la tabla queda sin
+    clusterizar (medido, en hechos.md). El metadato es lo único que dice la verdad.
+
+    Mismo reparto que `exige_invariantes`, y por el mismo motivo: lo aplica el notebook que
+    escribe, porque un DDL suelto desaparece al recrear la tabla y una garantía que crees
+    tener y no tienes es peor que ninguna.
+    """
+    ya = DeltaTable.forPath(spark, ruta).detail().first()["clusteringColumns"]
+    if list(ya or []) != list(columnas):
+        spark.sql(f"ALTER TABLE delta.`{ruta}` CLUSTER BY ({', '.join(columnas)})")
+        print(f"clustering {ruta.rsplit('/', 1)[-1]}: {', '.join(columnas)}")
+
+
+def exige_llave_unica(sdf, llave: str, muestra: int = 4) -> None:
+    """Truena si la llave sustituta se repite. La dimensión ya viene agrupada por su clave
+    natural, así que un duplicado aquí sólo puede ser una colisión de `xxhash64`, y una
+    colisión fusiona dos filas distintas sin dejar rastro: el hash no propaga nulos ni
+    avisa, devuelve una llave válida y equivocada.
+
+    El mensaje lleva las filas que chocan, completas: una colisión de hash y un bug nuestro
+    calculando la clave se ven igual en el conteo y sólo se distinguen mirando las dos filas.
+    """
+    filas, distintas = sdf.count(), sdf.select(llave).distinct().count()
+    if filas != distintas:
+        repetidas = sdf.groupBy(llave).count().filter("count > 1").select(llave)
+        raise RuntimeError(
+            f"{llave}: {filas:,} filas y {distintas:,} llaves distintas — "
+            + muestra_filas(sdf.join(repetidas, llave).orderBy(llave), sdf.columns, muestra)
+        )
+
+
+def de_bronze(tabla: str):
+    """Lee la tabla delta de bronze."""
+    return spark.read.format("delta").load(ruta_tabla(tabla, BRONZE))
+
+
+def clave(*cols):
+    """Clave sustituta determinista sobre la clave natural. Es lo que deja que el MERGE
+    junte por un `bigint` en vez de por un par de cadenas largas, y que la clave se
+    calcule sin consultar la dimensión: no hace falta un paso previo que reparta ids.
+    Silver se recalcula sola y los ids no pueden cambiar bajo gold."""
+    return F.xxhash64(*cols)
+
+
+def eslabones(precios):
+    """Los relativos pareados de un hecho de precios: la misma tienda y el mismo SKU en dos
+    períodos consecutivos, con el logaritmo de su relativo.
+
+    El `join` **es** el pareo —quien no esté en los dos períodos no aporta— y por eso no hay
+    que filtrar después ni rellenar nada. Se une por `_orden`, el ordinal global del período,
+    y no por la etiqueta: es lo que define quién es el anterior cuando el panel rota.
+
+    El logaritmo y no el relativo porque Jevons es la media geométrica, que en logaritmos es
+    una media aritmética: el índice se arma promediando dentro del eslabón y **sumando** entre
+    eslabones, que es lo que DAX sabe hacer sobre cualquier corte (decisión #19).
+
+    Vive aquí y no en nb_30 para que nb_90 pruebe el código que corre y no una copia suya.
+    """
+    return (
+        precios.alias("act")
+        .join(
+            precios.alias("ant"),
+            (F.col("act.id_tienda") == F.col("ant.id_tienda"))
+            & (F.col("act.id_producto") == F.col("ant.id_producto"))
+            & (F.col("act._orden") == F.col("ant._orden") + 1),
+        )
+        .select(
+            F.col("act.id_tienda").alias("id_tienda"),
+            F.col("act.id_producto").alias("id_producto"),
+            F.col("act._quincena").alias("_quincena"),
+            F.col("ant._quincena").alias("_quincena_anterior"),
+            F.log(
+                F.col("act.precio_promedio") / F.col("ant.precio_promedio")
+            ).alias("log_relativo"),
+        )
+    )
+
+
+def upsert(nuevas, tabla: str, llaves: list[str], lakehouse: str = SILVER) -> None:
+    """Dimensión: MERGE por clave. Inserta lo nuevo y actualiza sólo lo que de verdad
+    cambió —de ahí la condición sobre los atributos—, para que la corrida sin novedades
+    no reescriba un solo archivo. No se sobrescribe la tabla porque una dimensión es
+    acumulativa: una tienda que salió del panel no deja de existir, y los hechos
+    históricos la siguen apuntando.
+
+    Un MERGE que no cambia nada no commitea versión, así que el rastro se lee comparando
+    la versión de antes contra la de después y no mirando la última entrada del log, que
+    en ese caso sería de otra operación.
+
+    `lakehouse` por defecto es silver, que es de donde salió: gold lo pasa explícito para
+    sus propias dimensiones, que se llenan con el mismo patrón.
+    """
+    ruta = ruta_tabla(tabla, lakehouse)
+    if not DeltaTable.isDeltaTable(spark, ruta):
+        filas = nuevas.count()
+        # Crear la dimensión vacía es un estado roto que se lee como éxito. Pasa si se dropea
+        # la dimensión sin dropear el hecho —entonces no hay quincenas pendientes y el lote
+        # viene vacío— y también si bronze está vacío.
+        if not filas:
+            raise RuntimeError(f"{tabla} no existe y el lote viene vacío: no hay qué crear")
+        nuevas.write.format("delta").save(ruta)
+        apunta(tabla, creada=True, insertadas=filas, actualizadas=0)
+        return
+
+    dt = DeltaTable.forPath(spark, ruta)
+    antes = dt.history(1).first()["version"]
+    atributos = [c for c in nuevas.columns if c not in llaves]
+    (
+        dt.alias("d")
+        # Condición de join: "d.id_producto = n.id_producto". Con varias llaves, unidas
+        # por AND. `d` es lo que ya está en la tabla, `n` lo que trae esta corrida.
+        .merge(nuevas.alias("n"), " AND ".join(f"d.{k} = n.{k}" for k in llaves))
+        # Condición de update: "NOT (d.marca <=> n.marca) OR NOT (d.gramos <=> n.gramos)".
+        # O sea, actualiza sólo si algún atributo difiere. `<=>` es igualdad nula-segura:
+        # `null <=> null` da cierto, `null = null` daría null y el cambio pasaría de largo.
+        .whenMatchedUpdateAll(" OR ".join(f"NOT (d.{c} <=> n.{c})" for c in atributos))
+        .whenNotMatchedInsertAll()
+        .execute()
+    )
+
+    log = DeltaTable.forPath(spark, ruta).history()
+    ultima = log.first()["version"]
+    if ultima == antes:
+        apunta(tabla, insertadas=0, actualizadas=0, version=antes)
+        return
+
+    # El MERGE no es forzosamente la última entrada del log: con el perfil readHeavyForPBI,
+    # Fabric marca el V-Order de la tabla en un commit propio detrás de la escritura
+    # —`AUTOSET VORDER TBLPROPERTY`, con `operationMetrics` vacío (medido, en hechos.md)— y
+    # leer `history(1)` daba un KeyError justo en la corrida que sí había cambiado filas. Se
+    # busca el MERGE entre las versiones que dejó esta llamada; si no está, el mensaje dice
+    # qué se commiteó en su lugar.
+    commits = log.filter(f"version > {antes}")
+    merge = commits.filter("operation = 'MERGE'").orderBy(F.desc("version")).first()
+    if merge is None:
+        raise RuntimeError(
+            f"{tabla}: de la versión {antes} a la {ultima} sin MERGE en medio — "
+            + ", ".join(f["operation"] for f in commits.collect())
+        )
+
+    metricas = merge["operationMetrics"]
+    apunta(
+        tabla,
+        insertadas=int(metricas["numTargetRowsInserted"]),
+        actualizadas=int(metricas["numTargetRowsUpdated"]),
+        version=ultima,
+    )
 
 # METADATA ********************
 

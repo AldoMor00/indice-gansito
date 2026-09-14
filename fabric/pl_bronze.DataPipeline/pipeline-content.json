@@ -11,7 +11,7 @@
         "policy": {
           "timeout": "0.01:00:00",
           "retry": 1,
-          "retryIntervalInSeconds": 30,
+          "retryIntervalInSeconds": 90,
           "secureInput": false,
           "secureOutput": false
         },
@@ -28,7 +28,7 @@
         "policy": {
           "timeout": "0.01:00:00",
           "retry": 1,
-          "retryIntervalInSeconds": 30,
+          "retryIntervalInSeconds": 90,
           "secureInput": false,
           "secureOutput": false
         },
@@ -47,7 +47,7 @@
         "typeProperties": {
           "waitTimeInSeconds": 1
         },
-        "name": "ambas_fuentes_ok",
+        "name": "fuentes_ok",
         "dependsOn": [
           {
             "activity": "nb_11_conasami",
@@ -59,6 +59,36 @@
             "activity": "nb_10_profeco",
             "dependencyConditions": [
               "Succeeded"
+            ]
+          },
+          {
+            "activity": "nb_12_inegi",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "c78b13dd-b60d-a962-4dbd-9acd58b72548",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "sessionTag": "bronze"
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 90,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_12_inegi",
+        "dependsOn": [
+          {
+            "activity": "nb_11_conasami",
+            "dependencyConditions": [
+              "Completed"
             ]
           }
         ]

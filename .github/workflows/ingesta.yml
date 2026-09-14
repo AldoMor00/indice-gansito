@@ -1,20 +1,19 @@
 name: ingesta
 
-# Baja las dos fuentes y las commitea en indice-gansito-datos, cada una bajo su
+# Baja las tres fuentes y las commitea en indice-gansito-datos, cada una bajo su
 # directorio. Un script por fuente: ver decisión #9.
 #
 # Profeco: el backfill y el cron son la misma corrida —el manifiesto dice qué falta y
-# `max` limita la tanda—. CONASAMI no tiene backfill: son dos archivos que se bajan
-# siempre y se escriben sólo si su sha256 cambió.
+# `max` limita la tanda—. CONASAMI y el INPC no tienen backfill: se bajan siempre y se
+# escriben sólo si su sha256 cambió.
 
 on:
   schedule:
-    # Semanal. Era diario, con una razón que ya no se sostiene: Profeco publicaba sin
-    # calendario fijo y sondear dos veces al mes podía dejar una quincena esperando dos
-    # semanas. Pero el programa no publica desde `11-2025_02` y el dataset de 2026 no
-    # existe en el catálogo, así que no hay nada que alcanzar (ver docs/fuentes.md). Se
-    # sigue sondeando por si vuelve; enterarse seis días tarde de una fuente parada nueve
-    # meses no cuesta nada. A CONASAMI, que publica una vez al año, semanal le sobra.
+    # Semanal. Profeco publica una vez al mes —julio de 2026 salió el 31 de agosto— pero
+    # sin día fijo, así que un cron mensual podría errarle y esperar otro mes. Semanal le
+    # cuesta 877 bytes a las tres corridas que no encuentran nada: la sonda de metadatos
+    # decide si vale la pena bajar el bundle (ver docs/fuentes.md). A CONASAMI, que
+    # publica una vez al año, semanal le sobra.
     - cron: '0 12 * * 1'
   workflow_dispatch:
     inputs:
@@ -54,7 +53,7 @@ jobs:
 
       - name: Procesa la tanda
         id: ingesta
-        run: uv run --python 3.11 scripts/ingesta_profeco.py --destino datos --max "${{ inputs.max || 5 }}"
+        run: uv run --python 3.13 scripts/ingesta_profeco.py --destino datos --max "${{ inputs.max || 5 }}"
 
       - name: Commitea los cortes
         if: steps.ingesta.outputs.procesadas != ''
@@ -89,7 +88,7 @@ jobs:
 
       - name: Revisa si cambiaron los archivos
         id: ingesta
-        run: uv run --python 3.11 scripts/ingesta_conasami.py --destino datos
+        run: uv run --python 3.13 scripts/ingesta_conasami.py --destino datos
 
       - name: Commitea las versiones nuevas
         if: steps.ingesta.outputs.actualizados != ''
@@ -101,4 +100,43 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add conasami
           git commit -m "Actualiza CONASAMI: $ACTUALIZADOS"
+          git push
+
+  inpc:
+    needs: conasami
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Clona la zona raw
+        uses: actions/checkout@v7
+        with:
+          repository: AldoMor00/indice-gansito-datos
+          ssh-key: ${{ secrets.DATOS_DEPLOY_KEY }}
+          path: datos
+
+      - name: Instala uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+
+      # INEGI publica el INPC dos veces al mes, así que semanal le alcanza. El token va
+      # en la URL: por eso es secreto y por eso el manifiesto guarda la URL sin él.
+      - name: Revisa si cambió la serie
+        id: ingesta
+        env:
+          INEGI_TOKEN: ${{ secrets.INEGI_TOKEN }}
+        run: uv run --python 3.13 scripts/ingesta_inpc.py --destino datos
+
+      - name: Commitea la versión nueva
+        if: steps.ingesta.outputs.actualizados != ''
+        working-directory: datos
+        env:
+          ACTUALIZADOS: ${{ steps.ingesta.outputs.actualizados }}
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add inpc
+          git commit -m "Actualiza INPC: $ACTUALIZADOS"
           git push

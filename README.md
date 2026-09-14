@@ -57,7 +57,7 @@ Prod no está conectado a git: se le despliega, no se le sincroniza.
 | **F0** | Andamiaje: repos, workspaces, ramas, despliegue verde | hecha |
 | **F1** | Landing: backfill 2024-01 → 2025-11, CONASAMI y cron | hecha |
 | **F2** | Bronze: ingesta idempotente | en curso |
-| **F3** | Silver: tipado, MERGE, SCD2, cuarentena, calidad | |
+| **F3** | Silver: tipado, MERGE, SCD2, calidad | |
 | **F4** | Gold: estrella, Direct Lake y copia pública | |
 | **F5** | Documentación y página del portafolio | |
 
@@ -68,11 +68,10 @@ en producción y se hacen así aquí por ser un portafolio.
 
 ## Fuentes
 
-Las dos por `repodatos.atdt.gob.mx`, sin token:
+Las dos abiertas y sin token:
 
-- **Profeco**, *Quién es Quién en los Precios* — CSV quincenales de 140 a 225 MB. El
-  programa dejó de publicar en noviembre de 2025, así que la ventana está cerrada en
-  46 quincenas.
+- **Profeco**, *Quién es Quién en los Precios* — CSV quincenales de 140 a 225 MB, que el
+  portal empaqueta en un bundle por año. Publica mensual, con un mes de rezago.
 - **CONASAMI**, salario mínimo — dos CSV de ~20 KB. Contestan cuántos Gansitos compra un
   día de salario, y cuánto del cambio de precio es inflación.
 

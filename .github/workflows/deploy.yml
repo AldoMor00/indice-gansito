@@ -39,6 +39,8 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
 
+      # Pinneado en 3.11 a proposito: aqui manda lo que soporte fabric-cicd, no el
+      # runtime de Fabric. Este Python nunca entra al workspace. Ver docs/hechos.md.
       - name: Publica items en prod
         env:
           FABRIC_WORKSPACE_ID: ${{ vars.FABRIC_WORKSPACE_ID_PROD }}

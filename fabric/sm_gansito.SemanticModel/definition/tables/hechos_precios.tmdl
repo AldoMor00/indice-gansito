@@ -1,0 +1,116 @@
+table hechos_precios
+	lineageTag: 11f6f30b-bfb9-4e15-8e0d-8ce3be751a5a
+	sourceLineageTag: [dbo].[hechos_precios]
+
+	column id_quincena
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 9b170c99-ff35-4c81-a32b-0342dbc670c1
+		sourceLineageTag: id_quincena
+		summarizeBy: none
+		sourceColumn: id_quincena
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column id_tienda
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 77e387f1-ca9d-49a9-bd80-62a2a2d40c83
+		sourceLineageTag: id_tienda
+		summarizeBy: none
+		sourceColumn: id_tienda
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column id_producto
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 9625d016-bf02-4a77-90f7-16af4d388b0c
+		sourceLineageTag: id_producto
+		summarizeBy: none
+		sourceColumn: id_producto
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column precio_promedio
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: 691f421f-a9a7-44c5-9629-e649b8753a1d
+		sourceLineageTag: precio_promedio
+		summarizeBy: none
+		sourceColumn: precio_promedio
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column observaciones
+		dataType: int64
+		formatString: 0
+		lineageTag: 5f354645-bd39-45c0-818b-e5c76f66760f
+		sourceLineageTag: observaciones
+		summarizeBy: none
+		sourceColumn: observaciones
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+	column precio_min
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: a2ec095c-6ee6-4ac2-a59c-7e4edf39935b
+		sourceLineageTag: precio_min
+		summarizeBy: none
+		sourceColumn: precio_min
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column precio_max
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: bf9ef4b5-488a-4fc8-8f60-88d135b71324
+		sourceLineageTag: precio_max
+		summarizeBy: none
+		sourceColumn: precio_max
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column _quincena
+		dataType: string
+		isHidden
+		lineageTag: 46999530-6ae7-45d9-847b-8fe66771560f
+		sourceLineageTag: _quincena
+		summarizeBy: none
+		sourceColumn: _quincena
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition hechos_precios = entity
+		mode: directLake
+		source
+			entityName: hechos_precios
+			schemaName: dbo
+			expressionSource: 'DirectLake - lh_gold'
+
