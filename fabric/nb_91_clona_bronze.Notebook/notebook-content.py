@@ -47,6 +47,11 @@ DESTINO = "ws-gansito-dev"
 
 # CELL ********************
 
+# El `rm` sólo puede caer en dev, y se exige contra el literal y no contra las constantes:
+# invertirlas pasaría la guarda de abajo y borraría el bronze de prod.
+if DESTINO != "ws-gansito-dev":
+    raise RuntimeError(f"el destino del clon es {DESTINO}: el rm sólo puede caer en ws-gansito-dev")
+
 ORIGEN_ID = fabric.resolve_workspace_id(ORIGEN)
 DESTINO_ID = fabric.resolve_workspace_id(DESTINO)
 
