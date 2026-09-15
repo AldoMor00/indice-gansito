@@ -485,13 +485,16 @@ def a_recalcular(canasta, parametro: str) -> list[str]:
 
 bronze_precios = de_bronze("precios")
 canasta = (
-    normaliza(ultimo_intento(bronze_precios))
+    ultimo_intento(bronze_precios)
     .filter(~F.col("presentacion").isin(EXCLUIDOS))
-    .cache()
 )
 
 quincenas_lote = sorted(a_recalcular(canasta, quincenas_pedidas))
-lote = canasta.filter(F.col("_quincena").isin(quincenas_lote))
+
+# `normaliza` va sobre el lote y no sobre la canasta, igual que en tiendas: elegir quincenas
+# sólo mira `_quincena` e `_intento`, que no normaliza, y así la UDF cuesta lo que pesa el
+# lote y no la historia de bronze.
+lote = normaliza(canasta.filter(F.col("_quincena").isin(quincenas_lote))).cache()
 
 apunta("bronze_precios", filas=bronze_precios.count())
 apunta("canasta", filas=canasta.count(), excluidos=len(EXCLUIDOS))

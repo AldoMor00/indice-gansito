@@ -187,14 +187,14 @@ exige_uno_por_clave(indice, ["anio", "mes"], ["smg_nominal", "smg_real", "smgr_i
 hechos_salario_mensual = indice.select(
     clave("anio", "mes").alias("id_mes"),
     # `mes_inicio` es conversión, no derivación: la misma etiqueta en un tipo con el que se
-    # puede unir. Gold pega aquí el `quincena_inicio` del hecho truncado al mes, porque el
-    # deflactor es mensual y las dos quincenas de un mes comparten el suyo (fuentes.md).
+    # puede unir. Gold pega aquí el `quincena_inicio` del hecho truncado al mes para resolver
+    # qué salario regía; el deflactor ya no pasa por el mes (decisión #40).
     F.to_date(F.concat_ws("-", "anio", F.lpad("mes", 2, "0"), F.lit("01"))).alias("mes_inicio"),
     F.col("anio").cast("int").alias("anio"),
     F.col("mes").cast("int").alias("mes"),
-    # decimal(10,4): el nominal va de 0.0242 en 1969 a 324.75 en 2026. El deflactor
-    # —`smg_nominal / smg_real`, el INPC entre 100 (fuentes.md)— no se materializa: es la
-    # división de dos columnas que ya están aquí, y eso es de gold (decisión #12).
+    # decimal(10,4): el nominal va de 0.0242 en 1969 a 324.75 en 2026. `smg_nominal`
+    # entre `smg_real` es el INPC entre 100 (fuentes.md), y ya no deflacta nada: el deflactor
+    # sale de INEGI (decisión #35). Las dos se conservan enteras, como llegaron.
     F.col("smg_nominal").cast("decimal(10,4)").alias("smg_nominal"),
     F.col("smg_real").cast("decimal(10,2)").alias("smg_real"),
     F.col("smgr_indice").cast("decimal(10,2)").alias("smgr_indice"),

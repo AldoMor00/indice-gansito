@@ -68,7 +68,7 @@ def prueba_cast_ansi() -> None:
     Es lo que sostiene que el tipado no lleve compuerta propia (decisión #15). Con el ANSI que
     Fabric trae apagado esto daría nulo en silencio y `hechos_precios` publicaría un promedio
     sobre menos observaciones de las que declara. Ya se probó una vez extremo a extremo,
-    inyectando "N/D" al lote de nb_20 —el hecho no avanzó de versión, docs/hechos.md—; aquí
+    inyectando "N/D" al lote de nb_20 —el hecho no avanzó de versión, docs/mediciones.md—; aquí
     queda el núcleo, que es la parte que un cambio de configuración de la sesión puede romper.
     """
     lote = spark.createDataFrame([("18.50",), ("N/D",)], "precio string")

@@ -33,9 +33,9 @@ BASE = "https://repodatos.atdt.gob.mx/api_update/conasami/salarios_minimos"
 ZONA = "conasami"
 
 # Los dos que responden preguntas del proyecto. `sm_real_indice` trae el nominal mensual
-# y el deflactor (`smg_nominal / smg_real` es el INPC entre 100); `..._zonas` trae el
-# salario vigente por zona. Los otros dos del catálogo —el histórico anual y el de la
-# capital— no responden ninguna, y el anual además discrepa del mensual por centavos.
+# (su `smg_nominal / smg_real` es el INPC entre 100, que ya no deflacta nada: el deflactor
+# sale de INEGI, decisión #35); `..._zonas` trae el salario vigente por zona. Los otros dos
+# del catálogo —el histórico anual y el de la capital— no responden ninguna.
 ARCHIVOS = ("sm_real_indice", "sm_general_profesionales_zonas")
 
 

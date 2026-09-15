@@ -274,7 +274,7 @@ def exige_clustering(ruta: str, columnas: tuple[str, ...]) -> None:
 
     Va por `ALTER TABLE` y no en la escritura porque `DataFrameWriter.clusterBy` sobre una
     tabla por ruta **se traga las columnas sin avisar**: no truena y la tabla queda sin
-    clusterizar (medido, en hechos.md). El metadato es lo único que dice la verdad.
+    clusterizar (medido, en plataforma.md). El metadato es lo único que dice la verdad.
 
     Mismo reparto que `exige_invariantes`, y por el mismo motivo: lo aplica el notebook que
     escribe, porque un DDL suelto desaparece al recrear la tabla y una garantía que crees
@@ -401,7 +401,7 @@ def upsert(nuevas, tabla: str, llaves: list[str], lakehouse: str = SILVER) -> No
 
     # El MERGE no es forzosamente la última entrada del log: con el perfil readHeavyForPBI,
     # Fabric marca el V-Order de la tabla en un commit propio detrás de la escritura
-    # —`AUTOSET VORDER TBLPROPERTY`, con `operationMetrics` vacío (medido, en hechos.md)— y
+    # —`AUTOSET VORDER TBLPROPERTY`, con `operationMetrics` vacío (medido, en plataforma.md)— y
     # leer `history(1)` daba un KeyError justo en la corrida que sí había cambiado filas. Se
     # busca el MERGE entre las versiones que dejó esta llamada; si no está, el mensaje dice
     # qué se commiteó en su lugar.
