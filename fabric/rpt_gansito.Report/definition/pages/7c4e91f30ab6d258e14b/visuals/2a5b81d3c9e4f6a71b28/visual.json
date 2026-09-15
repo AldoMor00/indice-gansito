@@ -81,7 +81,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Un día de salario en enero 2026'"
+                  "Value": "'Un día de salario al cierre'"
                 }
               }
             },
