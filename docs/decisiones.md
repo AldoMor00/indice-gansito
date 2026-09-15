@@ -993,3 +993,19 @@ movió esa quincena; en Wal-mart eso borraba una bajada del 11% y subía su camb
 márgenes por canal y cadena en gold, y el proyecto es de ingeniería de datos. El límite de la
 media armónica —no ve la dispersión de precios dentro del corte— queda medido en
 [`hechos.md`](hechos.md).
+
+## 43. Un hueco permanente en Profeco detiene gold, y se acepta
+
+La ingesta se salta la quincena que no viene en el bundle, para que un hueco no atore al cron
+antes de llegar a lo publicado. Gold, en cambio, truena si el calendario de silver tiene un
+hueco (`exige_sin_huecos`), porque sin la quincena anterior el eslabón no existe y el índice
+quedaría plano sin avisar. Juntas, si Profeco nunca publica una quincena pero sí las
+siguientes, raw, bronze y silver avanzan y **gold se queda congelado en la última quincena
+antes del hueco**, tronando cada martes.
+
+**No se construye salida para ese caso.** Las 62 quincenas publicadas hasta hoy no tienen
+huecos, y la fuente ha cambiado de forma pero no ha dejado de publicar ninguna. El fallo es
+ruidoso: `pl_master` truena con los ordinales del hueco en el mensaje y *Schedule failures*
+avisa (decisión #31). No corrompe nada, porque gold truena antes de escribir. Si el hueco es
+temporal se cura solo: la quincena sigue pendiente y la ingesta la baja cuando aparezca. Si
+es permanente, se decide entonces con el caso a la vista.
