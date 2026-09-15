@@ -2,7 +2,7 @@
 #
 # La actividad de refresh de pl_gold y pl_mantenimiento no sale del commit con logicalId: guarda el
 # workspace y el modelo de dev como GUIDs literales. Se reemplazan por clave, asi que
-# ningun GUID de dev vive aqui. Ver docs/hechos.md.
+# ningun GUID de dev vive aqui. Ver docs/plataforma.md.
 
 key_value_replace:
   - find_key: $.properties.activities[?(@.name=="refresh_sm_gansito")].typeProperties.groupId

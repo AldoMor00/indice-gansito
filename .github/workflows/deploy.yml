@@ -40,7 +40,7 @@ jobs:
           allow-no-subscriptions: true
 
       # Pinneado en 3.11 a proposito: aqui manda lo que soporte fabric-cicd, no el
-      # runtime de Fabric. Este Python nunca entra al workspace. Ver docs/hechos.md.
+      # runtime de Fabric. Este Python nunca entra al workspace. Ver docs/plataforma.md.
       # --no-project: el pyproject pide 3.13 y este script no es parte del proyecto.
       - name: Publica items en prod
         env:

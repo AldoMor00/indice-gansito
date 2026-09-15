@@ -26,10 +26,26 @@
 
 ## Documentación
 
-- Las decisiones **se documentan**, pero cortas: un párrafo o dos por decisión en
-  `docs/decisiones.md`. **Nada de un archivo por decisión.**
-- Se documenta lo que ya se decidió, no lo que se planea. Sin documentación
-  especulativa de fases que no han empezado.
+Cinco documentos en `docs/`, uno por naturaleza. Para saber dónde va algo:
+
+| ¿qué es? | va en |
+|---|---|
+| se eligió | `decisiones.md` |
+| la plataforma se comporta así, sin importar los datos | `plataforma.md` |
+| se midió sobre los datos o el índice, y tiene ventana | `mediciones.md` |
+| es sobre el archivo que entra, antes de tocarlo | `fuentes.md` |
+| hay que hacerlo a mano al reconstruir | `entorno.md` |
+
+- **Una decisión son tres bloques**: `**Decisión.**` (qué se hace, en presente, tres líneas o
+  menos), `**Motivo.**` (por qué y qué se descartó, sin historia) y `**Costo.**` (lo que se
+  acepta a cambio, si lo hay). Un solo archivo, agrupadas por tema, y **los números no cambian**:
+  se citan en código, commits y PRs. Una decisión nueva toma el siguiente número y va en su tema.
+- **Las decisiones no llevan cifras** salvo cuando la cifra es la decisión. Lo medido se cita.
+- **Cada medición dice su ventana y su fecha.** Lo que la plataforma hace no lleva ventana.
+- Lo que está en un documento no se repite en otro: se cita. En los comentarios de notebook sí
+  se puede repetir el porqué, siempre con el `(decisión #N)`.
+- Se documenta lo que ya se decidió, no lo que se planea. Sin documentación especulativa.
+- Cómo se escribe cada tipo de item está en `.claude/skills/`.
 
 ## Alcance
 
@@ -41,7 +57,7 @@
 - **Nada de la plataforma se afirma de memoria.** Antes de escribir código que dependa de
   un comportamiento de Fabric —qué acepta un parámetro, qué devuelve una API, qué hace un
   setting— se verifica con el MCP de Microsoft Learn. Lo que sostenga una decisión se cita
-  por URL en `docs/hechos.md`.
+  por URL en `docs/plataforma.md`.
 - Los items de `ws-gansito-dev` se escriben por uno de dos caminos, y **antes de cada
   escritura —crear o modificar— se pregunta cuál**: el UI de Fabric, o `fab import` desde
   local. Se acuerda por item; dentro del mismo bloque no se vuelve a preguntar por el mismo
@@ -63,7 +79,7 @@
 | prefijo | item |
 |---|---|
 | `lh_` | lakehouse |
-| `nb_NN_` | notebook; `NN` marca la capa (10 bronze, 20 silver, 30 gold, 40 dq —muerta: la observabilidad va al resumen de la corrida, decisión #7—, 50 export, 60 mantenimiento) |
+| `nb_NN_` | notebook; `NN` marca la capa (00 config, 10 bronze, 20 silver, 30 gold, 50 export, 60 mantenimiento, 90 pruebas y utilidades) |
 | `pl_` | data pipeline |
 | `sm_` / `rpt_` | modelo semántico / reporte |
 | `_col` | columna de metadato técnico, nunca de negocio |
@@ -74,13 +90,12 @@ Capas en inglés (`bronze`/`silver`/`gold`); tablas y columnas en español, como
 
 1. **Los notebooks no usan lakehouse por defecto.** Resuelven la ruta leyendo su
    workspace en tiempo de ejecución, para que el mismo código corra igual en dev y
-   en prod sin reasignar nada.
-2. **Bronze no castea, no filtra, no deduplica.**
+   en prod sin reasignar nada (decisión #3).
+2. **Bronze no castea, no filtra, no deduplica** (decisión #8).
 3. **Nada llega a gold sin pasar por las reglas de calidad**, y no hay término medio: lo
    que no cumple detiene la corrida antes de escribir. Nada se cuarentena, se marca ni se
    tira, porque nada aterriza (decisiones #15 y #16).
 4. **`unpublish_orphans` se queda apagado** en el despliegue: borraría cualquier
-   `Report` o `SemanticModel` creado a mano en prod. No es una protección contra
-   perder un lakehouse; de eso se encarga el alcance del despliegue.
+   `Report` o `SemanticModel` creado a mano en prod (decisión #4).
 5. **Sin wheels ni Environments de Fabric.** Los helpers se comparten con
-   `%run nb_00_config`.
+   `%run nb_00_config` (decisión #7).
