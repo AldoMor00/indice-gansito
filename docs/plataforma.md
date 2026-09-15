@@ -177,7 +177,10 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   Un service principal que actualiza la definición por la API pasa a ser ese `LastModifiedBy`
   ([set pipeline owner](https://learn.microsoft.com/fabric/data-factory/set-pipeline-owner-tutorial)).
   En prod los notebooks corren con la cuenta del despliegue; en dev, con quien editó el pipeline
-  en el UI. Lo que un notebook hace en prod no se prueba desde dev.
+  en el UI. Lo que un notebook hace en prod no se prueba desde dev. Con qué identidad corrió se
+  ve en el `submitter` de las sesiones del notebook
+  ([livy sessions](https://learn.microsoft.com/rest/api/fabric/notebook/livy-sessions/list-livy-sessions)):
+  en la corrida programada de `pl_master` en prod aparece `sp-indice-gansito-deploy`.
 - **Contributor es el mínimo que documenta `fabric-cicd`**
   ([PBIP con fabric-cicd](https://learn.microsoft.com/power-bi/developer/projects/projects-deploy-fabric-cicd#prerequisites))
   y alcanza para escribir en un lakehouse. Admin agrega borrar el workspace y administrar accesos
@@ -189,6 +192,7 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   arrastra a lo que invoque ese pipeline. Una conexión creada por un usuario se comparte con el
   service principal, con rol User
   ([how it works](https://learn.microsoft.com/fabric/cicd/git-integration/automate-git-integration-with-service-principal#how-it-works)).
+  Compartida así, también le alcanza para correr el refresh de `sm_gansito` desde el pipeline.
 - **`sempy.fabric.resolve_workspace_id` funciona con service principal**: está en la lista
   soportada ([semantic link + SPN](https://learn.microsoft.com/fabric/data-science/semantic-link-service-principal-support#supported-semantic-link-functions)).
   De `notebookutils.fs` y `notebookutils.lakehouse` los docs no dicen nada: se ve en la primera
