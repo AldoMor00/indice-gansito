@@ -880,18 +880,23 @@ mientras que el candidato frecuente vive en otra ciudad. Es la diferencia entre 
 con estadística y desempatar con evidencia.
 
 La entrada 191 es la única sin `?` y la única puesta a mano. `Mar?n` resolvía a `Maron`
-porque ésa es la grafía limpia que la fuente publica —una vez— para `Papelería Marín`, y se
-fijó a `Marin`. Eso obligó a mapear también `Maron`: sin ello la forma sucia y la limpia
+porque ésa es la grafía limpia que la fuente publica para esa papelería —`Marón` en 13
+quincenas, `Mar?n` en una—, y se fijó a `Marin`. Eso obligó a mapear también `Maron`: sin ello la forma sucia y la limpia
 dejan de coincidir y esa papelería se vuelve a partir en dos, que es exactamente lo que la
 decisión evita. Corregir un nombre a mano cuesta dos entradas, no una.
 
-Dos cosas quedan escritas como riesgo y no como resuelto. La primera: el mapa es por palabra
+Tres cosas quedan escritas como riesgo y no como resuelto. La primera: el mapa es por palabra
 y **generaliza**, así que un valor nuevo cuya palabra ya esté en el mapa no dispara compuerta
 —un `Quintana R?o` quedaría `Quintana Rio`—. Un mapa por cadena completa no tendría ese
 riesgo a cambio de no resolver nada nuevo nunca, y se eligió generalizar. La segunda: seis
 entradas copian un typo de la fuente (`Nuemero`, `Costitucion`, `Oregon`, `Cuatitlan`,
 `Nezahualcoyothl`, `Agaleria`), porque el trabajo es reparar codificación y no corregirle la
-ortografía a Profeco.
+ortografía a Profeco. La tercera: `Maron` es la única entrada que actúa sobre texto limpio, y
+como `ACENTOS` corre antes, cualquier tienda nueva con `Marón` en alguna columna saldría como
+`Marin`. Hoy esa papelería es la única que trae la palabra, y queda así.
+
+`canoniza`, `PALABRAS` y `TYPOS` viven en nb_20 y no en nb_00_config, así que nb_90 no los
+prueba. También queda así.
 
 Lo que cierra el ciclo es la compuerta, `exige_caracteres`: fuera del ASCII imprimible, de
 `ñÑ°¡ºª` y de lo que `PALABRAS` resolvió, nada pasa. El `?` cuenta como prohibido porque en
