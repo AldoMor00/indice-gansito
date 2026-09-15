@@ -25,7 +25,7 @@ line-length = 96
 target-version = "py313"
 # El Python de los notebooks corre en Fabric, donde `spark` y `notebookutils` son
 # globales del runtime: linteado aquí es puro F821. Ver decisión #7.
-extend-exclude = ["fabric"]
+extend-exclude = ["fabric", ".claude"]  # .claude trae la plantilla de notebook de la skill
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
