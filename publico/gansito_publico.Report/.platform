@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "gansito_publico"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "1846c080-99db-4f92-b3e1-f3e158f5bc7e"
+  }
+}

@@ -309,3 +309,22 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   `barShow`/`markerShow` en `false`: las barras por punto tapan el relleno.
 - **`textStyle` de un textbox acepta `fontColor`**, además de tamaño, peso, estilo y decoración:
   la paleta se escribe por PBIR sin pasar por el UI.
+
+## Power BI Desktop y el PBIP
+
+Visto al armar el clon import de `publico/` con Desktop de agosto de 2026.
+
+- **Desktop abre la caché del modelo antes que el TMDL**, y le aplica la definición encima. Con
+  `.pbi/cache.abf` de un modelo `es-ES` y un TMDL `en-US`, el PBIP no abre:
+  `PFE_TM_DDL_MODIFIED_CULTURE_OR_COLLATION_AFTER_CHILDREN_CREATION`, porque la cultura no se
+  cambia en un modelo que ya tiene objetos. Sin la caché, arma el modelo desde el TMDL.
+- **"Número decimal fijo" es `decimal` en TMDL y "número decimal" es `double`.** Al refrescar,
+  Desktop ajusta el tipo de la columna al que devuelve Power Query: un parquet `double` sobre una
+  columna `decimal` la deja en `double`. Con el cambio recalcula el resumen automático, y una
+  columna en `none` pasa a `sum`; con `SummarizationSetBy = User` se queda en `none`.
+- **La fecha/hora automática no hace nada en Direct Lake y en import sí**: con
+  `__PBI_TimeIntelligenceEnabled = 1`, el refresh crea una tabla de fechas oculta y una relación
+  por cada columna de fecha. Una columna `date` del parquet queda en *Long Date* con
+  `UnderlyingDateTimeDataType = Date`.
+- **Un PBIP que ya refleja todo eso sobrevive abrir, refrescar y guardar sin cambiar un byte** del
+  TMDL ni del PBIR, fuera de `cache.abf` y `localSettings.json`.

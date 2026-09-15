@@ -1,0 +1,571 @@
+table Medidas
+	lineageTag: 157a869b-8aac-48d1-9561-35e43b512f68
+
+	measure 'Pareo mínimo' =
+			
+			MINX(
+			    VALUES( dim_tiempo_quincena[id_quincena] ),
+			    CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) )
+			)
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: 255e3938-6025-4559-a2d5-4b69fdb48d12
+
+	measure 'Cambio encadenado %' =
+			
+			VAR Suma =
+			    SUMX(
+			        VALUES( dim_tiempo_quincena[id_quincena] ),
+			        CALCULATE( AVERAGE( hechos_relativos[log_relativo] ) )
+			    )
+			RETURN
+			    IF( [Publica índice], EXP( Suma ) - 1 )
+		formatString: #,##0.00%
+		displayFolder: Índice
+		lineageTag: 244c97c8-1df8-43f7-9daf-e5566e7647b1
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
+	measure 'Índice encadenado' =
+			
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			VAR Base =
+			    CALCULATE( MIN( dim_tiempo_quincena[orden] ), REMOVEFILTERS( dim_tiempo_quincena ) )
+			VAR Suma =
+			    CALCULATE(
+			        SUMX(
+			            VALUES( dim_tiempo_quincena[id_quincena] ),
+			            CALCULATE( AVERAGE( hechos_relativos[log_relativo] ) )
+			        ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] <= Hasta
+			    )
+			// El punto es el acumulado desde la base, así que la guarda mira esos mismos eslabones y
+			// no sólo el del punto: si no, la serie publicaba un acumulado que la tarjeta rechazaba.
+			VAR Publica =
+			    CALCULATE(
+			        [Publica índice],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] <= Hasta
+			    )
+			RETURN
+			    // La quincena base no produce eslabón —no hay anterior contra la cual parear— así
+			    // que la guarda no tiene qué exigirle y el índice es 100 por definición. Sin esta
+			    // rama la serie arranca en blanco y la línea entra un eslabón tarde. Pero 100 por
+			    // definición sigue pidiendo que haya algo definido: un corte sin una sola celda
+			    // —los giros que no venden pastelillos, que traen `canal` en blanco— publicaba un
+			    // punto en la base y una serie fantasma en la leyenda.
+			    IF(
+			        Hasta = Base,
+			        IF( NOT ISBLANK( [Precio promedio] ), 100 ),
+			        IF( Publica, EXP( Suma ) * 100 )
+			    )
+		formatString: #,##0.00
+		displayFolder: Índice
+		lineageTag: 75e5ac05-f908-4d13-842b-633f733fc67d
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
+	/// Promedio de las celdas tienda-SKU-quincena. Transversal: no lleva guarda de pareo
+	/// porque no compara periodos, y es válido con cualquier tamaño de muestra.
+	measure 'Precio promedio' = AVERAGE( hechos_precios[precio_promedio] )
+		formatString: \$#,##0.00
+		displayFolder: Nivel de precio
+		lineageTag: 3f21c0a4-5d7e-42b1-9c33-8ab2d1e05f10
+
+	measure 'Precio mediano' = MEDIAN( hechos_precios[precio_promedio] )
+		formatString: \$#,##0.00
+		displayFolder: Nivel de precio
+		lineageTag: 8c4d19b6-71a2-4e58-bb07-2d9f3ca47e21
+
+	/// Razón entre el percentil 90 y el 10. Mide qué tan abierto está el abanico de precios
+	/// dentro del corte, que es la historia de la página de dispersión.
+	measure 'Dispersión p90/p10' =
+			DIVIDE(
+			    PERCENTILE.INC( hechos_precios[precio_promedio], 0.9 ),
+			    PERCENTILE.INC( hechos_precios[precio_promedio], 0.1 )
+			)
+		formatString: #,##0.00
+		displayFolder: Nivel de precio
+		lineageTag: b2e7f048-3ca9-4d16-89e5-6f01ab73c2d4
+
+	measure 'Tiendas observadas' = DISTINCTCOUNT( hechos_precios[id_tienda] )
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: 5a83d2c1-9e64-4b70-a1f8-70c25de91b83
+
+	/// Inflación general entre la base de la serie y la quincena en curso. Se acumula desde
+	/// el inicio igual que el índice, para que las dos series sean comparables punto a punto.
+	measure 'Inflación acumulada %' =
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			VAR OrdenBase =
+			    CALCULATE( MIN( dim_tiempo_quincena[orden] ), REMOVEFILTERS( dim_tiempo_quincena ) )
+			VAR Base =
+			    CALCULATE(
+			        SELECTEDVALUE( dim_tiempo_quincena[inpc] ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = OrdenBase
+			    )
+			VAR Actual =
+			    CALCULATE(
+			        SELECTEDVALUE( dim_tiempo_quincena[inpc] ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Hasta
+			    )
+			RETURN
+			    // `BLANK() - 1` es -1 en DAX, así que sin esta guarda un contexto sin INPC publicaba
+			    // -100% y arrastraba a `Índice INPC` hasta 0, dibujando una caída que no existe.
+			    IF( NOT ISBLANK( Base ) && NOT ISBLANK( Actual ), DIVIDE( Actual, Base ) - 1 )
+		formatString: #,##0.00%
+		displayFolder: Inflación y salario
+		lineageTag: c81a4b73-05e9-4f26-8d47-1e2093bc6a58
+
+	/// Cambio del Gansito descontando la inflación general: el nominal dice cuánto subió el
+	/// precio y éste cuánto subió de más. El reporte titula con el nominal, que es lo que se
+	/// paga en el mostrador; el real vive sólo en P1, contra el nivel general de precios.
+	measure 'Cambio real %' =
+			VAR Nominal = [Cambio encadenado %]
+			RETURN
+			    // Se apaga con el nominal: sin esto, el corte que la guarda de pareo dejó sin índice
+			    // publicaba 0.00% —`DIVIDE( 1, 1 ) - 1`— en vez de quedarse en blanco.
+			    IF( NOT ISBLANK( Nominal ), DIVIDE( 1 + Nominal, 1 + [Inflación acumulada %] ) - 1 )
+		formatString: #,##0.00%
+		displayFolder: Índice
+		lineageTag: 4b09e6d5-8c31-4a72-b6e0-51fda372c904
+
+	measure 'Índice real' = DIVIDE( [Índice encadenado], 1 + [Inflación acumulada %] )
+		formatString: #,##0.00
+		displayFolder: Índice
+		lineageTag: 9f3c7e21-b048-4d95-83a6-2c60e51df7b3
+
+	/// El ponderado nacional de CONASAMI, no el de zona: sin padrón de municipios fronterizos
+	/// la ZLFN no se puede pegar contra el precio.
+	measure 'Salario mínimo diario' =
+			CALCULATE(
+			    AVERAGE( hechos_salario_mensual[smg_nominal] ),
+			    TREATAS( VALUES( dim_tiempo_quincena[id_mes] ), dim_mes[id_mes] )
+			)
+		formatString: \$#,##0.00
+		displayFolder: Inflación y salario
+		lineageTag: 6d2b850f-1a7c-46e3-9b84-f0537ac2e169
+
+	/// Cuántos Gansitos compra un día de trabajo al mínimo. Traduce el precio a algo que se
+	/// siente, y es la razón por la que CONASAMI entró al proyecto.
+	measure 'Gansitos por día' = DIVIDE( [Salario mínimo diario], [Precio promedio] )
+		formatString: #,##0.0
+		displayFolder: Inflación y salario
+		lineageTag: 2c948d16-7b53-4f80-a2d1-84e6b09f3527
+
+	/// Cuántas quincenas del corte producen eslabón, es decir, tienen una anterior
+	/// contra la cual parear.
+	/// Sin uso: hoy no la llama ninguna página del reporte ni ninguna otra medida.
+	measure Eslabones = DISTINCTCOUNT( hechos_relativos[id_quincena] )
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: e05f31a8-46d2-49b7-8c60-7a13e9b524fd
+
+	/// El pareo típico del corte, junto al mínimo y al efectivo que deciden la guarda. Juntos
+	/// dicen si un corte tiene un eslabón flaco aislado o muestra insuficiente en general.
+	measure 'Pareo mediano' =
+			MEDIANX(
+			    FILTER(
+			        VALUES( dim_tiempo_quincena[id_quincena] ),
+			        CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) ) > 0
+			    ),
+			    CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) )
+			)
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: a7361de4-9b02-4c85-b1e3-05d7248fa6b0
+
+	/// El bootstrap de `nb_30` está tabulado por SKU y remuestrea el padrón entero de tiendas
+	/// de ese SKU. Pide entonces un solo producto en contexto —entre SKUs no se agrega, y sin
+	/// filtro habría nueve intervalos distintos— y se apaga ante cualquier filtro de tienda,
+	/// que describiría una muestra que ya no es la del intervalo. Vive aparte para que las dos
+	/// puntas no puedan divergir.
+	measure 'Intervalo aplica' =
+			NOT ISCROSSFILTERED( dim_tienda )
+			    && HASONEVALUE( dim_producto[id_producto] )
+			    && [Publica índice]
+		isHidden
+		displayFolder: Intervalo
+		lineageTag: 0d4f7b26-8a51-4c93-b7e0-46129df3a8c5
+
+	measure 'IC inferior' =
+			
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			RETURN
+			    IF(
+			        [Intervalo aplica],
+			        CALCULATE(
+			            MAX( hechos_ic_indice[ic_inferior] ),
+			            REMOVEFILTERS( dim_tiempo_quincena ),
+			            dim_tiempo_quincena[orden] = Hasta
+			        )
+			    )
+		formatString: #,##0.00
+		displayFolder: Intervalo
+		lineageTag: 2e86c1a4-9f37-40db-85a2-b71c04e9d635
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
+	measure 'IC superior' =
+			
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			RETURN
+			    IF(
+			        [Intervalo aplica],
+			        CALCULATE(
+			            MAX( hechos_ic_indice[ic_superior] ),
+			            REMOVEFILTERS( dim_tiempo_quincena ),
+			            dim_tiempo_quincena[orden] = Hasta
+			        )
+			    )
+		formatString: #,##0.00
+		displayFolder: Intervalo
+		lineageTag: b93e5a7f-1c48-4a06-9e35-8f2071dab4c9
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
+	/// El intervalo como texto, para el KPI de P1: publicar el número sin su incertidumbre al
+	/// lado es lo que separa un tablero de un análisis.
+	measure 'Intervalo del cambio' =
+			VAR Inferior = [IC inferior]
+			VAR Superior = [IC superior]
+			RETURN
+			    // La resta va después de la guarda y no antes: `BLANK() - 1` es -1 en DAX, no
+			    // BLANK, así que restar primero convertía el corte sin intervalo en un
+			    // "-100.00%" y le daba fila propia en cualquier visual.
+			    IF(
+			        NOT ISBLANK( Inferior ),
+			        FORMAT( DIVIDE( Inferior, 100 ) - 1, "+0.00%;-0.00%" ) & " a "
+			            & FORMAT( DIVIDE( Superior, 100 ) - 1, "+0.00%;-0.00%" )
+			    )
+		displayFolder: Intervalo
+		lineageTag: 41c7a0e8-52b6-4d19-8730-e6f9b2450a1d
+
+	/// El INPC rebasado a la quincena inicial, para que las tres series de P1 compartan eje.
+	/// `INPC` a secas es el índice de INEGI —133.554 en la base— y dibujado contra el
+	/// encadenado aplastaría las dos curvas que importan.
+	measure 'Índice INPC' =
+			VAR Inflacion = [Inflación acumulada %]
+			RETURN
+			    // Sin la guarda, `( 1 + BLANK() ) * 100` da 100 y dibuja un punto donde no hay mes.
+			    IF( NOT ISBLANK( Inflacion ), ( 1 + Inflacion ) * 100 )
+		formatString: #,##0.00
+		displayFolder: Índice
+		lineageTag: 3c81f0a7-64d2-4e15-b809-7fa2e605193c
+
+	/// El precio de la quincena más reciente del contexto, y no el promedio de la serie: el
+	/// KPI de P1 dice cuánto cuesta hoy, y promediar dos años lo dejaría a medio camino entre
+	/// el precio viejo y el actual. Mismo patrón de `MAX( orden )` que el índice.
+	measure 'Precio al cierre' =
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			RETURN
+			    CALCULATE(
+			        [Precio promedio],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Hasta
+			    )
+		formatString: \$#,##0.00
+		displayFolder: Nivel de precio
+		lineageTag: 5d7e93b1-08fa-4c26-91d3-e40b7c5a2618
+
+	/// Cuenta las celdas cuyo precio cae en el bin. Es lo único que Power BI no sabe hacer
+	/// solo: no trae histograma nativo, y el binning del UI crea columna calculada, que las
+	/// tablas Direct Lake no admiten. Con quincena y producto en selección única —como los
+	/// fija P2— la celda es la tienda, y la barra cuenta tiendas.
+	measure 'Tiendas en rango' =
+			VAR Desde = MAX( 'Rango de precio'[Desde] )
+			VAR Hasta = MAX( 'Rango de precio'[Hasta] )
+			VAR Piso = MIN( hechos_precios[precio_promedio] )
+			VAR Techo = MAX( hechos_precios[precio_promedio] )
+			VAR Celdas =
+			    CALCULATE(
+			        COUNTROWS( hechos_precios ),
+			        KEEPFILTERS(
+			            hechos_precios[precio_promedio] >= Desde
+			                && hechos_precios[precio_promedio] < Hasta
+			        )
+			    )
+			RETURN
+			    // Cero adentro del rango observado y BLANK afuera. Sin esta rama la serie sale
+			    // con 76 barras y ceros a los lados; devolviendo BLANK a secas, los bins vacíos
+			    // de en medio se colapsan y la forma del histograma miente.
+			    IF( Hasta > Piso && Desde <= Techo, Celdas + 0 )
+		formatString: #,0
+		displayFolder: Nivel de precio
+		lineageTag: 9d4c81f2-3e50-4a67-b8d1-27fa60e9c534
+
+	/// Espejo de `Precio al cierre` con `MIN( orden )`. El dumbbell de P3 dibuja las dos puntas
+	/// del tramo, y la de arranque no se puede sacar de un promedio: es una quincena concreta.
+	measure 'Precio al inicio' =
+			VAR Desde = MIN( dim_tiempo_quincena[orden] )
+			RETURN
+			    CALCULATE(
+			        [Precio promedio],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Desde
+			    )
+		formatString: \$#,##0.00
+		displayFolder: Nivel de precio
+		lineageTag: f55e8098-a7a6-4d45-9ba1-3bb5c7fd8474
+
+	/// La guarda de cinco tiendas (decisión #23) tiene que valer en las dos puntas del tramo, no
+	/// en el promedio de las dos: con una sola punta pasan cadenas que en la otra no existen.
+	/// Devuelve el mínimo para que el filtro del visual sea una condición y no dos. El COALESCE
+	/// no sobra: MIN de dos escalares ignora el blanco, así que sin él una punta vacía se lee
+	/// como la n de la otra.
+	measure 'Tiendas del tramo' =
+			VAR Desde = MIN( dim_tiempo_quincena[orden] )
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			VAR Inicio =
+			    CALCULATE(
+			        DISTINCTCOUNT( hechos_precios[id_tienda] ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Desde
+			    )
+			VAR Cierre =
+			    CALCULATE(
+			        DISTINCTCOUNT( hechos_precios[id_tienda] ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Hasta
+			    )
+			RETURN
+			    MIN( COALESCE( Inicio, 0 ), COALESCE( Cierre, 0 ) )
+		formatString: #,0
+		isHidden
+		displayFolder: Cobertura y guarda
+		lineageTag: 0b374de2-8491-442a-8d3f-706930f14637
+
+	/// Cuántos Gansitos compraba un día de trabajo en la quincena base. Espejo de `Precio al
+	/// inicio`: el KPI contrasta dos momentos concretos, y el promedio de las 46 quincenas
+	/// quedaría a medio camino entre los dos.
+	measure 'Gansitos al inicio' =
+			VAR Desde = MIN( dim_tiempo_quincena[orden] )
+			RETURN
+			    CALCULATE(
+			        [Gansitos por día],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Desde
+			    )
+		formatString: #,##0.0
+		displayFolder: Inflación y salario
+		lineageTag: 8f3a1c05-2d47-4e91-b6a8-31c7e5049b62
+
+	measure 'Gansitos al cierre' =
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			RETURN
+			    CALCULATE(
+			        [Gansitos por día],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Hasta
+			    )
+		formatString: #,##0.0
+		displayFolder: Inflación y salario
+		lineageTag: 4e6b90d3-71f8-4a25-9c04-8b52d1730fae
+
+	/// El mínimo lo fija CONASAMI una vez al año, así que esto no es una serie sino una escalera:
+	/// plana todo 2024 y un solo escalón en enero de 2025. Se acumula desde la base igual que la
+	/// inflación, para que las dos comparaciones de la página midan el mismo tramo.
+	measure 'Cambio salario mínimo %' =
+			VAR Hasta = MAX( dim_tiempo_quincena[orden] )
+			VAR OrdenBase =
+			    CALCULATE( MIN( dim_tiempo_quincena[orden] ), REMOVEFILTERS( dim_tiempo_quincena ) )
+			VAR Base =
+			    CALCULATE(
+			        [Salario mínimo diario],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = OrdenBase
+			    )
+			VAR Actual =
+			    CALCULATE(
+			        [Salario mínimo diario],
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Hasta
+			    )
+			RETURN
+			    // La guarda va antes de la resta: `BLANK() - 1` es -1 en DAX, así que un contexto sin
+			    // mes publicaría -100% en vez de quedarse en blanco. Mismo mordisco que en
+			    // `Inflación acumulada %`.
+			    IF( NOT ISBLANK( Base ) && NOT ISBLANK( Actual ), DIVIDE( Actual, Base ) - 1 )
+		formatString: #,##0.00%
+		displayFolder: Inflación y salario
+		lineageTag: c02d7fb4-56a1-4d38-8e70-9a41b3625cd7
+
+	/// El salario rebasado a la quincena inicial, para que P4 lo dibuje en el mismo eje que el
+	/// encadenado. Vive en `Índice` y no en `Inflación y salario` por la misma razón que
+	/// `Índice INPC`: se busca al armar el visual, no por la fuente de la que sale.
+	measure 'Índice salario mínimo' =
+			VAR Cambio = [Cambio salario mínimo %]
+			RETURN
+			    // Sin la guarda, `( 1 + BLANK() ) * 100` da 100 y dibuja un punto donde no hay mes.
+			    IF( NOT ISBLANK( Cambio ), ( 1 + Cambio ) * 100 )
+		formatString: #,##0.00
+		displayFolder: Índice
+		lineageTag: 7a15be82-3c69-40df-b1a4-05e2c8f79d31
+
+	/// Las tiendas que Profeco visitó también en la quincena anterior, que son las que entran
+	/// al eslabón. Contra `Tiendas observadas` dice cuánto del corte se queda fuera del índice.
+	measure 'Tiendas pareadas' = DISTINCTCOUNT( hechos_relativos[id_tienda] )
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: 999c5580-51d3-48b1-aba6-23b3517d3108
+
+	/// Las tiendas presentes en todas las quincenas: el panel con el que se quedaría un índice
+	/// de base fija. Son 31 contra las 286 que parea el eslabón típico, y es la razón entera de
+	/// encadenar. Ignora el filtro de quincena a propósito —"completo" es sobre la línea entera,
+	/// no sobre el tramo que alguien haya seleccionado—.
+	measure 'Tiendas de panel completo' =
+			VAR Quincenas =
+			    CALCULATE( DISTINCTCOUNT( hechos_precios[id_quincena] ), REMOVEFILTERS( dim_tiempo_quincena ) )
+			RETURN
+			    COUNTROWS(
+			        FILTER(
+			            VALUES( hechos_precios[id_tienda] ),
+			            CALCULATE(
+			                DISTINCTCOUNT( hechos_precios[id_quincena] ),
+			                REMOVEFILTERS( dim_tiempo_quincena )
+			            ) = Quincenas
+			        )
+			    )
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: e5187630-7608-46c8-bc85-68bd5557c0d2
+
+	/// Cuántos eslabones no llegan al umbral. No decide la publicación —eso lo hace el pareo
+	/// efectivo—, pero dice cuántos eslabones flacos carga un corte. Al grano nacional son cero:
+	/// el más flaco de los nueve SKUs trae 151 tiendas pareadas. Los que no tienen una sola
+	/// tienda pareada no cuentan porque
+	/// no existen, y el `+ 0` publica el cero en vez de un blanco, que aquí sí es dato.
+	measure 'Eslabones bajo el umbral' =
+			COUNTROWS(
+			    FILTER(
+			        VALUES( dim_tiempo_quincena[id_quincena] ),
+			        VAR Pareadas = CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) )
+			        RETURN Pareadas > 0 && Pareadas < [Umbral de pareo Value]
+			    )
+			) + 0
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: 5537e78d-5c55-45c4-afa7-b728d7a66d3b
+
+	/// El umbral dibujado como serie plana junto a las tiendas pareadas, para verlo cruzar la
+	/// serie al mover el parámetro. Envuelve la medida del what-if nada más por el nombre, que
+	/// es lo que sale impreso en la leyenda.
+	measure Umbral = [Umbral de pareo Value]
+		formatString: #,0
+		displayFolder: Cobertura y guarda
+		lineageTag: b2cf05c5-7b6e-486c-a697-a5c20d338e15
+
+	/// Cuántas entidades del nivel tocó Profeco en el corte. Los cuatro niveles son cuatro
+	/// columnas de `dim_tienda` y no cuatro valores de una, así que el SWITCH sobre la tabla
+	/// desconectada es lo que las vuelve un eje. El municipio va con su estado: los nombres se
+	/// repiten entre estados y agregados sueltos juntan tiendas que no se parecen (hechos.md).
+	measure 'Entidades observadas' =
+			SWITCH(
+			    SELECTEDVALUE( 'Nivel de cobertura'[Nivel] ),
+			    "Tienda", DISTINCTCOUNT( hechos_precios[id_tienda] ),
+			    "Cadena", CALCULATE( DISTINCTCOUNT( dim_tienda[cadena_comercial] ), hechos_precios ),
+			    "Municipio",
+			        CALCULATE(
+			            COUNTROWS( SUMMARIZE( dim_tienda, dim_tienda[estado], dim_tienda[municipio] ) ),
+			            hechos_precios
+			        ),
+			    "Estado", CALCULATE( DISTINCTCOUNT( dim_tienda[estado] ), hechos_precios )
+			)
+		formatString: #,0
+		isHidden
+		displayFolder: Cobertura y guarda
+		lineageTag: f9bdb469-9036-4c6d-8896-76b33b87a278
+
+	/// Espejo del anterior sobre los eslabones en vez de sobre las celdas. Insumo de
+	/// `Cobertura del panel %`.
+	measure 'Entidades pareadas' =
+			SWITCH(
+			    SELECTEDVALUE( 'Nivel de cobertura'[Nivel] ),
+			    "Tienda", DISTINCTCOUNT( hechos_relativos[id_tienda] ),
+			    "Cadena", CALCULATE( DISTINCTCOUNT( dim_tienda[cadena_comercial] ), hechos_relativos ),
+			    "Municipio",
+			        CALCULATE(
+			            COUNTROWS( SUMMARIZE( dim_tienda, dim_tienda[estado], dim_tienda[municipio] ) ),
+			            hechos_relativos
+			        ),
+			    "Estado", CALCULATE( DISTINCTCOUNT( dim_tienda[estado] ), hechos_relativos )
+			)
+		formatString: #,0
+		isHidden
+		displayFolder: Cobertura y guarda
+		lineageTag: f6e48739-2ad1-4826-b2fd-bf94985851c6
+
+	/// Qué fracción de lo observado sobrevive al pareo, en el eslabón típico. Mediana de los 45
+	/// y no una razón del periodo entero: lo que se quiere saber es cuánto usa una comparación,
+	/// no cuánto se tocó alguna vez. La pérdida se concentra abajo —86% de las tiendas contra
+	/// 100% de los estados—, así que el encadenado suelta tiendas pero no geografía.
+	measure 'Cobertura del panel %' =
+			MEDIANX(
+			    FILTER(
+			        VALUES( dim_tiempo_quincena[id_quincena] ),
+			        CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) ) > 0
+			    ),
+			    DIVIDE( [Entidades pareadas], [Entidades observadas] )
+			)
+		formatString: #,##0.0%
+		displayFolder: Cobertura y guarda
+		lineageTag: dc83af65-7c1d-4f25-9058-a5a6df648069
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
+	/// El n que tendría una cadena de eslabones iguales con el mismo ruido: la media armónica de
+	/// las tiendas pareadas, porque el ruido del encadenado crece con la suma de 1/n. Un eslabón
+	/// flaco entre muchos gruesos casi no la mueve; muchos flacos, o uno muy flaco, sí.
+	measure 'Pareo efectivo' =
+			
+			VAR Eslabones =
+			    FILTER(
+			        ADDCOLUMNS(
+			            VALUES( dim_tiempo_quincena[id_quincena] ),
+			            "@pareadas", CALCULATE( DISTINCTCOUNT( hechos_relativos[id_tienda] ) )
+			        ),
+			        [@pareadas] > 0
+			    )
+			RETURN
+			    DIVIDE( COUNTROWS( Eslabones ), SUMX( Eslabones, 1 / [@pareadas] ) )
+		formatString: #,0.0
+		displayFolder: Cobertura y guarda
+		lineageTag: f48276b2-592e-469e-8f67-bc2f087d150c
+
+	/// Con menos de diez tiendas una sola pesa más del 10% del eslabón, y un error de captura deja
+	/// de ser ruido que el pareo efectivo promedie. Fijo y no parámetro: es robustez, no muestra.
+	measure 'Piso de pareo' = 10
+		formatString: #,0
+		isHidden
+		displayFolder: Cobertura y guarda
+		lineageTag: ba499025-222f-4f0a-a787-e2c308b9c780
+
+	/// La guarda del índice, compartida por la tarjeta, la línea y el intervalo para que no puedan
+	/// divergir. Mira el conjunto de eslabones del contexto y no el más flaco: con el mínimo, un
+	/// solo eslabón de 29 apagaba dos años de conveniencia (decisión #42).
+	measure 'Publica índice' = [Pareo efectivo] >= [Umbral de pareo Value] && [Pareo mínimo] >= [Piso de pareo]
+		isHidden
+		displayFolder: Cobertura y guarda
+		lineageTag: f73487eb-4a60-4bdd-9c9f-864ae26e3362
+
+	column Column
+		isHidden
+		formatString: 0
+		lineageTag: ea681015-6661-4101-95b5-a7f0597b9244
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Column]
+
+		annotation SummarizationSetBy = User
+
+	partition Medidas = calculated
+		mode: import
+		source = Row("Column", BLANK())
+
+	annotation PBI_Id = 5a74387a25db496d8c035c6083cdea77
+
+	annotation 436ba87b-9c83-4389-a31b-ebd06a36be98 = {"Expression":""}
+
