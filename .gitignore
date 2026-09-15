@@ -5,4 +5,7 @@ __pycache__/
 .ruff_cache/
 .env
 *.pbix
+# Lo que Power BI Desktop guarda por máquina dentro del PBIP
+**/.pbi/localSettings.json
+**/.pbi/cache.abf
 .vscode/

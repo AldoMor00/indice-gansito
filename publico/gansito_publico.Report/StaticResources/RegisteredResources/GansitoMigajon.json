@@ -1,0 +1,136 @@
+{
+  "name": "Gansito migajón",
+  "dataColors": [
+    "#5C3A21",
+    "#B23A48",
+    "#D69A4C",
+    "#A8672F",
+    "#E9A6A6",
+    "#8C7B70",
+    "#7D4E57",
+    "#C9B28F"
+  ],
+  "foreground": "#3B2418",
+  "foregroundNeutralSecondary": "#7A5A48",
+  "foregroundNeutralTertiary": "#BDBDBD",
+  "foregroundNeutralLight": "#8C7B70",
+  "background": "#FDFDFD",
+  "backgroundLight": "#D6D6D6",
+  "backgroundNeutral": "#D1D1D1",
+  "backgroundDark": "#E8E8E8",
+  "secondaryBackground": "#F5F5F5",
+  "tableAccent": "#5C3A21",
+  "accent": "#5C3A21",
+  "shapeStroke": "#E3E3E3",
+  "disabledText": "#B3B3B3",
+  "good": "#A9C48F",
+  "neutral": "#EBC99A",
+  "bad": "#E9A6A6",
+  "maximum": "#4A2C1A",
+  "center": "#D69A4C",
+  "minimum": "#F3E3C7",
+  "hyperlink": "#A8672F",
+  "visitedHyperlink": "#A8672F",
+  "textClasses": {
+    "callout": {
+      "fontSize": 21,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#3B2418"
+    },
+    "title": {
+      "fontSize": 12,
+      "fontFace": "DIN",
+      "color": "#3B2418"
+    },
+    "header": {
+      "fontSize": 12,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#3B2418"
+    },
+    "label": {
+      "fontSize": 10.5,
+      "fontFace": "Segoe UI",
+      "color": "#3B2418"
+    }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "border": [
+          {
+            "show": true,
+            "width": 1,
+            "radius": 8,
+            "color": {
+              "solid": {
+                "color": "#E3E3E3"
+              }
+            }
+          }
+        ],
+        "categoryAxis": [
+          {
+            "showAxisTitle": false,
+            "maxMarginFactor": 50,
+            "gridlineStyle": "solid",
+            "gridlineColor": {
+              "solid": {
+                "color": "#EEEEEE"
+              }
+            },
+            "concatenateLabels": false,
+            "titleFontSize": 10.5,
+            "fontSize": 10.5,
+            "labelColor": {
+              "solid": {
+                "color": "#7A5A48"
+              }
+            }
+          }
+        ],
+        "valueAxis": [
+          {
+            "showAxisTitle": false,
+            "maxMarginFactor": 50,
+            "gridlineStyle": "solid",
+            "gridlineColor": {
+              "solid": {
+                "color": "#EEEEEE"
+              }
+            },
+            "titleFontSize": 10.5,
+            "fontSize": 10.5,
+            "labelColor": {
+              "solid": {
+                "color": "#7A5A48"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "outspace": [
+          {
+            "color": {
+              "solid": {
+                "color": "#F0F0F0"
+              }
+            }
+          }
+        ],
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#FAFAFA"
+              }
+            },
+            "transparency": 0
+          }
+        ]
+      }
+    }
+  }
+}
