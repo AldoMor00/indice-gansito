@@ -69,7 +69,7 @@ def compacta(ruta: str, vorder: str) -> dict:
 
     `clusteringQuality` viene dentro de las métricas en PySpark —la doc lo presenta como un
     método exclusivo de Scala—, así que la calidad del layout sale sin una llamada aparte
-    (`hechos.md`). Se reporta el solapamiento peor de las columnas de cluster: 0 es que los
+    (`plataforma.md`). Se reporta el solapamiento peor de las columnas de cluster: 0 es que los
     rangos no se pisan, que es lo ideal, y es lo que se degrada cuando entra dato nuevo.
     """
     metricas = spark.sql(f"OPTIMIZE delta.`{ruta}`{vorder}").first()["metrics"].asDict()
@@ -97,7 +97,7 @@ def limpia(ruta: str) -> int:
 
     `VACUUM ... LITE` no lo listaría siquiera, porque arma la lista desde el log en vez del
     directorio. No se usa: aquí ignoró también huérfanos de verdad que el modo completo sí
-    ve, y recuperar espacio es para lo que está esto (`hechos.md`).
+    ve, y recuperar espacio es para lo que está esto (`plataforma.md`).
     """
     consulta = f"VACUUM delta.`{ruta}` RETAIN {RETENCION_HORAS} HOURS"
     candidatos = [f["path"] for f in spark.sql(f"{consulta} DRY RUN").collect()]

@@ -65,7 +65,7 @@ from pyspark.sql import Window
 # en el SQL endpoint y nada en Spark— y donde su 15% de escritura más lenta se paga una vez.
 # `readHeavyForPBI` lo prende junto con optimize write. Va aquí, en la escritura, y no en el
 # mantenimiento: `OPTIMIZE ... VORDER` no V-Ordena hacia atrás lo que decide no reescribir
-# (medido, en hechos.md).
+# (medido, en plataforma.md).
 spark.conf.set("spark.fabric.resourceProfile", "readHeavyForPBI")
 
 # `hechos_precios` es el estado de gold, igual que en silver: qué quincenas ya se
@@ -249,7 +249,7 @@ def intervalo_del_indice(relativos, calendario):
     No se puede calcular en DAX, y por eso esta tabla existe. El error del encadenado no es
     función de los agregados del eslabón: las mismas tiendas reaparecen eslabón tras eslabón
     y sus errores se telescopan, así que sumar varianzas en cuadratura da 2.62 pp contra los
-    1.60 que da el bootstrap (docs/hechos.md).
+    1.60 que da el bootstrap (docs/mediciones.md).
 
     El grano es SKU × quincena porque el índice que se publica es el de un SKU —el titular es
     el Gansito, no la canasta— y el intervalo de la canasta no se parece: promedia nueve
