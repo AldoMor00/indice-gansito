@@ -551,6 +551,23 @@ table Medidas
 		displayFolder: Cobertura y guarda
 		lineageTag: f73487eb-4a60-4bdd-9c9f-864ae26e3362
 
+	/// La quincena más reciente de la serie. El visor público de Publish to web no muestra la fecha
+	/// del último refresh, así que la vigencia la dice el reporte.
+	measure 'Datos actualizados a la quincena' =
+			
+			VAR Ultima =
+			    CALCULATE( MAX( dim_tiempo_quincena[orden] ), REMOVEFILTERS( dim_tiempo_quincena ) )
+			RETURN
+			    // Sin REMOVEFILTERS la leyenda seguiría al slicer y diría que los datos llegan
+			    // hasta donde el lector cortó la serie.
+			    CALCULATE(
+			        SELECTEDVALUE( dim_tiempo_quincena[quincena] ),
+			        REMOVEFILTERS( dim_tiempo_quincena ),
+			        dim_tiempo_quincena[orden] = Ultima
+			    )
+		displayFolder: Vigencia
+		lineageTag: 7b3c1d92-0e54-4a86-9f21-6c8d5a0e3b47
+
 	column Column
 		isHidden
 		formatString: 0
