@@ -102,7 +102,26 @@ en `.schedules`, que sí viaja en git y que `parameter.yml` enciende sólo en pr
 es **a quién avisar cuando fallen**: Home > Schedule > Failure notifications, en cada pipeline.
 Es el único aviso de fallo del proyecto (decisión #31).
 
-## 9. Lo que todavía no existe
+## 9. El token con que prod publica gold
 
-La cuenta pública y el PBIX import de la decisión #6. Cuando se arme, va aquí: qué cuenta, qué
-workspace y de qué URL lee.
+`nb_50_export` sube los parquets de gold a `indice-gansito-datos` desde prod (decisión #6). No
+puede usar la deploy key del punto 6, que vive en GitHub Actions; usa un token guardado en Azure
+Key Vault.
+
+- **Key Vault `kv-indice-gansito`**, con permisos por RBAC.
+- **Secreto `github-indice-gansito-datos`**: un token *fine-grained* de GitHub, con acceso sólo a
+  `indice-gansito-datos` y el permiso *Contents: Read and write*. Nada más.
+- **Rol *Key Vault Secrets User*** sobre el vault para `sp-indice-gansito-deploy`, que es quien
+  corre los notebooks de prod dentro de un pipeline (punto 5), y para el usuario que los corra a
+  mano.
+
+El token caduca. Cuando pasa, `nb_50_export` truena en prod con 401 y `pl_gold` sale rojo, aunque
+gold ya quedó escrito y el modelo refrescado. Se genera otro token, se reemplaza el valor del
+secreto y se corre `nb_50_export` solo, sin tocar código.
+
+Si el vault o el secreto cambian de nombre, cambian `BOVEDA` y `SECRETO` en `nb_50_export`.
+
+## 10. Lo que todavía no existe
+
+La cuenta pública y el clon import de la decisión #6. Cuando se arme, va aquí: qué cuenta, qué
+tenant y el setting de *Publish to web*.

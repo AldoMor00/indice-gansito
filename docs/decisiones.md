@@ -68,22 +68,25 @@ en prod lo rompe. Es la letra chica del clon zero-copy de Snowflake y de Databri
 
 ### 6. Dos modelos semánticos, y gold sale a git para el público
 
-**Decisión.** El modelo de Fabric es Direct Lake sobre `lh_gold`. El público es un PBIX en modo
-import, en My Workspace de una cuenta sin capacidad, que lee las ocho tablas de gold como parquet
-desde `indice-gansito-datos/publico` por URL anónima. Reusa el TMDL y el PBIR tal cual; sólo
-cambian las particiones. Los parquets los escribe `nb_50_export`, a mano. Bronze y silver no van
-a git.
+**Decisión.** El modelo de Fabric es Direct Lake sobre `lh_gold`. El público es un clon import en
+My Workspace de una cuenta sin capacidad, con *Publish to web* y refresh diario, que lee las ocho
+tablas de gold desde `indice-gansito-datos/publico`. `nb_50_export` las sube ahí al final de
+`pl_gold`, en un commit y sólo desde prod. Bronze y silver no van a git.
 
-**Motivo.** Direct Lake exige capacidad y la trial expira: los items de Fabric se borran a los
-siete días y los de Power BI no. Se necesita capacidad para *producir* gold, no para *mostrarlo*.
-Gold ya es el agregado, así que exportarlo verbatim copia las medidas y las páginas sin reescribir
-una línea. Parquet y no CSV porque pesa la quinta parte y Power Query lo lee directo. Gold va a git
-porque algo aguas abajo lo necesita como origen; bronze ya es el raw sin castear (#8) y silver es
-derivado determinista de raw más código. Guardar capas derivadas debilitaría lo que el repo afirma:
-que con el raw y el código se reconstruye todo.
+**Motivo.** Direct Lake exige capacidad, y la capacidad no está encendida siempre. Se necesita
+capacidad para *producir* gold, no para *mostrarlo*. El clon reusa el TMDL y el PBIR y sólo cambia
+las particiones, así que las medidas y las páginas no se reescriben. El export va dentro del
+pipeline y no a mano porque un paso manual se olvida justo en la corrida que traía datos. Un
+commit y no uno por archivo, para que el repo nunca guarde una foto de gold a medias; y ninguno si
+el árbol no cambió. Sólo prod publica, por nombre exacto: dev corre el mismo código contra un clon.
+El refresh diario vuelve a leer GitHub, así que una corrida nueva llega al reporte sin republicarlo.
+Parquet y no CSV porque pesa la quinta parte y Power Query lo lee directo. Gold va a git porque
+algo aguas abajo lo necesita como origen; bronze ya es el raw sin castear (#8) y silver es derivado
+determinista de raw más código.
 
-**Costo.** El DAX vive duplicado, como copia y no como reescritura. Cada reexport suma alrededor de
-un megabyte al repo de datos.
+**Costo.** El DAX vive duplicado, como copia y no como reescritura. Cada corrida que cambia gold
+suma alrededor de un megabyte al repo de datos. Y hay un secreto guardado, que #4 evitaba: un token
+de GitHub con escritura sobre el repo de datos, en Key Vault, que caduca y se rota a mano.
 
 ### 11. Los dos workspaces van en la misma versión de runtime
 

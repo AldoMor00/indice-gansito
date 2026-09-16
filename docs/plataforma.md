@@ -197,6 +197,13 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   soportada ([semantic link + SPN](https://learn.microsoft.com/fabric/data-science/semantic-link-service-principal-support#supported-semantic-link-functions)).
   De `notebookutils.fs` y `notebookutils.lakehouse` los docs no dicen nada: se ve en la primera
   corrida de `pl_mantenimiento` en prod.
+- **`notebookutils.credentials.getSecret` lee Key Vault con la identidad de quien corre el
+  notebook**, y hace falta permiso de lectura sobre el secreto
+  ([get secret](https://learn.microsoft.com/fabric/data-engineering/notebookutils/notebookutils-credentials#get-secret)).
+  Que funcione con service principal no lo dice: se ve en la primera corrida de `pl_gold` en prod.
+- **`notebookutils.runtime.context["currentWorkspaceName"]` está en todos los contextos**,
+  interactivo y pipeline
+  ([runtime context](https://learn.microsoft.com/fabric/data-engineering/notebookutils/notebookutils-runtime#view-session-context)).
 
 ## Git integration y despliegue
 
@@ -274,6 +281,14 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   espera. **`fab cp` baja archivos de `Files` a disco local.**
 
 ## Power BI y Direct Lake
+
+- **Direct Lake exige capacidad; un modelo import en My Workspace no.** *Publish to web* desde My
+  Workspace pide una licencia de Power BI, no Pro, y que un admin encienda el setting del tenant.
+  No admite DirectQuery, live connection, RLS ni medidas a nivel reporte
+  ([publish to web](https://learn.microsoft.com/power-bi/collaborate-share/service-publish-to-web#prerequisites)).
+- **En capacidad compartida caben ocho refresh programados al día**, y el programa se pausa solo
+  tras dos meses sin que nadie abra el reporte
+  ([scheduled refresh](https://learn.microsoft.com/power-bi/connect-data/refresh-scheduled-refresh#scheduled-refresh)).
 
 - **Direct Lake no admite columnas calculadas.** Eso descarta el binning del UI y cualquier
   `SWITCH` sobre una columna de una tabla Direct Lake: lo derivado se calcula en gold (decisiones
