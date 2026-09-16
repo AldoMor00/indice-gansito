@@ -78,8 +78,12 @@ En el repositorio `indice-gansito`:
 | secreto | `DATOS_DEPLOY_KEY` | deploy key con escritura en `indice-gansito-datos`, para que la ingesta commitee ahí sin colgar de una cuenta personal |
 | secreto | `INEGI_TOKEN` | el token de la API de INEGI; va en la URL, por eso es secreto y el manifiesto guarda `{token}` |
 
-Y un ruleset que impide borrar `main` y `dev`. No obliga a que `main` entre sólo por PR: `dev` no
-puede exigirlo sin romper la git integration (queda como decisión abierta en `PROGRESO.md`).
+Y dos rulesets:
+
+- `protege-ramas`, sobre `main` y `dev`: impide borrarlas.
+- `main-solo-por-pr`, sobre `main`: sólo entra por PR, sin aprobaciones requeridas (con una sola
+  persona no hay quién apruebe), sin force push, y el único método de merge es merge commit. Nadie
+  tiene bypass. `dev` no lleva esta regla: la git integration de Fabric le hace push directo.
 
 Los workflows con `schedule` o `workflow_dispatch` sólo se registran desde la rama por defecto:
 mientras un workflow viva sólo en `dev`, no existe.
