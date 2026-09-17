@@ -146,6 +146,11 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   anterior ([error handling](https://learn.microsoft.com/azure/data-factory/tutorial-pipeline-failure-error-handling#error-handling)).
   Con `Completed` antes de la última, un fallo intermedio queda verde si la final pasa. Y una
   actividad que falla con sólo camino de completion se da por manejada (decisión #10).
+- ***On completion* no puede coexistir con *on success* ni con *on failure* saliendo de la misma
+  actividad** ([caminos condicionales](https://learn.microsoft.com/azure/data-factory/tutorial-pipeline-failure-error-handling#conditional-paths)).
+  Puestas las dos no hay aviso de nada: el fallo se da por manejado por el camino de completion, el
+  de success se salta, y la regla de la hoja saltada no rescata el rojo, porque con varios padres no
+  llega al que falló. Un nodo de unión colgado ahí no sirve de compuerta (decisión #10).
 - **Los pipelines invocados con *Invoke pipeline (Legacy)* no aparecen en su propio historial.**
   `fab job run-list` del hijo no lista las corridas que dispara el padre; se leen con
   `queryactivityruns` sobre la corrida del padre, cuyo `output.pipelineRunId` lleva a las

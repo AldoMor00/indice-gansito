@@ -466,21 +466,24 @@ y las deletion vectors de cada recálculo.
 
 ## Pipelines y operación
 
-### 10. `pl_bronze`: encadenado, con sesión compartida y un nodo de unión
+### 10. `pl_bronze` y `pl_silver`: cadena serial en *on success*, con sesión compartida
 
-**Decisión.** Las actividades de bronze van encadenadas con *on completion* y comparten sesión con
-el `sessionTag` `bronze`. El reintento se queda en la primera, que es la que pide sesión. Cierra
-`fuentes_ok`, un `Wait` de un segundo que depende de todas con *on success*.
+**Decisión.** Las actividades de bronze y las de silver van encadenadas en serie con *on success*,
+y cada capa comparte sesión con su `sessionTag`. Cada actividad lleva su reintento. No hay nodo de
+unión.
 
-**Motivo.** Sueltas, dispararon en el mismo segundo y una se fue con 430: la trial no da para dos
-sesiones de Spark, y dev y prod comparten capacidad. *On completion* encadena por capacidad, no
-por dependencia, así que el fallo de una no impide que la otra cargue. Compartir sesión no acelera
-nada medible, pero la segunda ya no pide sesión y el 430 entre ellas deja de ser posible. *On
-completion* sola miente: una actividad que falla con sólo camino de completion se da por manejada
-y el pipeline reporta éxito. Con dependencias múltiples evaluadas con AND, el `Wait` deja el
-camino sin tomar y el pipeline truena, como manda #7.
+**Motivo.** Sueltas, las actividades disparan en el mismo segundo y una se va con 430: la trial no
+da para dos sesiones de Spark, y dev y prod comparten capacidad. En serie sólo hay una sesión viva,
+y compartirla evita que la siguiente vuelva a pedir. *On success* y no *on completion*: una
+actividad que falla con sólo camino de completion se da por manejada y el pipeline reporta éxito,
+y entonces silver, gold y el refresh corren sobre una fuente que no aterrizó, contra #7. Colgar un
+nodo de unión con *on success* no lo arregla, porque los dos caminos no pueden salir de la misma
+actividad (`plataforma.md`); con la cadena serial tampoco hace falta, porque la hoja saltada se
+resuelve hacia atrás hasta la que falló y el rojo llega solo. El reintento va en todas porque
+cualquiera puede acabar siendo la que pide sesión.
 
-**Costo.** El tag no basta solo: High concurrency se prende en cada workspace, fuera de git
+**Costo.** Un 430 en una fuente deja sin cargar a las que van detrás, y la corrida se repite
+completa. El tag tampoco basta solo: High concurrency se prende en cada workspace, fuera de git
 (`entorno.md`).
 
 ### 31. La observabilidad de las corridas es el monitoring hub
