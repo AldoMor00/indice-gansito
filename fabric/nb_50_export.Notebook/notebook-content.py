@@ -20,21 +20,27 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # La copia de gold que vive fuera de Fabric: las ocho tablas como un parquet plano cada una
-# en `Files/publico`, de donde se commitean al repo de datos y las lee el modelo import de
-# la cuenta pública (decisión #6).
+# en `Files/publico`, y desde prod el mismo notebook las sube en un solo commit a
+# `indice-gansito-datos/publico`, de donde las lee el modelo import de la cuenta pública
+# (decisión #6).
 #
 # Es la única salida del proyecto que va en dirección contraria. Todo lo demás lee de git y
-# escribe a OneLake; esto lee de OneLake para escribir a git, y existe porque la capacidad es
-# una trial que va a desaparecer con `lh_gold` (decisión #1). El reporte público no puede
-# quedarse colgado de ella.
+# escribe a OneLake; esto lee de OneLake para escribir a git, y existe porque la capacidad
+# pasa la mayor parte del tiempo apagada. El reporte público no puede quedarse colgado de ella.
 #
 # Plano y no Delta, y un archivo por tabla y no 46: el conector Web de Power BI lee un
 # parquet por URL, no un directorio con su `_delta_log`. Y `overwrite`, que las capas del
 # medallón nunca usan, aquí es lo correcto: esto no es una tabla con historia sino una foto
 # completa de gold, y quien lleva la historia es git.
+
+import base64
 
 # El orden es el de lectura del modelo: primero las dimensiones, luego los hechos.
 TABLAS = [
@@ -49,6 +55,15 @@ TABLAS = [
 ]
 
 DESTINO = "publico"
+
+# Sólo prod publica. Se compara contra el nombre exacto y no contra "no es dev": un workspace
+# nuevo o renombrado no escribe al repo público por omisión.
+PUBLICA_DESDE = "ws-gansito-prod"
+REPO = "https://api.github.com/repos/AldoMor00/indice-gansito-datos"
+RAMA = "main"
+# Token fine-grained con Contents: write sobre el repo de datos y nada más (`entorno.md`).
+BOVEDA = "https://kv-indice-gansito.vault.azure.net/"
+SECRETO = "github-indice-gansito-datos"
 
 
 def ruta_files(carpeta: str, lakehouse: str) -> str:
@@ -87,6 +102,79 @@ def exporta(tabla: str, destino: str) -> dict:
     # documentado, y aquí ya lo tenemos medido.
     return {"filas": filas, "bytes": parte.size}
 
+
+def github(metodo: str, recurso: str, token: str, **cuerpo) -> dict:
+    """Una llamada a la API REST de GitHub sobre el repo de datos. Cualquier respuesta que no
+    sea 2xx truena: no hay reintento ni fallback, la corrida se rehace completa."""
+    respuesta = requests.request(
+        metodo,
+        f"{REPO}/{recurso}",
+        json=cuerpo or None,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        timeout=60,
+    )
+    respuesta.raise_for_status()
+    return respuesta.json()
+
+
+def publica(destino: str) -> dict:
+    """Los ocho parquets a `publico/` del repo de datos, en un solo commit.
+
+    Por la API de Git Data (blobs, árbol, commit, ref) y no por la de Contents, que hace un
+    commit por archivo: ocho commits por corrida dejarían el repo con fotos a medias de gold.
+
+    Si el árbol nuevo es el mismo que el del último commit, gold no cambió y no se commitea:
+    el refresh diario del reporte no necesita un commit vacío para nada.
+
+    La ref se mueve sin `force`. Si el cron de ingesta commiteó mientras tanto, GitHub rechaza
+    el avance y la corrida truena; se vuelve a correr y parte del commit nuevo.
+    """
+    token = notebookutils.credentials.getSecret(BOVEDA, SECRETO)
+
+    padre = github("GET", f"git/ref/heads/{RAMA}", token)["object"]["sha"]
+    arbol_padre = github("GET", f"git/commits/{padre}", token)["tree"]["sha"]
+
+    archivos = (
+        spark.read.format("binaryFile")
+        .load([f"{destino}/{tabla}.parquet" for tabla in TABLAS])
+        .select("path", "content")
+        .collect()
+    )
+    entradas = [
+        {
+            "path": f"{DESTINO}/{archivo.path.rsplit('/', 1)[1]}",
+            "mode": "100644",
+            "type": "blob",
+            "sha": github(
+                "POST",
+                "git/blobs",
+                token,
+                content=base64.b64encode(archivo.content).decode(),
+                encoding="base64",
+            )["sha"],
+        }
+        for archivo in archivos
+    ]
+
+    arbol = github("POST", "git/trees", token, base_tree=arbol_padre, tree=entradas)["sha"]
+    if arbol == arbol_padre:
+        return {"commit": "sin cambios"}
+
+    commit = github(
+        "POST",
+        "git/commits",
+        token,
+        message=f"Publica gold de la corrida {CORRIDA}",
+        tree=arbol,
+        parents=[padre],
+    )["sha"]
+    github("PATCH", f"git/refs/heads/{RAMA}", token, sha=commit)
+    return {"commit": commit[:7]}
+
 # METADATA ********************
 
 # META {
@@ -94,10 +182,14 @@ def exporta(tabla: str, destino: str) -> dict:
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Corrida
+
 # CELL ********************
 
 # Se exporta siempre y completo: son ~2 MB, y una foto parcial de gold no le sirve a nadie.
-# Quien decide si la corrida aportó algo es el diff de git al commitear, no el notebook.
+# Quien decide si la corrida aportó algo es el árbol de git, no el notebook.
 destino = ruta_files(DESTINO, GOLD)
 notebookutils.fs.mkdirs(destino)
 
@@ -112,6 +204,12 @@ apunta(
     filas=sum(RESUMEN[t]["filas"] for t in TABLAS),
     bytes=sum(RESUMEN[t]["bytes"] for t in TABLAS),
 )
+
+workspace = notebookutils.runtime.context["currentWorkspaceName"]
+if workspace == PUBLICA_DESDE:
+    apunta("github", **publica(destino))
+else:
+    apunta("github", commit=f"no publica desde {workspace}")
 
 termina()
 
