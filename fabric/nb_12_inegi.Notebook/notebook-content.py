@@ -20,6 +20,10 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # Bronze de INEGI: el INPC quincenal, que es el deflactor del índice real (decisión #35).
@@ -80,6 +84,10 @@ def baja(e: dict) -> pd.DataFrame:
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# MARKDOWN ********************
+
+# # Corrida
 
 # CELL ********************
 

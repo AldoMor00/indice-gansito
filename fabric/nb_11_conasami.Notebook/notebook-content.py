@@ -20,6 +20,10 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # Bronze de CONASAMI. Misma regla que Profeco —no castea, no filtra, no deduplica— y la
@@ -103,6 +107,10 @@ def carga(archivo: str, manifiesto: list[dict], lakehouse: str) -> None:
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# MARKDOWN ********************
+
+# # Corrida
 
 # CELL ********************
 

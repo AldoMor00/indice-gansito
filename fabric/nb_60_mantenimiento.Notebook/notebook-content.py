@@ -20,6 +20,10 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # Mantenimiento de las tablas Delta de las tres capas: compacta, aplica el layout de la
@@ -110,6 +114,10 @@ def limpia(ruta: str) -> int:
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# MARKDOWN ********************
+
+# # Corrida
 
 # CELL ********************
 

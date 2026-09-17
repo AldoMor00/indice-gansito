@@ -20,6 +20,10 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # Pruebas de los helpers de nb_00_config (decisión #7). Se corre a mano y no cuelga de ningún
@@ -189,6 +193,10 @@ def prueba_eslabones_encadenan() -> None:
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# MARKDOWN ********************
+
+# # Corrida
 
 # CELL ********************
 

@@ -20,6 +20,10 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # Bronze de Profeco: deja en Delta los parquets de indice-gansito-datos, sin castear,
@@ -102,6 +106,10 @@ def carga(zona: str, manifiesto: list[dict], lakehouse: str) -> None:
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# MARKDOWN ********************
+
+# # Corrida
 
 # CELL ********************
 

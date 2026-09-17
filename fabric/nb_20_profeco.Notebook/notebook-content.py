@@ -38,6 +38,10 @@ quincenas_pedidas = ""
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # Silver de Profeco: tipa, resuelve identidad y agrega a quincena. Lee de bronze el
@@ -58,6 +62,19 @@ quincenas_pedidas = ""
 # porque con High concurrency la sesión se comparte entre los notebooks de un pipeline.
 spark.conf.set("spark.fabric.resourceProfile", "readHeavyForSpark")
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Lote
+
+# CELL ********************
+
 # `hechos_precios` es el estado de silver: qué quincenas ya se procesaron y con qué
 # intento. Si no existe —primera corrida— todo sale pendiente y el backfill es esta misma.
 TABLA_HECHOS = "hechos_precios"
@@ -74,8 +91,62 @@ EXCLUIDOS = [
 # Cuántas presentaciones puede traer el lote una vez excluidas esas dos (decisión #13).
 SKUS_CANASTA = 9
 
-LLAVE_PRODUCTO = ["presentacion", "marca"]
-ATRIBUTOS_PRODUCTO = ["producto", "categoria"]
+
+def ultimo_intento(filas):
+    """Un `intento` > 1 es una quincena rebajada: gana el mayor. Bronze conserva los dos
+    porque no deduplica; elegir es de silver. Sirve para `precios` y para `tiendas`: las
+    dos llevan el mismo linaje."""
+    maximos = filas.groupBy("_quincena").agg(F.max("_intento").alias("_intento"))
+    return filas.join(maximos, ["_quincena", "_intento"])
+
+
+def pendientes_silver(precios) -> list[str]:
+    """Las quincenas que silver no tiene, o que bronze rebajó con un intento mayor.
+    Espeja pendientes() de nb_00_config, que hace lo mismo contra el manifiesto."""
+    vigentes = precios.select("_quincena", "_intento").distinct()
+    ruta = ruta_tabla(TABLA_HECHOS, SILVER)
+    if not DeltaTable.isDeltaTable(spark, ruta):
+        return [fila["_quincena"] for fila in vigentes.collect()]
+
+    ya = spark.read.format("delta").load(ruta).select("_quincena", "_intento").distinct()
+    faltan = vigentes.join(ya, ["_quincena", "_intento"], "left_anti")
+    return [fila["_quincena"] for fila in faltan.collect()]
+
+
+def a_recalcular(canasta, parametro: str) -> list[str]:
+    """Qué quincenas recorre esta corrida: el parámetro si lo hay, y si no el estado.
+
+    Sustituye al drop de la tabla. `reemplaza_quincenas` con las 46 es esa misma
+    reconstrucción, atómica y sin la ventana sin tabla que el drop abre —si el rerun
+    truena, ahí no queda nada, lo contrario de lo que compró la decisión #15—.
+    """
+    pedidas = [q.strip() for q in parametro.split(",") if q.strip()]
+    if not pedidas:
+        return pendientes_silver(canasta)
+
+    todas = [fila["_quincena"] for fila in canasta.select("_quincena").distinct().collect()]
+    if pedidas == ["todas"]:
+        return todas
+
+    # Una quincena mal escrita dejaría el lote vacío y la corrida saldría no-op y verde,
+    # que es peor que tronar: el rerun se daría por hecho sin haber recalculado nada.
+    desconocidas = sorted(set(pedidas) - set(todas))
+    if desconocidas:
+        raise RuntimeError("quincenas que bronze no tiene — " + ", ".join(desconocidas))
+    return pedidas
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Normalización
+
+# CELL ********************
 
 # Las columnas de tienda se normalizan antes de todo lo demás porque de su texto cuelga la
 # identidad: `id_tienda` es `xxhash64(nombre_comercial, direccion)`, así que cada grafía es
@@ -327,18 +398,6 @@ TYPOS = {
     },
 }
 
-# Los únicos no-ASCII que el texto de tienda puede traer después de normalizar, medidos en
-# las 62 quincenas: ñ, el grado de "N° 3600", la exclamación invertida y los dos ordinales.
-PERMITIDOS = "ñÑ°¡ºª"
-
-# Lo que detiene la corrida: fuera del ASCII imprimible y de PERMITIDOS, o un "?" que
-# sobrevivió a PALABRAS. El "?" va prohibido a propósito —en estas columnas es acento
-# perdido, no signo— así que si queda uno es una palabra nueva que hay que resolver.
-PROHIBIDO = rf"[^\x20-\x7E{PERMITIDOS}]|\?"
-
-# Las columnas que identifican la fila en el mensaje de una compuerta que truena.
-CONTEXTO = ("_quincena", "nombre_comercial", "direccion")
-
 # El único import propio del notebook: lo demás llega por `%run nb_00_config`.
 import re
 
@@ -371,6 +430,54 @@ def normaliza(sdf):
         plegado = plegado.replace(typos, subset=[columna])
     return plegado
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de entrada
+
+# CELL ********************
+
+# Los únicos no-ASCII que el texto de tienda puede traer después de normalizar, medidos en
+# las 62 quincenas: ñ, el grado de "N° 3600", la exclamación invertida y los dos ordinales.
+PERMITIDOS = "ñÑ°¡ºª"
+
+# Lo que detiene la corrida: fuera del ASCII imprimible y de PERMITIDOS, o un "?" que
+# sobrevivió a PALABRAS. El "?" va prohibido a propósito —en estas columnas es acento
+# perdido, no signo— así que si queda uno es una palabra nueva que hay que resolver.
+PROHIBIDO = rf"[^\x20-\x7E{PERMITIDOS}]|\?"
+
+# Las columnas que identifican la fila en el mensaje de una compuerta que truena.
+CONTEXTO = ("_quincena", "nombre_comercial", "direccion")
+CONTEXTO_PRECIO = ("_quincena", "presentacion", "nombre_comercial")
+
+LLAVE_PRODUCTO = ["presentacion", "marca"]
+ATRIBUTOS_PRODUCTO = ["producto", "categoria"]
+
+# Los dos formatos de `presentacion` y lo que saca cada regex:
+#   "Paquete con 6 Mantecadas. Vainilla (188 Gr.)"  ->  piezas=6,    gramos=188
+#   "Paquete 280 Gr. Panqué Nuez"                   ->  piezas=nada, gramos=280
+PIEZAS = r"Paquete con (\d+)\s"     # "Paquete con", el número, y el espacio que lo cierra
+GRAMOS = r"(\d+(?:\.\d+)?) Gr\."    # el número —con decimales opcionales— antes de " Gr."
+FORMATO = r"^Paquete (con \d+\s|\d+(\.\d+)? Gr\.)"   # uno de los dos y ninguno más
+
+# La clave de una tienda es `(nombre_comercial, direccion)` y es la única: búsqueda
+# exhaustiva de los 255 subconjuntos de los 8 campos sobre las 46 quincenas. `direccion`
+# es la del inmueble —Sears y Liverpool comparten la de la plaza— y `nombre_comercial`
+# distingue al inquilino; ninguno alcanza solo (decisión #13).
+LLAVE_TIENDA = ["nombre_comercial", "direccion"]
+ATRIBUTOS_TIENDA = ["cadena_comercial", "giro", "estado", "municipio", "latitud", "longitud"]
+
+# La coordenada es atributo geográfico, no identidad, y desde 2026-04_q2 la fuente da de alta
+# tiendas sin geocodificar —7 Bodega Aurrera del Valle de México—. Exigirla detendría la
+# cadena por tiendas que ni siquiera venden del catálogo objetivo (decisión #38).
+SIN_COORDENADA = ["latitud", "longitud"]
+
 
 def exige_caracteres(
     sdf, columnas: list[str], contexto: tuple[str, ...], muestra: int = 4
@@ -399,27 +506,18 @@ def exige_caracteres(
                 )
             )
 
+# METADATA ********************
 
-def ultimo_intento(filas):
-    """Un `intento` > 1 es una quincena rebajada: gana el mayor. Bronze conserva los dos
-    porque no deduplica; elegir es de silver. Sirve para `precios` y para `tiendas`: las
-    dos llevan el mismo linaje."""
-    maximos = filas.groupBy("_quincena").agg(F.max("_intento").alias("_intento"))
-    return filas.join(maximos, ["_quincena", "_intento"])
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
 
+# MARKDOWN ********************
 
-def pendientes_silver(precios) -> list[str]:
-    """Las quincenas que silver no tiene, o que bronze rebajó con un intento mayor.
-    Espeja pendientes() de nb_00_config, que hace lo mismo contra el manifiesto."""
-    vigentes = precios.select("_quincena", "_intento").distinct()
-    ruta = ruta_tabla(TABLA_HECHOS, SILVER)
-    if not DeltaTable.isDeltaTable(spark, ruta):
-        return [fila["_quincena"] for fila in vigentes.collect()]
+# ## Escritura
 
-    ya = spark.read.format("delta").load(ruta).select("_quincena", "_intento").distinct()
-    faltan = vigentes.join(ya, ["_quincena", "_intento"], "left_anti")
-    return [fila["_quincena"] for fila in faltan.collect()]
-
+# CELL ********************
 
 def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
     """Hecho: se reescribe lo de las quincenas recalculadas y nada más.
@@ -447,35 +545,20 @@ def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
     )
     apunta(tabla, filas=nuevas.count(), quincenas=len(quincenas))
 
-
-def a_recalcular(canasta, parametro: str) -> list[str]:
-    """Qué quincenas recorre esta corrida: el parámetro si lo hay, y si no el estado.
-
-    Sustituye al drop de la tabla. `reemplaza_quincenas` con las 46 es esa misma
-    reconstrucción, atómica y sin la ventana sin tabla que el drop abre —si el rerun
-    truena, ahí no queda nada, lo contrario de lo que compró la decisión #15—.
-    """
-    pedidas = [q.strip() for q in parametro.split(",") if q.strip()]
-    if not pedidas:
-        return pendientes_silver(canasta)
-
-    todas = [fila["_quincena"] for fila in canasta.select("_quincena").distinct().collect()]
-    if pedidas == ["todas"]:
-        return todas
-
-    # Una quincena mal escrita dejaría el lote vacío y la corrida saldría no-op y verde,
-    # que es peor que tronar: el rerun se daría por hecho sin haber recalculado nada.
-    desconocidas = sorted(set(pedidas) - set(todas))
-    if desconocidas:
-        raise RuntimeError("quincenas que bronze no tiene — " + ", ".join(desconocidas))
-    return pedidas
-
 # METADATA ********************
 
 # META {
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# MARKDOWN ********************
+
+# # Corrida
+
+# MARKDOWN ********************
+
+# ## Lote
 
 # CELL ********************
 
@@ -491,13 +574,43 @@ canasta = (
 
 quincenas_lote = sorted(a_recalcular(canasta, quincenas_pedidas))
 
+apunta("bronze_precios", filas=bronze_precios.count())
+apunta("canasta", filas=canasta.count(), excluidos=len(EXCLUIDOS))
+
+# Las tiendas salen del corte completo del archivo, no del de precios: si salieran de ahí
+# la dimensión quedaría sesgada a las que venden pastelillos (decisión #2). Por eso este
+# bloque no lee `lote` sino su propia tabla, acotada a las mismas quincenas del lote.
+bronze_tiendas = de_bronze("tiendas")
+tiendas_crudas = (
+    ultimo_intento(bronze_tiendas)
+    .filter(F.col("_quincena").isin(quincenas_lote))
+)
+
+apunta("bronze_tiendas", filas=bronze_tiendas.count())
+
+# Con el lote vacío —el estado estable del cron— todo lo que sigue es un no-op: el MERGE
+# no encuentra nada que insertar y no commitea versión. No hace falta cortar aquí, y un
+# solo punto de salida se lee mejor.
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Normalización
+
+# CELL ********************
+
 # `normaliza` va sobre el lote y no sobre la canasta, igual que en tiendas: elegir quincenas
 # sólo mira `_quincena` e `_intento`, que no normaliza, y así la UDF cuesta lo que pesa el
 # lote y no la historia de bronze.
 lote = normaliza(canasta.filter(F.col("_quincena").isin(quincenas_lote))).cache()
+tiendas_lote = normaliza(tiendas_crudas)
 
-apunta("bronze_precios", filas=bronze_precios.count())
-apunta("canasta", filas=canasta.count(), excluidos=len(EXCLUIDOS))
 apunta(
     "lote",
     origen=quincenas_pedidas.strip() or "pendientes",
@@ -505,15 +618,31 @@ apunta(
     filas=lote.count(),
 )
 
-# Con el lote vacío —el estado estable del cron— todo lo que sigue es un no-op: el MERGE
-# no encuentra nada que insertar y no commitea versión. No hace falta cortar aquí, y un
-# solo punto de salida se lee mejor.
+# Cuánto texto llegó con el acento perdido. Es métrica del lote y no compuerta: mide si la
+# fuente se está degradando o recuperando —junio de 2026 trajo 4,378 filas y julio ninguna—
+# y eso se mira, no detiene la corrida, porque PALABRAS ya lo resuelve.
+apunta(
+    "normaliza",
+    filas_con_interrogacion=tiendas_crudas.filter(
+        " OR ".join(f"`{c}` LIKE '%?%'" for c in COLUMNAS_TEXTO)
+    ).count(),
+)
 
-# Compuertas de entrada, y los caracteres van primero: si la normalización dejó uno que no
-# conoce, todo lo que sigue estaría hasheando una grafía que no es la canónica y partiría la
-# tienda en dos (decisión #39).
-CONTEXTO_PRECIO = ("_quincena", "presentacion", "nombre_comercial")
+# METADATA ********************
 
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de entrada
+
+# CELL ********************
+
+# Los caracteres van primero: si la normalización dejó uno que no conoce, todo lo que sigue
+# estaría hasheando una grafía que no es la canónica y partiría la tienda en dos (decisión #39).
 exige_caracteres(lote, COLUMNAS_TEXTO, CONTEXTO_PRECIO)
 
 # Lo vacío se ataja aquí y no con un `NOT NULL` sobre el id: las llaves no se castean, se
@@ -525,13 +654,6 @@ exige_completo(
     CONTEXTO_PRECIO,
 )
 exige_uno_por_clave(lote, LLAVE_PRODUCTO, ATRIBUTOS_PRODUCTO)
-
-# Los dos formatos de `presentacion` y lo que saca cada regex:
-#   "Paquete con 6 Mantecadas. Vainilla (188 Gr.)"  ->  piezas=6,    gramos=188
-#   "Paquete 280 Gr. Panqué Nuez"                   ->  piezas=nada, gramos=280
-PIEZAS = r"Paquete con (\d+)\s"     # "Paquete con", el número, y el espacio que lo cierra
-GRAMOS = r"(\d+(?:\.\d+)?) Gr\."    # el número —con decimales opcionales— antes de " Gr."
-FORMATO = r"^Paquete (con \d+\s|\d+(\.\d+)? Gr\.)"   # uno de los dos y ninguno más
 
 # Sobre el formato y no sobre `piezas`: ahí un regex roto ya no se distingue de la
 # presentación que legítimamente no declara piezas.
@@ -550,6 +672,35 @@ if desconocidas:
 skus = presentaciones.count()
 if skus > SKUS_CANASTA:
     raise RuntimeError(f"{skus} presentaciones en el lote y la canasta son {SKUS_CANASTA}")
+
+exige_caracteres(tiendas_lote, COLUMNAS_TEXTO, CONTEXTO)
+
+exige_completo(
+    tiendas_lote,
+    [c for c in LLAVE_TIENDA + ATRIBUTOS_TIENDA if c not in SIN_COORDENADA],
+    CONTEXTO,
+)
+
+# Ningún atributo cambia bajo la clave, y por eso dim_tienda no lleva SCD2. En las 46
+# quincenas originales eso es cero conflictos en los seis atributos; el lote que empieza en
+# 2025-12 trae 618, y juntar las 62 en crudo da 1,225 —los 851 de `estado` sólo chocan
+# cruzando el límite, porque la fuente lo acentuó—. Todos son grafías y ninguno es un atributo
+# distinto, así que normalizados vuelven a cero (decisión #39). Que uno cambie de verdad es lo
+# que haría falsa esa decisión: se mira, no se desempata.
+exige_uno_por_clave(tiendas_lote, LLAVE_TIENDA, ATRIBUTOS_TIENDA)
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Dimensiones
+
+# CELL ********************
 
 dim_producto = (
     lote.groupBy(*LLAVE_PRODUCTO)
@@ -574,56 +725,6 @@ dim_producto = (
     )
 )
 
-# Las tiendas salen del corte completo del archivo, no del de precios: si salieran de ahí
-# la dimensión quedaría sesgada a las que venden pastelillos (decisión #2). Por eso este
-# bloque no lee `lote` sino su propia tabla, acotada a las mismas quincenas del lote.
-bronze_tiendas = de_bronze("tiendas")
-tiendas_crudas = (
-    ultimo_intento(bronze_tiendas)
-    .filter(F.col("_quincena").isin(quincenas_lote))
-)
-tiendas_lote = normaliza(tiendas_crudas)
-
-apunta("bronze_tiendas", filas=bronze_tiendas.count())
-
-# Cuánto texto llegó con el acento perdido. Es métrica del lote y no compuerta: mide si la
-# fuente se está degradando o recuperando —junio de 2026 trajo 4,378 filas y julio ninguna—
-# y eso se mira, no detiene la corrida, porque PALABRAS ya lo resuelve.
-apunta(
-    "normaliza",
-    filas_con_interrogacion=tiendas_crudas.filter(
-        " OR ".join(f"`{c}` LIKE '%?%'" for c in COLUMNAS_TEXTO)
-    ).count(),
-)
-
-# La clave de una tienda es `(nombre_comercial, direccion)` y es la única: búsqueda
-# exhaustiva de los 255 subconjuntos de los 8 campos sobre las 46 quincenas. `direccion`
-# es la del inmueble —Sears y Liverpool comparten la de la plaza— y `nombre_comercial`
-# distingue al inquilino; ninguno alcanza solo (decisión #13).
-LLAVE_TIENDA = ["nombre_comercial", "direccion"]
-ATRIBUTOS_TIENDA = ["cadena_comercial", "giro", "estado", "municipio", "latitud", "longitud"]
-
-# La coordenada es atributo geográfico, no identidad, y desde 2026-04_q2 la fuente da de alta
-# tiendas sin geocodificar —7 Bodega Aurrera del Valle de México—. Exigirla detendría la
-# cadena por tiendas que ni siquiera venden del catálogo objetivo (decisión #38).
-SIN_COORDENADA = ["latitud", "longitud"]
-
-exige_caracteres(tiendas_lote, COLUMNAS_TEXTO, CONTEXTO)
-
-exige_completo(
-    tiendas_lote,
-    [c for c in LLAVE_TIENDA + ATRIBUTOS_TIENDA if c not in SIN_COORDENADA],
-    CONTEXTO,
-)
-
-# Ningún atributo cambia bajo la clave, y por eso dim_tienda no lleva SCD2. En las 46
-# quincenas originales eso es cero conflictos en los seis atributos; el lote que empieza en
-# 2025-12 trae 618, y juntar las 62 en crudo da 1,225 —los 851 de `estado` sólo chocan
-# cruzando el límite, porque la fuente lo acentuó—. Todos son grafías y ninguno es un atributo
-# distinto, así que normalizados vuelven a cero (decisión #39). Que uno cambie de verdad es lo
-# que haría falsa esa decisión: se mira, no se desempata.
-exige_uno_por_clave(tiendas_lote, LLAVE_TIENDA, ATRIBUTOS_TIENDA)
-
 dim_tienda = (
     tiendas_lote.groupBy(*LLAVE_TIENDA)
     .agg(*[F.max(c).alias(c) for c in ATRIBUTOS_TIENDA])
@@ -643,6 +744,19 @@ dim_tienda = (
         F.col("longitud").cast("decimal(9,6)").alias("longitud"),
     )
 )
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Hechos
+
+# CELL ********************
 
 # `precio` es lo único que se castea a número en el camino del hecho: `fecha_registro` viene
 # en `yyyy/MM/dd` sin ambigüedad y las llaves son texto que no se convierte.
@@ -684,10 +798,36 @@ hechos = (
     )
 )
 
-# Compuertas de salida. Un `id` repetido sólo puede ser colisión de `xxhash64`, y basta
-# revisarlo en las dimensiones: el hecho apunta a esas mismas llaves.
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de salida
+
+# CELL ********************
+
+# Un `id` repetido sólo puede ser colisión de `xxhash64`, y basta revisarlo en las
+# dimensiones: el hecho apunta a esas mismas llaves.
 exige_llave_unica(dim_producto, "id_producto")
 exige_llave_unica(dim_tienda, "id_tienda")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Escritura
+
+# CELL ********************
 
 # Las dimensiones antes que el hecho porque el hecho es el punto de commit:
 # `pendientes_silver` lo lee para saber qué quincenas ya están hechas, así que una corrida

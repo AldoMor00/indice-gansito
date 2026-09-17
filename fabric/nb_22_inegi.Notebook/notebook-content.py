@@ -20,6 +20,10 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # Silver de INEGI: tipa el INPC quincenal y le pone la llave de la quincena, que es el
@@ -35,6 +39,39 @@
 
 spark.conf.set("spark.fabric.resourceProfile", "readHeavyForSpark")
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Lote
+
+# CELL ********************
+
+def ultima_version(filas):
+    """Bronze conserva todas las versiones del archivo porque no deduplica; elegir es de
+    silver. Igual que en nb_21: esta fuente no tiene período, se versiona por sha256
+    (decisión #9)."""
+    maximos = filas.groupBy("_archivo").agg(F.max("_version").alias("_version"))
+    return filas.join(maximos, ["_archivo", "_version"])
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de entrada
+
+# CELL ********************
+
 # Los dos atributos que vuelven a esta serie usable como deflactor: `15` es quincenal y
 # `1051` es "Índice base 2018=100". Se comprueban porque casi todos los indicadores vecinos
 # de 910420 son variación porcentual y no nivel —ver scripts/ingesta_inpc.py—: si INEGI
@@ -47,31 +84,6 @@ OBLIGATORIAS = ["TIME_PERIOD", "OBS_VALUE"]
 # `AAAA/MM/0Q`, con el ordinal de la quincena en el tercer campo. De aquí cuelga el
 # `substring` de `quincena_de`.
 PERIODO = r"^\d{4}/\d{2}/0[12]$"
-
-
-def ultima_version(filas):
-    """Bronze conserva todas las versiones del archivo porque no deduplica; elegir es de
-    silver. Igual que en nb_21: esta fuente no tiene período, se versiona por sha256
-    (decisión #9)."""
-    maximos = filas.groupBy("_archivo").agg(F.max("_version").alias("_version"))
-    return filas.join(maximos, ["_archivo", "_version"])
-
-
-def quincena_de(periodo):
-    """`2026/08/02` a `2026-08_q2`, la etiqueta con la que se llavea todo el proyecto.
-
-    El tercer campo de INEGI es el ordinal de la quincena dentro del mes, no el día: `02`
-    es la segunda quincena y no el día 2. Se toma sólo su último carácter porque la
-    etiqueta del proyecto es `q2` y no `q02`; que el campo sea siempre `01` o `02` lo
-    garantiza `exige_periodo_quincenal`, no este `substring`.
-    """
-    return F.concat(
-        F.substring(periodo, 1, 4),
-        F.lit("-"),
-        F.substring(periodo, 6, 2),
-        F.lit("_q"),
-        F.substring(periodo, 10, 1),
-    )
 
 
 def exige_serie_conocida(obs) -> None:
@@ -110,6 +122,43 @@ def exige_periodo_quincenal(obs, muestra: int = 4) -> None:
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# ## Hechos
+
+# CELL ********************
+
+def quincena_de(periodo):
+    """`2026/08/02` a `2026-08_q2`, la etiqueta con la que se llavea todo el proyecto.
+
+    El tercer campo de INEGI es el ordinal de la quincena dentro del mes, no el día: `02`
+    es la segunda quincena y no el día 2. Se toma sólo su último carácter porque la
+    etiqueta del proyecto es `q2` y no `q02`; que el campo sea siempre `01` o `02` lo
+    garantiza `exige_periodo_quincenal`, no este `substring`.
+    """
+    return F.concat(
+        F.substring(periodo, 1, 4),
+        F.lit("-"),
+        F.substring(periodo, 6, 2),
+        F.lit("_q"),
+        F.substring(periodo, 10, 1),
+    )
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# # Corrida
+
+# MARKDOWN ********************
+
+# ## Lote
+
 # CELL ********************
 
 # La serie entera, sin recortar a la ventana de precios: silver tipa lo que la fuente da y
@@ -119,10 +168,36 @@ def exige_periodo_quincenal(obs, muestra: int = 4) -> None:
 inpc_bronze = de_bronze("inpc_quincenal")
 obs = ultima_version(inpc_bronze)
 
-# Compuertas de entrada: lo que es de la fuente, antes de derivar nada.
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de entrada
+
+# CELL ********************
+
+# Lo que es de la fuente, antes de derivar nada.
 exige_completo(obs, OBLIGATORIAS)
 exige_serie_conocida(obs)
 exige_periodo_quincenal(obs)
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Hechos
+
+# CELL ********************
 
 hechos_inpc_quincenal = obs.withColumn("_quincena", quincena_de("TIME_PERIOD")).select(
     clave("_quincena").alias("id_quincena"),
@@ -136,8 +211,33 @@ hechos_inpc_quincenal = obs.withColumn("_quincena", quincena_de("TIME_PERIOD")).
 
 apunta("bronze_inpc", filas=inpc_bronze.count(), quincenas=hechos_inpc_quincenal.count())
 
-# Compuerta de salida: sólo lo que existe después de transformar.
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de salida
+
+# CELL ********************
+
 exige_llave_unica(hechos_inpc_quincenal, "id_quincena")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Escritura
+
+# CELL ********************
 
 upsert(hechos_inpc_quincenal, "hechos_inpc_quincenal", ["id_quincena"])
 
