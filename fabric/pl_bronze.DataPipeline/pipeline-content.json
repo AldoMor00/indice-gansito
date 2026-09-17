@@ -37,33 +37,6 @@
           {
             "activity": "nb_10_profeco",
             "dependencyConditions": [
-              "Completed"
-            ]
-          }
-        ]
-      },
-      {
-        "type": "Wait",
-        "typeProperties": {
-          "waitTimeInSeconds": 1
-        },
-        "name": "fuentes_ok",
-        "dependsOn": [
-          {
-            "activity": "nb_11_conasami",
-            "dependencyConditions": [
-              "Succeeded"
-            ]
-          },
-          {
-            "activity": "nb_10_profeco",
-            "dependencyConditions": [
-              "Succeeded"
-            ]
-          },
-          {
-            "activity": "nb_12_inegi",
-            "dependencyConditions": [
               "Succeeded"
             ]
           }
@@ -88,7 +61,7 @@
           {
             "activity": "nb_11_conasami",
             "dependencyConditions": [
-              "Completed"
+              "Succeeded"
             ]
           }
         ]
