@@ -517,6 +517,21 @@ notebooks contra un límite de cinco por sesión, y subirlo exige un Environment
 
 **Costo.** Los hijos no aparecen en su propio historial; se leen desde la corrida del padre.
 
+### 44. El gasto se vigila con un presupuesto sobre el resource group
+
+**Decisión.** Un presupuesto de 1 USD al mes sobre `rg-indice-gansito`, con aviso por correo al
+10 % y al 100 % del gasto real. Es el único presupuesto del proyecto, y todo lo que cueste dinero
+vive en ese resource group.
+
+**Motivo.** Hoy el resource group es sólo el Key Vault, que cobra por operación y no por existir:
+ahí cualquier gasto es anomalía y no uso, así que el monto es el más bajo que todavía distingue
+una cosa de la otra. Va sobre el resource group y no sobre el recurso porque ahí mismo va a caer
+la capacidad cuando se pague, y entonces el mismo presupuesto cubre las dos con un monto medido.
+Medido y no estimado: lo que una corrida consume se lee en Capacity Metrics.
+
+**Costo.** Un presupuesto avisa, no frena: entre que el gasto ocurre y llega el correo pasan
+horas. Y caduca en 2030 sin decirlo.
+
 ---
 
 ## Gold y el índice
