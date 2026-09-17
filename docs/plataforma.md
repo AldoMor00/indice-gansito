@@ -174,6 +174,26 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   ([doc](https://learn.microsoft.com/fabric/data-engineering/user-data-functions/user-data-functions-overview)).
   Sostienen la decisión #18.
 
+## Capacidad y facturación
+
+- **Una capacidad de pago por uso se cobra por minuto mientras está activa**
+  ([cost optimization](https://learn.microsoft.com/azure/well-architected/microsoft-fabric/cost-optimization#identify-key-cost-drivers)),
+  y pausarla detiene los medidores de cómputo de todos los workloads
+  ([effect on billing](https://learn.microsoft.com/fabric/data-warehouse/pause-resume#effect-on-billing)).
+- **El almacenamiento de OneLake se sigue cobrando con la capacidad pausada**, y mientras lo esté
+  se rechaza toda transacción contra ella
+  ([OneLake consumption](https://learn.microsoft.com/fabric/onelake/onelake-consumption)). Es el
+  único cargo del proyecto que no baja a cero.
+- **Al pausar, el remanente de operaciones suavizadas y de overage se suma a la factura**
+  ([pause and resume](https://learn.microsoft.com/fabric/enterprise/pause-resume)). Meter una
+  corrida en una ventana más corta no la abarata por sí sola: lo que exceda la capacidad se cobra
+  por su propio medidor, más caro que el cómputo base.
+- **Los precios no se escriben aquí.** El catálogo vigente se consulta con la Retail Prices API
+  filtrando por `serviceName`, que es lo que indica la propia doc de facturación de Fabric: la
+  página de precios no enumera los medidores
+  ([lista de medidores](https://learn.microsoft.com/fabric/enterprise/azure-billing#get-the-current-list-of-meters)).
+  Key Vault standard no cobra por existir, cobra por operaciones.
+
 ## Identidades y permisos
 
 - **Un notebook dentro de un pipeline corre como quien modificó el pipeline al último**, no como
@@ -202,6 +222,21 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   soportada ([semantic link + SPN](https://learn.microsoft.com/fabric/data-science/semantic-link-service-principal-support#supported-semantic-link-functions)).
   De `notebookutils.fs` y `notebookutils.lakehouse` los docs no dicen nada: se ve en la primera
   corrida de `pl_mantenimiento` en prod.
+- **`notebookutils.credentials.getSecret` lee Key Vault con la identidad de quien corre el
+  notebook**, y hace falta permiso de lectura sobre el secreto
+  ([get secret](https://learn.microsoft.com/fabric/data-engineering/notebookutils/notebookutils-credentials#get-secret)).
+  Que funcione con service principal no lo dice: se ve en la primera corrida de `pl_gold` en prod.
+- **`notebookutils.runtime.context["currentWorkspaceName"]` está en todos los contextos**,
+  interactivo y pipeline
+  ([runtime context](https://learn.microsoft.com/fabric/data-engineering/notebookutils/notebookutils-runtime#view-session-context)).
+- **Un usuario B2B no puede ser capacity administrator**, y el admin tiene que pertenecer al
+  tenant donde se aprovisiona la capacidad
+  ([buy capacity](https://learn.microsoft.com/fabric/enterprise/buy-capacity#buy-an-azure-capacity-sku-for-fabric)).
+- **Pausar y reanudar una capacidad son permisos de Azure, no de Fabric**: piden
+  `Microsoft.Fabric/capacities/suspend/action` y `resume/action` sobre el recurso
+  ([pause and resume](https://learn.microsoft.com/fabric/enterprise/pause-resume)). Ser capacity
+  admin no alcanza, y al revés tampoco: quien prende la capacidad y quien corre los notebooks
+  pueden ser dos cuentas distintas, y aquí lo son (`entorno.md`).
 
 ## Git integration y despliegue
 
@@ -279,6 +314,14 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   espera. **`fab cp` baja archivos de `Files` a disco local.**
 
 ## Power BI y Direct Lake
+
+- **Direct Lake exige capacidad; un modelo import en My Workspace no.** *Publish to web* desde My
+  Workspace pide una licencia de Power BI, no Pro, y que un admin encienda el setting del tenant.
+  No admite DirectQuery, live connection, RLS ni medidas a nivel reporte
+  ([publish to web](https://learn.microsoft.com/power-bi/collaborate-share/service-publish-to-web#prerequisites)).
+- **En capacidad compartida caben ocho refresh programados al día**, y el programa se pausa solo
+  tras dos meses sin que nadie abra el reporte
+  ([scheduled refresh](https://learn.microsoft.com/power-bi/connect-data/refresh-scheduled-refresh#scheduled-refresh)).
 
 - **Direct Lake no admite columnas calculadas.** Eso descarta el binning del UI y cualquier
   `SWITCH` sobre una columna de una tabla Direct Lake: lo derivado se calcula en gold (decisiones
