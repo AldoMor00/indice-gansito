@@ -19,19 +19,52 @@ sin este contexto.
 
 ## Estructura: config, definiciones, corrida
 
-Tres celdas, y una cuarta sólo si separarla aporta algo.
-
 1. **`%run nb_00_config`**, sola. Trae `ruta_tabla`, `CORRIDA`, `DeltaTable`, `F`, las
    compuertas, `clave`, `upsert`, el trío del resumen y el guard que truena si el notebook tiene
    lakehouse por defecto.
-2. **Definiciones**: el comentario de cabecera, el perfil de recursos, las constantes y las
-   funciones. Aquí no corre nada: se lee de arriba abajo sin pensar en estado.
-3. **La corrida**: leer, transformar, escribir, y el `exit` al final.
+2. **`# Definiciones`**: una celda con el comentario de cabecera y el perfil de recursos, y
+   después las constantes y funciones repartidas en bloques. Aquí no corre nada: se lee de arriba
+   abajo sin pensar en estado.
+3. **`# Corrida`**: leer, transformar, escribir, en bloques, y el `exit` al final.
 
-El comentario de cabecera va en la celda 2, no en una celda de markdown: viaja con el código al
-`notebook-content.py`. Dice qué hace el notebook y qué decisiones aplica, por número. Los
-comentarios pueden repetir el porqué de una decisión, para no tener que abrir el `.md` desde el
-notebook; lo que nunca se omite es el `(decisión #N)`.
+El comentario de cabecera va en código y no en markdown: dice qué hace el notebook y qué
+decisiones aplica, por número. Los comentarios pueden repetir el porqué de una decisión, para no
+tener que abrir el `.md` desde el notebook; lo que nunca se omite es el `(decisión #N)`.
+
+### Bloques
+
+Cada bloque es una celda markdown con sólo su encabezado, seguida de una celda de código. El
+encabezado va en markdown porque el panel *Contents* de Fabric lista el primer encabezado de cada
+celda markdown y el *markdown folding* esconde las celdas que le siguen; un comentario dentro del
+código no hace ninguna de las dos cosas
+([Learn](https://learn.microsoft.com/fabric/data-engineering/author-execute-notebook#develop-notebooks)).
+El porqué se queda en los comentarios del código.
+
+Los bloques son etapas del flujo, en este orden, y se omite el que no aplica:
+
+| bloque | qué lleva |
+|---|---|
+| `## Lote` | qué quincenas o versiones se recalculan, y lo que leen las compuertas de entrada |
+| `## Normalización` | el texto a su forma canónica, antes de hashear |
+| `## Compuertas de entrada` | todas las del lote crudo, antes de armar nada |
+| `## Dimensiones` | |
+| `## Hechos` | |
+| `## Compuertas de salida` | las del DataFrame armado |
+| `## Escritura` | escrituras, layout y constraints |
+
+- **Por etapa y no por tabla**: las compuertas de todas las tablas van juntas antes de armar. Como
+  Spark es perezoso, reordenar sólo cambia cuál truena primero si fallan varias.
+- **Definiciones con los mismos encabezados.** Una constante o función va bajo el primer bloque de
+  la corrida que la usa. Un grupo de constantes que se explica junto va junto, bajo el primer
+  bloque que usa alguna. Un bloque sin definiciones no lleva sección.
+- **La corrida no define constantes literales.** Lo que se resuelve en vivo, como un id de
+  workspace, sí va en la corrida.
+- **`termina()` es la última línea del último bloque.** Después de `## Escritura` sólo va un
+  bloque que lee lo ya escrito, como `## Intervalo` en `nb_30`, que resume la serie publicada.
+- **Una corrida de un solo paso no se parte**: lleva `# Definiciones` y `# Corrida` y nada más.
+  Así son bronze, export, mantenimiento, pruebas y el clon.
+- **`nb_00_config` no tiene corrida**: sus secciones van en `#` por tema (sesión, resumen, rutas,
+  bronze, compuertas, silver y gold).
 
 El perfil de recursos se declara en cada notebook que escribe, porque con High concurrency la
 sesión se comparte y el perfil del anterior seguiría puesto (decisión #33):
@@ -143,6 +176,8 @@ El archivo escrito a mano sirve para las dos vías: subirlo con `fab import` o m
 ambas el formato tiene que ser exacto o el item sale `uncommitted` al sincronizar. La plantilla
 está en [`assets/plantilla-notebook-content.py`](assets/plantilla-notebook-content.py).
 
+- **Una celda markdown es `# MARKDOWN ****...`, cada línea con prefijo `# ` y sin bloque
+  `META`**: `## Lote` se escribe `# ## Lote`. Sacado de un export de Fabric.
 - **`.platform` va sin salto de línea final.** Fabric lo escribe así; con uno de más el item
   aparece como modificado para siempre.
 - **El `logicalId` es del item.** Si el `.platform` se escribe a mano, va un GUID nuevo bien

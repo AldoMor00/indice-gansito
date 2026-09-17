@@ -20,6 +20,10 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # <Qué hace este notebook, en dos o tres líneas, y a qué decisión responde.>
@@ -46,9 +50,47 @@ def apunta(paso: str, **datos) -> None:
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# ## <Bloque: constantes y funciones que usa primero ese bloque de la corrida.>
+
 # CELL ********************
 
-# <La corrida: leer, transformar, escribir.>
+# <Definiciones del bloque.>
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# # Corrida
+
+# MARKDOWN ********************
+
+# ## <Bloque: Lote, Normalización, Compuertas de entrada, Dimensiones, Hechos...>
+
+# CELL ********************
+
+# <Lo que hace el bloque.>
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Escritura
+
+# CELL ********************
+
+# <Escrituras, layout y constraints.>
 
 # `exit` corta el notebook, así que va al final y nada se pone después. El pipeline lo
 # lee en @activity('<notebook>').output.result.exitValue.
