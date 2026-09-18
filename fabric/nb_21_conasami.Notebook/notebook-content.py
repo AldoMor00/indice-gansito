@@ -20,6 +20,10 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 from pyspark.sql import Window  # sólo este notebook lo usa: el cierre de vigencias
@@ -38,9 +42,38 @@ from pyspark.sql import Window  # sólo este notebook lo usa: el cierre de vigen
 # El de silver, explícito: en pl_silver corre detrás de nb_20 en la misma sesión (decisión #33).
 spark.conf.set("spark.fabric.resourceProfile", "readHeavyForSpark")
 
-# La vigencia abierta se cierra con centinela y no con nulo: `es_vigente` sale de comparar
-# contra ella, y el BETWEEN de gold no tiene que arrastrar un `OR IS NULL`.
-ABIERTA = "9999-12-31"
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Lote
+
+# CELL ********************
+
+def ultima_version(filas):
+    """Bronze conserva todas las versiones del archivo porque no deduplica; elegir es de
+    silver. Espeja `ultimo_intento` de nb_20 sobre la otra columna de linaje: esta fuente
+    no tiene período, se versiona por sha256 (decisión #9)."""
+    maximos = filas.groupBy("_archivo").agg(F.max("_version").alias("_version"))
+    return filas.join(maximos, ["_archivo", "_version"])
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de entrada
+
+# CELL ********************
 
 # Los 7 literales de `zona_salarial` en las 42 filas del archivo. Un octavo es otro renombre
 # —como el de 2025— y partiría una zona en dos historias sin que nadie lo vea: se decide.
@@ -52,12 +85,36 @@ LLAVE_ZONA = ["inicio_vigencia", "zona_salarial"]
 COLUMNAS_INDICE = ["anio", "mes", "smg_nominal", "smg_real", "smgr_indice"]
 
 
-def ultima_version(filas):
-    """Bronze conserva todas las versiones del archivo porque no deduplica; elegir es de
-    silver. Espeja `ultimo_intento` de nb_20 sobre la otra columna de linaje: esta fuente
-    no tiene período, se versiona por sha256 (decisión #9)."""
-    maximos = filas.groupBy("_archivo").agg(F.max("_version").alias("_version"))
-    return filas.join(maximos, ["_archivo", "_version"])
+def exige_literales_conocidos(zonas) -> None:
+    """Truena si aparece un `zona_salarial` fuera de LITERALES. Un renombre no visto no lo
+    ve ningún cast: da una zona nueva con la historia partida a la mitad."""
+    nuevos = (
+        zonas.filter(~F.col("zona_salarial").isin(LITERALES))
+        .select("zona_salarial")
+        .distinct()
+        .collect()
+    )
+    if nuevos:
+        raise RuntimeError(
+            "`zona_salarial` desconocida — " + ", ".join(f["zona_salarial"] for f in nuevos)
+        )
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Dimensiones
+
+# CELL ********************
+
+# La vigencia abierta se cierra con centinela y no con nulo: `es_vigente` sale de comparar
+# contra ella, y el BETWEEN de gold no tiene que arrastrar un `OR IS NULL`.
+ABIERTA = "9999-12-31"
 
 
 def calendario_de_vigencias(zonas):
@@ -82,21 +139,18 @@ def calendario_de_vigencias(zonas):
         )
     )
 
+# METADATA ********************
 
-def exige_literales_conocidos(zonas) -> None:
-    """Truena si aparece un `zona_salarial` fuera de LITERALES. Un renombre no visto no lo
-    ve ningún cast: da una zona nueva con la historia partida a la mitad."""
-    nuevos = (
-        zonas.filter(~F.col("zona_salarial").isin(LITERALES))
-        .select("zona_salarial")
-        .distinct()
-        .collect()
-    )
-    if nuevos:
-        raise RuntimeError(
-            "`zona_salarial` desconocida — " + ", ".join(f["zona_salarial"] for f in nuevos)
-        )
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
 
+# MARKDOWN ********************
+
+# ## Compuertas de salida
+
+# CELL ********************
 
 def exige_vigencia_continua(dim) -> None:
     """Truena si una zona tiene un hueco entre dos de sus vigencias.
@@ -133,6 +187,14 @@ def exige_vigencia_continua(dim) -> None:
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Corrida
+
+# MARKDOWN ********************
+
+# ## Lote
+
 # CELL ********************
 
 # Las dos tablas son independientes y no comparten lote, pero las dos escrituras van al
@@ -143,9 +205,41 @@ def exige_vigencia_continua(dim) -> None:
 zonas_bronze = de_bronze("salario_zonas")
 zonas = ultima_version(zonas_bronze)
 
+indice_bronze = de_bronze("salario_indice")
+indice = ultima_version(indice_bronze)
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de entrada
+
+# CELL ********************
+
 exige_completo(zonas, LLAVE_ZONA + ["salario_minimo_general"])
 exige_literales_conocidos(zonas)
 exige_uno_por_clave(zonas, LLAVE_ZONA, ["salario_minimo_general"])
+
+exige_completo(indice, COLUMNAS_INDICE)
+exige_uno_por_clave(indice, ["anio", "mes"], ["smg_nominal", "smg_real", "smgr_indice"])
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Dimensiones
+
+# CELL ********************
 
 por_zona = zonas.withColumn(
     # `resto del pais` (2019-2024) y `general` (2025-) son la misma zona renombrada, así que
@@ -178,11 +272,18 @@ apunta(
     zonas=por_zona.select("zona").distinct().count(),
 )
 
-indice_bronze = de_bronze("salario_indice")
-indice = ultima_version(indice_bronze)
+# METADATA ********************
 
-exige_completo(indice, COLUMNAS_INDICE)
-exige_uno_por_clave(indice, ["anio", "mes"], ["smg_nominal", "smg_real", "smgr_indice"])
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Hechos
+
+# CELL ********************
 
 hechos_salario_mensual = indice.select(
     clave("anio", "mes").alias("id_mes"),
@@ -202,10 +303,35 @@ hechos_salario_mensual = indice.select(
 
 apunta("bronze_indice", filas=indice_bronze.count(), meses=hechos_salario_mensual.count())
 
-# Compuertas de salida: sólo lo que existe después de transformar.
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de salida
+
+# CELL ********************
+
 exige_llave_unica(dim_salario_minimo, "id_salario_zona")
 exige_vigencia_continua(dim_salario_minimo)
 exige_llave_unica(hechos_salario_mensual, "id_mes")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Escritura
+
+# CELL ********************
 
 # El MERGE genérico basta para la SCD2 porque la fuente reexpide la historia completa: la
 # vigencia se deriva del lote, así que el renglón abierto del año pasado vuelve a llegar con

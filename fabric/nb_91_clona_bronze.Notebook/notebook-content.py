@@ -20,6 +20,10 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # Refresca el bronze de dev clonando el de prod (decisión #5). Corre al final de
@@ -44,6 +48,10 @@ DESTINO = "ws-gansito-dev"
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# MARKDOWN ********************
+
+# # Corrida
 
 # CELL ********************
 

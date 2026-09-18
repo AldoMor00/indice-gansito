@@ -1,0 +1,40 @@
+/// Los cuatro niveles a los que se lee la cobertura del panel en P5. No hay dimensión de
+/// "nivel" en gold: tienda, cadena, municipio y estado son cuatro columnas de `dim_tienda`
+/// y no cuatro valores de una, así que el eje de la gráfica tiene que salir de una tabla
+/// desconectada. De constantes, que es lo único calculado que Direct Lake admite, igual
+/// que `Rango de precio`.
+table 'Nivel de cobertura'
+	lineageTag: 53dc4387-bc19-40f4-a6fc-cefc32128cba
+
+	column Nivel
+		dataType: string
+		lineageTag: b0864103-6ffb-42b4-bb80-88139644ca85
+		summarizeBy: none
+		sourceColumn: [Nivel]
+		sortByColumn: Orden
+
+		annotation SummarizationSetBy = Automatic
+
+	column Orden
+		dataType: int64
+		isHidden
+		lineageTag: 3bc31171-6d0e-4f29-849a-bd7553e19c9f
+		summarizeBy: none
+		sourceColumn: [Orden]
+
+		annotation SummarizationSetBy = User
+
+	partition 'Nivel de cobertura' = calculated
+		mode: import
+		source =
+				DATATABLE(
+				    "Nivel", STRING,
+				    "Orden", INTEGER,
+				    {
+				        { "Tienda", 1 },
+				        { "Cadena", 2 },
+				        { "Municipio", 3 },
+				        { "Estado", 4 }
+				    }
+				)
+

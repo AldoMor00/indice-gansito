@@ -1,0 +1,62 @@
+table hechos_salario_mensual
+	lineageTag: 14626c00-0269-4b62-89e7-26584020e7e4
+
+	column id_mes
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 4f759745-7ef3-4cd9-91f8-fa66a049f711
+		summarizeBy: none
+		sourceColumn: id_mes
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column smg_nominal
+		dataType: double
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: b04204ef-438f-4586-8991-1cc83a54bbed
+		summarizeBy: none
+		sourceColumn: smg_nominal
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column smg_real
+		dataType: double
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: a503a104-3d9f-4d27-b4ef-8ad96b69f3d6
+		summarizeBy: none
+		sourceColumn: smg_real
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column smgr_indice
+		dataType: double
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: 54ee8623-331f-42a5-8911-f246341aa7d0
+		summarizeBy: none
+		sourceColumn: smgr_indice
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	partition hechos_salario_mensual = m
+		mode: import
+		source =
+				let
+				    Origen = Parquet.Document(Web.Contents("https://raw.githubusercontent.com/AldoMor00/indice-gansito-datos/main/publico/hechos_salario_mensual.parquet"), [Compression=null, LegacyColumnNameEncoding=false, MaxDepth=null])
+				in
+				    Origen
+

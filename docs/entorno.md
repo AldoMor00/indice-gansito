@@ -78,8 +78,12 @@ En el repositorio `indice-gansito`:
 | secreto | `DATOS_DEPLOY_KEY` | deploy key con escritura en `indice-gansito-datos`, para que la ingesta commitee ahí sin colgar de una cuenta personal |
 | secreto | `INEGI_TOKEN` | el token de la API de INEGI; va en la URL, por eso es secreto y el manifiesto guarda `{token}` |
 
-Y un ruleset que impide borrar `main` y `dev`. No obliga a que `main` entre sólo por PR: `dev` no
-puede exigirlo sin romper la git integration (queda como decisión abierta en `PROGRESO.md`).
+Y dos rulesets:
+
+- `protege-ramas`, sobre `main` y `dev`: impide borrarlas.
+- `main-solo-por-pr`, sobre `main`: sólo entra por PR, sin aprobaciones requeridas (con una sola
+  persona no hay quién apruebe), sin force push, y el único método de merge es merge commit. Nadie
+  tiene bypass. `dev` no lleva esta regla: la git integration de Fabric le hace push directo.
 
 Los workflows con `schedule` o `workflow_dispatch` sólo se registran desde la rama por defecto:
 mientras un workflow viva sólo en `dev`, no existe.
@@ -102,7 +106,53 @@ en `.schedules`, que sí viaja en git y que `parameter.yml` enciende sólo en pr
 es **a quién avisar cuando fallen**: Home > Schedule > Failure notifications, en cada pipeline.
 Es el único aviso de fallo del proyecto (decisión #31).
 
-## 9. Lo que todavía no existe
+## 9. El token con que prod publica gold
 
-La cuenta pública y el PBIX import de la decisión #6. Cuando se arme, va aquí: qué cuenta, qué
-workspace y de qué URL lee.
+`nb_50_export` sube los parquets de gold a `indice-gansito-datos` desde prod (decisión #6). No
+puede usar la deploy key del punto 6, que vive en GitHub Actions; usa un token guardado en Azure
+Key Vault.
+
+- **Key Vault `kv-indice-gansito`**, en el resource group `rg-indice-gansito`, región Mexico
+  Central, con permisos por RBAC y **sin *purge protection***: así el vault se puede borrar y
+  rearmar como todo lo demás (decisión #1). La red queda pública; un firewall de vault lo dejaría
+  fuera del alcance de Fabric.
+- **Secreto `github-indice-gansito-datos`**: un token *fine-grained* de GitHub, con acceso sólo a
+  `indice-gansito-datos` y el permiso *Contents: Read and write*. Nada más.
+- **Tres roles sobre el vault**, porque son tres identidades y ninguna hereda de las otras. Ser
+  Owner de la suscripción no da acceso al plano de datos: el rol se asigna aparte.
+
+| identidad | rol | para qué |
+|---|---|---|
+| `sp-indice-gansito-deploy` | Key Vault Secrets User | corre los notebooks de prod dentro de un pipeline (punto 5) |
+| la cuenta de Fabric del tenant | Key Vault Secrets User | corre `nb_50_export` a mano |
+| la cuenta dueña de la suscripción de Azure | Key Vault Secrets Officer | crea y **rota** el secreto |
+
+Las dos cuentas de persona son distintas y tienen el mismo nombre para mostrar, así que en el
+selector del portal salen como dos renglones idénticos: se eligen por UPN. *Secrets User* no
+alcanza para escribir el secreto, por eso la que rota lleva *Officer*.
+
+El token caduca. Cuando pasa, `nb_50_export` truena en prod con 401 y `pl_gold` sale rojo, aunque
+gold ya quedó escrito y el modelo refrescado. Se genera otro token, se reemplaza el valor del
+secreto y se corre `nb_50_export` solo, sin tocar código.
+
+Si el vault o el secreto cambian de nombre, cambian `BOVEDA` y `SECRETO` en `nb_50_export`.
+
+## 10. Las alertas de costo
+
+Un presupuesto de Cost Management, `presupuesto-kv-indice-gansito`, sobre el resource group
+`rg-indice-gansito`: 1 USD al mes, con aviso por correo al 10 % y al 100 % del gasto real
+(decisión #44). Corre hasta el 31 de diciembre de 2030; ese día deja de evaluar y no lo avisa.
+
+Un presupuesto **avisa, no detiene el gasto**: evalúa sobre costo ya consolidado y el correo sale
+dentro de la hora siguiente a la evaluación. Lo que va a controlar lo que cuesta la capacidad es
+pausarla.
+
+**Fuera de ese resource group no hay alerta de costo.** Si se quiere una, la cuenta de Azure es un
+Microsoft Customer Agreement y un presupuesto de alcance mayor cuelga de la **cuenta de
+facturación**, no de la suscripción: `az consumption budget list` consulta el alcance de la
+suscripción y no lo vería.
+
+## 11. Lo que todavía no existe
+
+La cuenta pública y el clon import de la decisión #6. Cuando se arme, va aquí: qué cuenta, qué
+tenant y el setting de *Publish to web*.

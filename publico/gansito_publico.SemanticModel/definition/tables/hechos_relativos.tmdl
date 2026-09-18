@@ -1,0 +1,84 @@
+table hechos_relativos
+	lineageTag: 9edeba71-aca0-4727-a315-64129463c417
+
+	column id_quincena
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: e6aed0d1-b8aa-4e7d-8856-a8c14a8b55bf
+		summarizeBy: none
+		sourceColumn: id_quincena
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column id_quincena_anterior
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 17996920-172f-47ae-b903-a75880f89409
+		summarizeBy: none
+		sourceColumn: id_quincena_anterior
+
+		changedProperty = SummarizeBy
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = User
+
+	column id_tienda
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 9c18ddc4-c51b-4cd5-a46d-fc8d9739909c
+		summarizeBy: none
+		sourceColumn: id_tienda
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column id_producto
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 2cffe1da-f86e-439f-9231-cab14d7bfc6e
+		summarizeBy: none
+		sourceColumn: id_producto
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column log_relativo
+		dataType: double
+		lineageTag: 1505a64e-3df5-4f55-b985-c64952833d34
+		summarizeBy: none
+		sourceColumn: log_relativo
+
+		changedProperty = SummarizeBy
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column _quincena
+		dataType: string
+		isHidden
+		lineageTag: d238083d-0fbe-429d-8876-fa3d8442005c
+		summarizeBy: none
+		sourceColumn: _quincena
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition hechos_relativos = m
+		mode: import
+		source =
+				let
+				    Origen = Parquet.Document(Web.Contents("https://raw.githubusercontent.com/AldoMor00/indice-gansito-datos/main/publico/hechos_relativos.parquet"), [Compression=null, LegacyColumnNameEncoding=false, MaxDepth=null])
+				in
+				    Origen
+

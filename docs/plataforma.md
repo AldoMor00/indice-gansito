@@ -146,6 +146,11 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   anterior ([error handling](https://learn.microsoft.com/azure/data-factory/tutorial-pipeline-failure-error-handling#error-handling)).
   Con `Completed` antes de la última, un fallo intermedio queda verde si la final pasa. Y una
   actividad que falla con sólo camino de completion se da por manejada (decisión #10).
+- ***On completion* no puede coexistir con *on success* ni con *on failure* saliendo de la misma
+  actividad** ([caminos condicionales](https://learn.microsoft.com/azure/data-factory/tutorial-pipeline-failure-error-handling#conditional-paths)).
+  Puestas las dos no hay aviso de nada: el fallo se da por manejado por el camino de completion, el
+  de success se salta, y la regla de la hoja saltada no rescata el rojo, porque con varios padres no
+  llega al que falló. Un nodo de unión colgado ahí no sirve de compuerta (decisión #10).
 - **Los pipelines invocados con *Invoke pipeline (Legacy)* no aparecen en su propio historial.**
   `fab job run-list` del hijo no lista las corridas que dispara el padre; se leen con
   `queryactivityruns` sobre la corrida del padre, cuyo `output.pipelineRunId` lleva a las
@@ -168,6 +173,26 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   data function es Python serverless sin Spark**, por REST, con cooldown de publicación
   ([doc](https://learn.microsoft.com/fabric/data-engineering/user-data-functions/user-data-functions-overview)).
   Sostienen la decisión #18.
+
+## Capacidad y facturación
+
+- **Una capacidad de pago por uso se cobra por minuto mientras está activa**
+  ([cost optimization](https://learn.microsoft.com/azure/well-architected/microsoft-fabric/cost-optimization#identify-key-cost-drivers)),
+  y pausarla detiene los medidores de cómputo de todos los workloads
+  ([effect on billing](https://learn.microsoft.com/fabric/data-warehouse/pause-resume#effect-on-billing)).
+- **El almacenamiento de OneLake se sigue cobrando con la capacidad pausada**, y mientras lo esté
+  se rechaza toda transacción contra ella
+  ([OneLake consumption](https://learn.microsoft.com/fabric/onelake/onelake-consumption)). Es el
+  único cargo del proyecto que no baja a cero.
+- **Al pausar, el remanente de operaciones suavizadas y de overage se suma a la factura**
+  ([pause and resume](https://learn.microsoft.com/fabric/enterprise/pause-resume)). Meter una
+  corrida en una ventana más corta no la abarata por sí sola: lo que exceda la capacidad se cobra
+  por su propio medidor, más caro que el cómputo base.
+- **Los precios no se escriben aquí.** El catálogo vigente se consulta con la Retail Prices API
+  filtrando por `serviceName`, que es lo que indica la propia doc de facturación de Fabric: la
+  página de precios no enumera los medidores
+  ([lista de medidores](https://learn.microsoft.com/fabric/enterprise/azure-billing#get-the-current-list-of-meters)).
+  Key Vault standard no cobra por existir, cobra por operaciones.
 
 ## Identidades y permisos
 
@@ -197,6 +222,21 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   soportada ([semantic link + SPN](https://learn.microsoft.com/fabric/data-science/semantic-link-service-principal-support#supported-semantic-link-functions)).
   De `notebookutils.fs` y `notebookutils.lakehouse` los docs no dicen nada: se ve en la primera
   corrida de `pl_mantenimiento` en prod.
+- **`notebookutils.credentials.getSecret` lee Key Vault con la identidad de quien corre el
+  notebook**, y hace falta permiso de lectura sobre el secreto
+  ([get secret](https://learn.microsoft.com/fabric/data-engineering/notebookutils/notebookutils-credentials#get-secret)).
+  Que funcione con service principal no lo dice: se ve en la primera corrida de `pl_gold` en prod.
+- **`notebookutils.runtime.context["currentWorkspaceName"]` está en todos los contextos**,
+  interactivo y pipeline
+  ([runtime context](https://learn.microsoft.com/fabric/data-engineering/notebookutils/notebookutils-runtime#view-session-context)).
+- **Un usuario B2B no puede ser capacity administrator**, y el admin tiene que pertenecer al
+  tenant donde se aprovisiona la capacidad
+  ([buy capacity](https://learn.microsoft.com/fabric/enterprise/buy-capacity#buy-an-azure-capacity-sku-for-fabric)).
+- **Pausar y reanudar una capacidad son permisos de Azure, no de Fabric**: piden
+  `Microsoft.Fabric/capacities/suspend/action` y `resume/action` sobre el recurso
+  ([pause and resume](https://learn.microsoft.com/fabric/enterprise/pause-resume)). Ser capacity
+  admin no alcanza, y al revés tampoco: quien prende la capacidad y quien corre los notebooks
+  pueden ser dos cuentas distintas, y aquí lo son (`entorno.md`).
 
 ## Git integration y despliegue
 
@@ -275,6 +315,14 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
 
 ## Power BI y Direct Lake
 
+- **Direct Lake exige capacidad; un modelo import en My Workspace no.** *Publish to web* desde My
+  Workspace pide una licencia de Power BI, no Pro, y que un admin encienda el setting del tenant.
+  No admite DirectQuery, live connection, RLS ni medidas a nivel reporte
+  ([publish to web](https://learn.microsoft.com/power-bi/collaborate-share/service-publish-to-web#prerequisites)).
+- **En capacidad compartida caben ocho refresh programados al día**, y el programa se pausa solo
+  tras dos meses sin que nadie abra el reporte
+  ([scheduled refresh](https://learn.microsoft.com/power-bi/connect-data/refresh-scheduled-refresh#scheduled-refresh)).
+
 - **Direct Lake no admite columnas calculadas.** Eso descarta el binning del UI y cualquier
   `SWITCH` sobre una columna de una tabla Direct Lake: lo derivado se calcula en gold (decisiones
   #21, #22, #24, #30).
@@ -309,3 +357,22 @@ Los dos workspaces corren **Runtime 2.0**: Spark 4.1.1, Python 3.13.11, Delta 4.
   `barShow`/`markerShow` en `false`: las barras por punto tapan el relleno.
 - **`textStyle` de un textbox acepta `fontColor`**, además de tamaño, peso, estilo y decoración:
   la paleta se escribe por PBIR sin pasar por el UI.
+
+## Power BI Desktop y el PBIP
+
+Visto al armar el clon import de `publico/` con Desktop de agosto de 2026.
+
+- **Desktop abre la caché del modelo antes que el TMDL**, y le aplica la definición encima. Con
+  `.pbi/cache.abf` de un modelo `es-ES` y un TMDL `en-US`, el PBIP no abre:
+  `PFE_TM_DDL_MODIFIED_CULTURE_OR_COLLATION_AFTER_CHILDREN_CREATION`, porque la cultura no se
+  cambia en un modelo que ya tiene objetos. Sin la caché, arma el modelo desde el TMDL.
+- **"Número decimal fijo" es `decimal` en TMDL y "número decimal" es `double`.** Al refrescar,
+  Desktop ajusta el tipo de la columna al que devuelve Power Query: un parquet `double` sobre una
+  columna `decimal` la deja en `double`. Con el cambio recalcula el resumen automático, y una
+  columna en `none` pasa a `sum`; con `SummarizationSetBy = User` se queda en `none`.
+- **La fecha/hora automática no hace nada en Direct Lake y en import sí**: con
+  `__PBI_TimeIntelligenceEnabled = 1`, el refresh crea una tabla de fechas oculta y una relación
+  por cada columna de fecha. Una columna `date` del parquet queda en *Long Date* con
+  `UnderlyingDateTimeDataType = Date`.
+- **Un PBIP que ya refleja todo eso sobrevive abrir, refrescar y guardar sin cambiar un byte** del
+  TMDL ni del PBIR, fuera de `cache.abf` y `localSettings.json`.

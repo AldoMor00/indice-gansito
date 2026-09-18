@@ -9,6 +9,10 @@
 # META   "dependencies": {}
 # META }
 
+# MARKDOWN ********************
+
+# # Sesión
+
 # CELL ********************
 
 # Lo que comparten los notebooks. Se trae con `%run nb_00_config`, no con una wheel: ver
@@ -49,6 +53,18 @@ CLUSTER_HECHO = ("_quincena", "id_producto")
 # dos formas, y lo que hace que el tipado no necesite compuerta propia (decisión #15).
 spark.conf.set("spark.sql.ansi.enabled", "true")
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# # Resumen
+
+# CELL ********************
 
 # El resumen de la corrida: un solo lugar por donde sale un número. El `print` se queda en
 # el snapshot del notebook; lo que el pipeline recibe y puede encadenar es el exit value,
@@ -78,12 +94,18 @@ def termina() -> None:
     El pipeline lo lee en @activity('<notebook>').output.result.exitValue."""
     notebookutils.notebook.exit(json.dumps({"corrida": CORRIDA, **RESUMEN}, ensure_ascii=False))
 
+# METADATA ********************
 
-def version_de(ruta: str) -> int:
-    """La versión que esta corrida dejó en la tabla. Es lo que empata el resumen con
-    DESCRIBE HISTORY, que ya es la bitácora de escrituras y no hay que duplicar."""
-    return DeltaTable.forPath(spark, ruta).history(1).first()["version"]
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
 
+# MARKDOWN ********************
+
+# # Rutas y lecturas
+
+# CELL ********************
 
 def ruta_tabla(tabla: str, lakehouse: str, workspace_id: str | None = None) -> str:
     """Ruta OneLake de una tabla. GUIDs en los dos segmentos: mezclarlos con nombres da
@@ -97,6 +119,29 @@ def ruta_tabla(tabla: str, lakehouse: str, workspace_id: str | None = None) -> s
     lh = notebookutils.lakehouse.get(lakehouse, ws)["id"]
     return f"abfss://{ws}@onelake.dfs.fabric.microsoft.com/{lh}/Tables/dbo/{tabla}"
 
+
+def version_de(ruta: str) -> int:
+    """La versión que esta corrida dejó en la tabla. Es lo que empata el resumen con
+    DESCRIBE HISTORY, que ya es la bitácora de escrituras y no hay que duplicar."""
+    return DeltaTable.forPath(spark, ruta).history(1).first()["version"]
+
+
+def de_bronze(tabla: str):
+    """Lee la tabla delta de bronze."""
+    return spark.read.format("delta").load(ruta_tabla(tabla, BRONZE))
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# # Bronze
+
+# CELL ********************
 
 def manifiesto_de(fuente: str) -> list[dict]:
     """El manifiesto de una fuente. Es el índice: el repo no lista directorio."""
@@ -162,6 +207,18 @@ def escribe(sdf, ruta: str) -> None:
     se absorba en silencio."""
     sdf.write.format("delta").mode("append").option("mergeSchema", "false").save(ruta)
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# # Compuertas
+
+# CELL ********************
 
 # Las compuertas de silver. Corren antes de escribir: lo que no pasa no aterriza, y el
 # arreglo es el notebook y no la tabla (decisión #15). Con ANSI encendido el casteo truena
@@ -303,11 +360,18 @@ def exige_llave_unica(sdf, llave: str, muestra: int = 4) -> None:
             + muestra_filas(sdf.join(repetidas, llave).orderBy(llave), sdf.columns, muestra)
         )
 
+# METADATA ********************
 
-def de_bronze(tabla: str):
-    """Lee la tabla delta de bronze."""
-    return spark.read.format("delta").load(ruta_tabla(tabla, BRONZE))
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
 
+# MARKDOWN ********************
+
+# # Silver y gold
+
+# CELL ********************
 
 def clave(*cols):
     """Clave sustituta determinista sobre la clave natural. Es lo que deja que el MERGE

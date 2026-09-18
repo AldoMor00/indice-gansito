@@ -1,0 +1,50 @@
+/// Bins de un peso para el histograma de P2. Power BI no trae histograma nativo y el
+/// binning del UI es columna calculada, que las tablas Direct Lake no admiten; la salida
+/// es esta tabla desconectada, de constantes, que no referencia Direct Lake y por eso es
+/// legal. El ancho de un peso lo pide Freedman-Diaconis sobre el corte real, y los bordes
+/// van en medio peso para que los precios redondos —la moda del anaquel— caigan al centro
+/// de la barra y no partidos entre dos.
+table 'Rango de precio'
+	lineageTag: 4f2b91c7-5d38-42ae-9c61-7a0e83d5b246
+
+	column Centro
+		dataType: int64
+		formatString: \$#,##0
+		lineageTag: 8c7d2a15-63f4-4b09-a2e7-15c9b04d7e83
+		summarizeBy: none
+		sourceColumn: [Centro]
+
+		annotation SummarizationSetBy = User
+
+	column Desde
+		dataType: double
+		isHidden
+		lineageTag: 2e9f6b84-70c1-4d3a-8f52-c6a1e39b0475
+		summarizeBy: none
+		sourceColumn: [Desde]
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Hasta
+		dataType: double
+		isHidden
+		lineageTag: 6a30d5e9-1b72-4c86-b93f-08e547a2c1d0
+		summarizeBy: none
+		sourceColumn: [Hasta]
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition 'Rango de precio' = calculated
+		mode: import
+		source =
+				SELECTCOLUMNS(
+				    GENERATESERIES( 5, 80, 1 ),
+				    "Centro", [Value],
+				    "Desde", [Value] - 0.5,
+				    "Hasta", [Value] + 0.5
+				)
+

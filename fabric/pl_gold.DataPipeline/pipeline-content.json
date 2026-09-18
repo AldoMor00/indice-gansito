@@ -5,7 +5,8 @@
         "type": "TridentNotebook",
         "typeProperties": {
           "notebookId": "a88f1b65-8063-b962-47a6-f41ac9e08dba",
-          "workspaceId": "00000000-0000-0000-0000-000000000000"
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "sessionTag": "gold"
         },
         "policy": {
           "timeout": "0.01:00:00",
@@ -16,6 +17,30 @@
         },
         "name": "nb_30_gold",
         "dependsOn": []
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "b0a1122a-ea20-814a-4955-5617af8246ae",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "sessionTag": "gold"
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 90,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_50_export",
+        "dependsOn": [
+          {
+            "activity": "refresh_sm_gansito",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
       },
       {
         "type": "PBISemanticModelRefresh",

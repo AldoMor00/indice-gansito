@@ -38,6 +38,10 @@ quincenas_pedidas = ""
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+# # Definiciones
+
 # CELL ********************
 
 # Gold: el modelo en estrella que lee Direct Lake. Proyecta silver —no revalida lo que sus
@@ -68,16 +72,74 @@ from pyspark.sql import Window
 # (medido, en plataforma.md).
 spark.conf.set("spark.fabric.resourceProfile", "readHeavyForPBI")
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Lote
+
+# CELL ********************
+
 # `hechos_precios` es el estado de gold, igual que en silver: qué quincenas ya se
 # proyectaron. Si no existe —primera corrida— todo sale pendiente y el backfill es esta misma.
 TABLA_HECHOS = "hechos_precios"
 TABLA_RELATIVOS = "hechos_relativos"
 TABLA_IC = "hechos_ic_indice"
 
-# Réplicas y semilla del bootstrap. 2,000 es lo que midió la exploración, y la semilla fija
-# hace que dos corridas sobre los mismos datos publiquen el mismo intervalo: un IC que se
-# mueve solo entre refrescos no es publicable.
-REPLICAS, SEMILLA = 2_000, 20240101
+
+def de_silver(tabla: str):
+    """Lee una tabla de silver. Espeja `de_bronze` de nb_00_config."""
+    return spark.read.format("delta").load(ruta_tabla(tabla, SILVER))
+
+
+def a_recalcular(todas: list[str], parametro: str) -> list[str]:
+    """Qué quincenas recorre esta corrida: el parámetro si lo hay, y si no el estado.
+
+    Espeja `a_recalcular` de nb_20. Una quincena mal escrita dejaría el lote vacío y la
+    corrida saldría no-op y verde, que es el fallback callado que no se tolera.
+    """
+    pedidas = [q.strip() for q in parametro.split(",") if q.strip()]
+    if not pedidas:
+        return pendientes_gold(todas)
+
+    if pedidas == ["todas"]:
+        return todas
+
+    desconocidas = set(pedidas) - set(todas)
+    if desconocidas:
+        raise RuntimeError(f"quincenas que silver no tiene — {sorted(desconocidas)}")
+    return sorted(pedidas)
+
+
+def pendientes_gold(todas: list[str]) -> list[str]:
+    """Las quincenas que silver tiene y gold no."""
+    ruta = ruta_tabla(TABLA_HECHOS, GOLD)
+    if not DeltaTable.isDeltaTable(spark, ruta):
+        return todas
+
+    ya = {
+        f["_quincena"]
+        for f in spark.read.format("delta").load(ruta).select("_quincena").distinct().collect()
+    }
+    return [q for q in todas if q not in ya]
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de entrada
+
+# CELL ********************
 
 # El canal colapsa el `giro` que ya declara Profeco, en vez de mapear las 57 cadenas a mano:
 # una cadena nueva llega con su giro puesto y un diccionario de cadenas se rompería en la
@@ -167,11 +229,6 @@ CLAVE_ESTADO = {
 }
 
 
-def de_silver(tabla: str):
-    """Lee una tabla de silver. Espeja `de_bronze` de nb_00_config."""
-    return spark.read.format("delta").load(ruta_tabla(tabla, SILVER))
-
-
 def orden_de(columna: str):
     """Ordinal global de una quincena `yyyy-MM_qN`: 24 por año, 2 por mes, +1 la segunda.
 
@@ -205,37 +262,57 @@ def exige_sin_huecos(quincenas: list[str]) -> None:
     if huecos:
         raise RuntimeError(f"el calendario de quincenas tiene huecos — ordinales {huecos}")
 
+# METADATA ********************
 
-def a_recalcular(todas: list[str], parametro: str) -> list[str]:
-    """Qué quincenas recorre esta corrida: el parámetro si lo hay, y si no el estado.
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
 
-    Espeja `a_recalcular` de nb_20. Una quincena mal escrita dejaría el lote vacío y la
-    corrida saldría no-op y verde, que es el fallback callado que no se tolera.
+# MARKDOWN ********************
+
+# ## Escritura
+
+# CELL ********************
+
+def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
+    """Hecho: se reescribe lo de las quincenas recalculadas y nada más.
+    Mismo patrón que en silver —la quincena está completa o no está— pero contra gold.
+
+    El predicado va sobre `_quincena`, que no es columna de partición: las dos tablas son
+    clusterizadas. Delta valida igual que lo escrito caiga dentro del predicado, así que
+    una fila de otra quincena truena en vez de colarse.
     """
-    pedidas = [q.strip() for q in parametro.split(",") if q.strip()]
-    if not pedidas:
-        return pendientes_gold(todas)
+    if not quincenas:
+        apunta(tabla, filas=0, quincenas=0)
+        return
 
-    if pedidas == ["todas"]:
-        return todas
+    filtro = "_quincena IN (" + ", ".join(f"'{q}'" for q in quincenas) + ")"
+    (
+        nuevas.write.format("delta")
+        .mode("overwrite")
+        .option("replaceWhere", filtro)
+        .save(ruta_tabla(tabla, GOLD))
+    )
+    apunta(tabla, filas=nuevas.count(), quincenas=len(quincenas))
 
-    desconocidas = set(pedidas) - set(todas)
-    if desconocidas:
-        raise RuntimeError(f"quincenas que silver no tiene — {sorted(desconocidas)}")
-    return sorted(pedidas)
+# METADATA ********************
 
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
 
-def pendientes_gold(todas: list[str]) -> list[str]:
-    """Las quincenas que silver tiene y gold no."""
-    ruta = ruta_tabla(TABLA_HECHOS, GOLD)
-    if not DeltaTable.isDeltaTable(spark, ruta):
-        return todas
+# MARKDOWN ********************
 
-    ya = {
-        f["_quincena"]
-        for f in spark.read.format("delta").load(ruta).select("_quincena").distinct().collect()
-    }
-    return [q for q in todas if q not in ya]
+# ## Intervalo
+
+# CELL ********************
+
+# Réplicas y semilla del bootstrap. 2,000 es lo que midió la exploración, y la semilla fija
+# hace que dos corridas sobre los mismos datos publiquen el mismo intervalo: un IC que se
+# mueve solo entre refrescos no es publicable.
+REPLICAS, SEMILLA = 2_000, 20240101
 
 
 def intervalo_del_indice(relativos, calendario):
@@ -334,34 +411,20 @@ def intervalo_del_indice(relativos, calendario):
         F.stddev("indice").alias("ee_cambio_pp"),
     )
 
-
-def reemplaza_quincenas(nuevas, tabla: str, quincenas: list[str]) -> None:
-    """Hecho: se reescribe lo de las quincenas recalculadas y nada más.
-    Mismo patrón que en silver —la quincena está completa o no está— pero contra gold.
-
-    El predicado va sobre `_quincena`, que no es columna de partición: las dos tablas son
-    clusterizadas. Delta valida igual que lo escrito caiga dentro del predicado, así que
-    una fila de otra quincena truena en vez de colarse.
-    """
-    if not quincenas:
-        apunta(tabla, filas=0, quincenas=0)
-        return
-
-    filtro = "_quincena IN (" + ", ".join(f"'{q}'" for q in quincenas) + ")"
-    (
-        nuevas.write.format("delta")
-        .mode("overwrite")
-        .option("replaceWhere", filtro)
-        .save(ruta_tabla(tabla, GOLD))
-    )
-    apunta(tabla, filas=nuevas.count(), quincenas=len(quincenas))
-
 # METADATA ********************
 
 # META {
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# MARKDOWN ********************
+
+# # Corrida
+
+# MARKDOWN ********************
+
+# ## Lote
 
 # CELL ********************
 
@@ -373,7 +436,6 @@ precios_silver = de_silver(TABLA_HECHOS)
 todas = sorted(
     f["_quincena"] for f in precios_silver.select("_quincena").distinct().collect()
 )
-exige_sin_huecos(todas)
 
 quincenas_lote = a_recalcular(todas, quincenas_pedidas)
 apunta("lote", quincenas=len(quincenas_lote), de_silver=len(todas))
@@ -385,11 +447,26 @@ posicion = {q: i for i, q in enumerate(todas)}
 previas = {todas[posicion[q] - 1] for q in quincenas_lote if posicion[q] > 0}
 necesarias = sorted(set(quincenas_lote) | previas)
 
-# ---------------------------------------------------------------- dimensiones
-
 # Las dimensiones salen de silver completo y no del lote: son acumulativas y caben de sobra,
 # y acotarlas al lote dejaría al hecho apuntando a filas que todavía no existen.
 tiendas_silver = de_silver("dim_tienda")
+
+productos_silver = de_silver("dim_producto")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de entrada
+
+# CELL ********************
+
+exige_sin_huecos(todas)
 
 # La compuerta se acota a los giros que el hecho alcanza, no a los 15 de la dimensión:
 # `dim_tienda` es el universo completo del archivo y no el de las tiendas que venden la
@@ -417,6 +494,31 @@ sin_clave = {
 if sin_clave:
     raise RuntimeError(f"`estado` sin clave de mapa en CLAVE_ESTADO — {sorted(sin_clave)}")
 
+# El SKU nuevo ya lo ataja silver, que truena si el lote trae más de 9 presentaciones. Lo que
+# no ve es el **renombre**: con 9 presentaciones y el regex casando, pasa limpio, pero la clave
+# es xxhash64 sobre la cadena, así que nace otro `id_producto` y la dimensión —acumulativa—
+# queda con la vieja y la nueva. Aquí llegaría sin nombre y `coalesce` la dejaría en nulo: un
+# blanco en el slicer y P1 sin encontrar su producto. De ahí que se mire el universo completo
+# de la dimensión y no sólo lo que trae precio.
+sin_nombre = {
+    f["presentacion"] for f in productos_silver.select("presentacion").distinct().collect()
+} - NOMBRE_COMERCIAL.keys()
+if sin_nombre:
+    raise RuntimeError(f"`presentacion` sin nombre comercial — {sorted(sin_nombre)}")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Dimensiones
+
+# CELL ********************
+
 dim_tienda = tiendas_silver.withColumn(
     "canal",
     # `giro` se queda tal cual para los cortes transversales, que no necesitan pareo y
@@ -434,20 +536,6 @@ dim_tienda = tiendas_silver.withColumn(
     "clave_estado",
     F.coalesce(*[F.when(F.col("estado") == e, F.lit(c)) for e, c in CLAVE_ESTADO.items()]),
 )
-
-productos_silver = de_silver("dim_producto")
-
-# El SKU nuevo ya lo ataja silver, que truena si el lote trae más de 9 presentaciones. Lo que
-# no ve es el **renombre**: con 9 presentaciones y el regex casando, pasa limpio, pero la clave
-# es xxhash64 sobre la cadena, así que nace otro `id_producto` y la dimensión —acumulativa—
-# queda con la vieja y la nueva. Aquí llegaría sin nombre y `coalesce` la dejaría en nulo: un
-# blanco en el slicer y P1 sin encontrar su producto. De ahí que se mire el universo completo
-# de la dimensión y no sólo lo que trae precio.
-sin_nombre = {
-    f["presentacion"] for f in productos_silver.select("presentacion").distinct().collect()
-} - NOMBRE_COMERCIAL.keys()
-if sin_nombre:
-    raise RuntimeError(f"`presentacion` sin nombre comercial — {sorted(sin_nombre)}")
 
 dim_producto = productos_silver.withColumn(
     # `nombre` a secas y no `nombre_comercial`: esa ya es la de `dim_tienda` —media identidad
@@ -468,16 +556,6 @@ dim_producto = productos_silver.withColumn(
 # de enteros. Rehashearlo sería inventar una llave que no empata con nada.
 salario_silver = de_silver("hechos_salario_mensual")
 dim_mes = salario_silver.select("id_mes", "mes_inicio", "anio", "mes")
-
-# Sin `inpc`: el deflactor salía de dividir estas dos columnas —el INPC entre 100— y desde
-# la decisión #35 sale del indicador quincenal de INEGI. CONASAMI se queda con lo que vino
-# a responder, que es cuántos Gansitos compra un día de trabajo.
-hechos_salario_mensual = salario_silver.select(
-    "id_mes",
-    "smg_nominal",
-    "smg_real",
-    "smgr_indice",
-)
 
 # El deflactor, al grano de la quincena y no del mes. Va como columna de la dimensión y no
 # como tabla de hechos aparte porque hay exactamente una fila por quincena: un hecho 1:1
@@ -517,24 +595,34 @@ dim_tiempo_quincena = (
     .join(dim_mes.select("id_mes", "anio", "mes"), ["anio", "mes"], "left")
 )
 
-# El INPC sí es obligatorio, y es el que ahora detiene la corrida: es el divisor del índice
-# real, así que una quincena sin él lo publicaría mudo justo donde el nominal se ve bien.
-# Que falte es posible de verdad —INEGI publica por quincena y el bundle de precios podría
-# adelantársele—, y el mensaje lleva cuáles para no tener que abrir el SQL endpoint.
-faltan_inpc = dim_tiempo_quincena.filter(F.col("inpc").isNull())
-if faltan_inpc.take(1):
-    raise RuntimeError(
-        "quincenas sin INPC — "
-        + ", ".join(f["quincena"] for f in faltan_inpc.orderBy("orden").collect())
-    )
-
 apunta(
     "dim_tiempo",
     # Métrica del lote y no compuerta: es la ventana de CONASAMI, que se mira y no bloquea.
     sin_mes=dim_tiempo_quincena.filter(F.col("id_mes").isNull()).count(),
 )
 
-# ---------------------------------------------------------------- hechos
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Hechos
+
+# CELL ********************
+
+# Sin `inpc`: el deflactor salía de dividir estas dos columnas —el INPC entre 100— y desde
+# la decisión #35 sale del indicador quincenal de INEGI. CONASAMI se queda con lo que vino
+# a responder, que es cuántos Gansitos compra un día de trabajo.
+hechos_salario_mensual = salario_silver.select(
+    "id_mes",
+    "smg_nominal",
+    "smg_real",
+    "smgr_indice",
+)
 
 base = (
     precios_silver.filter(F.col("_quincena").isin(necesarias))
@@ -577,20 +665,53 @@ hechos_relativos = eslabones(base).filter(F.col("_quincena").isin(quincenas_lote
     "_quincena",
 )
 
-# ---------------------------------------------------------------- compuertas de salida
-
-# Las llaves nuevas de gold. Las de silver ya se revisaron allá y no se repiten: aquí sólo
-# van las que este notebook inventa.
-exige_llave_unica(dim_tiempo_quincena, "id_quincena")
-exige_llave_unica(dim_mes, "id_mes")
-
 apunta(
     "relativos",
     eslabones=len(quincenas_lote) - (1 if todas and todas[0] in quincenas_lote else 0),
     pares=hechos_relativos.count(),
 )
 
-# ---------------------------------------------------------------- escritura
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Compuertas de salida
+
+# CELL ********************
+
+# El INPC sí es obligatorio, y es el que ahora detiene la corrida: es el divisor del índice
+# real, así que una quincena sin él lo publicaría mudo justo donde el nominal se ve bien.
+# Que falte es posible de verdad —INEGI publica por quincena y el bundle de precios podría
+# adelantársele—, y el mensaje lleva cuáles para no tener que abrir el SQL endpoint.
+faltan_inpc = dim_tiempo_quincena.filter(F.col("inpc").isNull())
+if faltan_inpc.take(1):
+    raise RuntimeError(
+        "quincenas sin INPC — "
+        + ", ".join(f["quincena"] for f in faltan_inpc.orderBy("orden").collect())
+    )
+
+# Las llaves nuevas de gold. Las de silver ya se revisaron allá y no se repiten: aquí sólo
+# van las que este notebook inventa.
+exige_llave_unica(dim_tiempo_quincena, "id_quincena")
+exige_llave_unica(dim_mes, "id_mes")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Escritura
+
+# CELL ********************
 
 # Las dimensiones antes que el hecho, por lo mismo que en silver: `hechos_precios` es el
 # punto de commit del que `pendientes_gold` lee el estado, así que una corrida que muriera
@@ -604,7 +725,39 @@ upsert(hechos_salario_mensual, "hechos_salario_mensual", ["id_mes"], GOLD)
 reemplaza_quincenas(hechos_relativos, TABLA_RELATIVOS, quincenas_lote)
 reemplaza_quincenas(hechos_precios, TABLA_HECHOS, quincenas_lote)
 
-# ---------------------------------------------------------------- intervalo
+# El layout de los dos hechos por quincena, declarado por el notebook que escribe: liquid
+# clustering en lugar de partición. `hechos_ic_indice` no entra —su grano es SKU × quincena
+# y cabe en un archivo—. Son ALTER idempotentes; lo que aplica el layout es el OPTIMIZE del
+# mantenimiento, no la escritura.
+exige_clustering(ruta_tabla(TABLA_HECHOS, GOLD), CLUSTER_HECHO)
+exige_clustering(ruta_tabla(TABLA_RELATIVOS, GOLD), CLUSTER_HECHO)
+
+# Los divisores del modelo: `inpc` el del índice real y `precio_promedio` el del relativo.
+# Un cero castea perfecto y ANSI no lo ve. Son predicados de una fila, que es lo único que
+# Delta expresa. `smg_real` ya no divide nada —el deflactor salía de ahí hasta la decisión
+# #35— pero un salario real de cero sigue siendo dato roto y la constraint se queda.
+exige_invariantes(
+    ruta_tabla("dim_tiempo_quincena", GOLD), {"inpc_positivo": "inpc > 0"}
+)
+exige_invariantes(
+    ruta_tabla("hechos_salario_mensual", GOLD), {"smg_real_positivo": "smg_real > 0"}
+)
+exige_invariantes(
+    ruta_tabla(TABLA_HECHOS, GOLD), {"precio_promedio_positivo": "precio_promedio > 0"}
+)
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Intervalo
+
+# CELL ********************
 
 # El intervalo va después de escribir, y sobre gold ya publicado en vez de sobre el lote, por
 # lo mismo: es de la serie completa. Cada quincena nueva alarga la cadena y mueve el intervalo
@@ -650,27 +803,6 @@ apunta(
 )
 
 upsert(hechos_ic_indice.drop("orden"), TABLA_IC, ["id_quincena", "id_producto"], GOLD)
-
-# El layout de los dos hechos por quincena, declarado por el notebook que escribe: liquid
-# clustering en lugar de partición. `hechos_ic_indice` no entra —su grano es SKU × quincena
-# y cabe en un archivo—. Son ALTER idempotentes; lo que aplica el layout es el OPTIMIZE del
-# mantenimiento, no la escritura.
-exige_clustering(ruta_tabla(TABLA_HECHOS, GOLD), CLUSTER_HECHO)
-exige_clustering(ruta_tabla(TABLA_RELATIVOS, GOLD), CLUSTER_HECHO)
-
-# Los divisores del modelo: `inpc` el del índice real y `precio_promedio` el del relativo.
-# Un cero castea perfecto y ANSI no lo ve. Son predicados de una fila, que es lo único que
-# Delta expresa. `smg_real` ya no divide nada —el deflactor salía de ahí hasta la decisión
-# #35— pero un salario real de cero sigue siendo dato roto y la constraint se queda.
-exige_invariantes(
-    ruta_tabla("dim_tiempo_quincena", GOLD), {"inpc_positivo": "inpc > 0"}
-)
-exige_invariantes(
-    ruta_tabla("hechos_salario_mensual", GOLD), {"smg_real_positivo": "smg_real > 0"}
-)
-exige_invariantes(
-    ruta_tabla(TABLA_HECHOS, GOLD), {"precio_promedio_positivo": "precio_promedio > 0"}
-)
 
 termina()
 
