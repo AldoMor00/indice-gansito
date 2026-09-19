@@ -1,0 +1,764 @@
+/* Paleta: propuesta §2, tomada del tema del reporte (GansitoMigajon.json).
+   Tipografía: Plex Serif en titulares, Plex Sans en el texto, Plex Mono en lo técnico. */
+:root {
+  --fondo: #FAF7F2;
+  --tarjeta: #FDFDFD;
+  --texto: #3B2418;
+  --texto-2: #7A5A48;
+  --acento: #B23A48;
+  --linea: #D6D6D6;
+  --dorado: #D69A4C;
+  --cafe: #5C3A21;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+  --serif: "IBM Plex Serif", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --riel: 180px;
+  --canal: 48px;
+  --ancho: 1400px;
+  --margen: 40px;
+  --cabecera: 56px;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-padding-top: var(--cabecera); }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--acento);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+/* Cabecera fija: cabezal de periódico, nombre en serif y regla gruesa abajo */
+.cabecera {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--cabecera);
+  background: var(--fondo);
+  border-bottom: 2px solid var(--texto);
+  z-index: 10;
+}
+
+.cabecera__contenido {
+  max-width: var(--ancho);
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 var(--margen);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.cabecera__nombre {
+  font-family: var(--sans);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--texto);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.cabecera__titulo {
+  color: var(--texto-2);
+  font-size: 15px;
+  padding-left: 20px;
+  border-left: 1px solid var(--linea);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cabecera__enlaces {
+  margin-left: auto;
+  display: flex;
+  gap: 28px;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cabecera__enlaces a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--texto);
+  text-decoration: none;
+}
+.cabecera__enlaces a:hover { color: var(--acento); }
+
+.icono { width: 15px; height: 15px; flex: none; }
+
+/* Página: cada sección es una fila con riel a la izquierda y cuerpo a la derecha */
+.pagina {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: var(--cabecera) var(--margen) 0;
+}
+
+.seccion {
+  display: grid;
+  grid-template-columns: var(--riel) minmax(0, 1fr);
+  column-gap: var(--canal);
+  padding: 56px 0 72px;
+  border-bottom: 1px solid var(--texto);
+}
+
+.riel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--texto-2);
+  position: sticky;
+  top: calc(var(--cabecera) + 32px);
+  align-self: start;
+}
+
+.riel__num {
+  font-family: var(--serif);
+  font-size: 104px;
+  line-height: 0.9;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--acento);
+  margin-bottom: 14px;
+}
+
+.riel__nombre { color: var(--texto); font-weight: 500; }
+
+/* 0 · Hero */
+.hero__arriba {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(300px, 4fr);
+  column-gap: 64px;
+  align-items: start;
+  margin-bottom: 56px;
+}
+
+.hero h1 {
+  margin: 0 0 28px;
+  font-family: var(--serif);
+  font-size: clamp(40px, 4.6vw, 68px);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+}
+
+.hero__acento { color: var(--acento); }
+
+.hero__lede {
+  margin: 0 0 32px;
+  font-size: 19px;
+  line-height: 1.55;
+  max-width: 56ch;
+}
+
+/* Botones: rectos, con marco de 2 px como la ficha; el primero lleno, los demás huecos */
+.botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 18px 11px 20px;
+  border: 2px solid var(--texto);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto);
+  text-decoration: none;
+  transition: background-color 120ms, color 120ms, border-color 120ms;
+}
+
+.boton:hover {
+  background: var(--texto);
+  color: var(--fondo);
+}
+
+.boton--lleno {
+  background: var(--texto);
+  color: var(--fondo);
+}
+
+.externo { width: 11px; height: 11px; flex: none; opacity: 0.8; }
+
+.boton--lleno:hover {
+  background: var(--acento);
+  border-color: var(--acento);
+}
+
+/* La ficha: marco negro, reglas de distinto grosor, etiqueta a la izquierda y valor a la derecha */
+.ficha {
+  margin: 8px 0 0;
+  padding: 10px 14px 12px;
+  border: 2px solid var(--texto);
+  background: var(--tarjeta);
+}
+
+.ficha__cabeza {
+  border-bottom: 8px solid var(--texto);
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+}
+
+.ficha__titulo {
+  display: block;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.ficha__sub {
+  display: block;
+  font-size: 13px;
+  color: var(--texto-2);
+  margin-top: 4px;
+}
+
+.ficha__fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--texto);
+}
+
+.ficha__fila--gruesa { border-bottom-width: 4px; }
+
+.ficha__fila dt { font-weight: 600; font-size: 15px; white-space: nowrap; }
+
+.ficha__fila dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  text-align: right;
+}
+
+.ficha__nota {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--texto-2);
+}
+
+/* Ventana: barra de título oscura en mono. Todas las capturas van así. */
+.ventana {
+  margin: 0;
+  border: 1px solid var(--texto);
+  background: var(--tarjeta);
+  container-type: inline-size;
+}
+
+.ventana__barra {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 14px;
+  background: var(--texto);
+  color: var(--fondo);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+/* 16:9 del ancho más 56 px de la barra inferior de Power BI
+   (https://learn.microsoft.com/power-bi/collaborate-share/service-publish-to-web). */
+.ventana iframe {
+  display: block;
+  width: 100%;
+  height: calc(100cqw * 9 / 16 + 56px);
+  border: 0;
+}
+
+.ventana img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ventana__pie {
+  margin: 0;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--linea);
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--texto-2);
+}
+
+.lupa { display: block; cursor: zoom-in; }
+
+/* Cabeza de sección: titular para RH, subtítulo para el técnico, enlace para el detalle */
+.seccion__cabeza {
+  max-width: 64ch;
+  margin-bottom: 40px;
+}
+
+.seccion__cabeza h2 {
+  margin: 0 0 14px;
+  font-family: var(--serif);
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.seccion__sub {
+  margin: 0 0 16px;
+  font-size: 17px;
+  color: var(--texto-2);
+}
+
+.seccion__enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto);
+  text-decoration: none;
+  border-bottom: 2px solid var(--acento);
+  padding-bottom: 2px;
+}
+
+.seccion__enlace:hover { color: var(--acento); }
+
+/* 1 · Las cuatro páginas del reporte, en dos columnas */
+.tarjetas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+/* 2 · Las tres fuentes en columnas, y debajo tres ventanas de apoyo */
+.fuentes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--linea);
+}
+
+.fuente h3 {
+  margin: 18px 0 2px;
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.fuente__que {
+  margin: 0 0 10px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--acento);
+}
+
+.fuente p {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+
+.fuente__datos {
+  margin: 14px 0 0;
+  border-top: 1px solid var(--linea);
+}
+
+.fuente__datos div {
+  display: grid;
+  grid-template-columns: 6.5em 1fr;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--linea);
+}
+
+.fuente__datos dt {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--acento);
+  line-height: 1.6;
+}
+
+.fuente__datos dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--texto-2);
+}
+
+.apoyo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 40px;
+}
+
+/* Cuerpo a dos columnas: la cabeza de sección fija a la izquierda, la figura a la derecha.
+   Para figuras altas, como el diagrama vertical. */
+.cuerpo--lado {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(0, 780px);
+  column-gap: 48px;
+  align-items: start;
+}
+
+.seccion__cabeza--fija {
+  position: sticky;
+  top: calc(var(--cabecera) + 32px);
+  margin-bottom: 0;
+}
+
+/* 1 · El diagrama de arquitectura, SVG inline con la paleta de la página */
+.diagrama-marco {
+  padding: 24px;
+  overflow-x: auto;
+}
+
+.diagrama {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.diagrama a { text-decoration: none; }
+
+.seccion__cabeza--fija h2 { font-size: 30px; }
+
+.diagrama .lateral {
+  font-family: var(--sans);
+  font-size: 12px;
+  fill: var(--texto-2);
+}
+
+.diagrama text {
+  font-family: var(--mono);
+  font-size: 13px;
+  fill: var(--texto);
+}
+
+.diagrama .nodo rect {
+  fill: var(--tarjeta);
+  stroke: var(--texto);
+  stroke-width: 1.5;
+  transition: stroke 120ms;
+}
+
+.diagrama .nodo .titulo { font-weight: 500; font-size: 14px; }
+
+.diagrama .nodo .sub {
+  font-family: var(--sans);
+  font-size: 12px;
+  fill: var(--texto-2);
+}
+
+.diagrama .nodo:hover rect { stroke: var(--acento); stroke-width: 2; }
+.diagrama .nodo:hover .titulo { fill: var(--acento); }
+.diagrama a.lupa { cursor: zoom-in; }
+.diagrama .nodo--externo rect { stroke-dasharray: 3 3; }
+
+.diagrama .flecha {
+  fill: none;
+  stroke: var(--texto);
+  stroke-width: 1.5;
+  marker-end: url(#punta);
+}
+
+.diagrama .etiqueta { font-size: 11.5px; fill: var(--acento); }
+
+.diagrama .banda {
+  font-size: 11.5px;
+  fill: var(--texto-2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.diagrama .frontera {
+  stroke: var(--acento);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 5;
+}
+
+.diagrama .zona {
+  font-size: 11px;
+  fill: var(--acento);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* 4 · La semana en una tira: cada marca en su día y hora, y lo que dispara en tres columnas */
+.semana {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  height: 56px;
+  margin: 36px 0 32px;
+  border: 2px solid var(--texto);
+  background: var(--tarjeta);
+}
+
+.semana span {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  padding: 6px 8px;
+  border-left: 1px solid var(--linea);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto-2);
+}
+
+.semana span:first-child { border-left: 0; }
+
+/* mié a sáb, rayado: los cuatro días en que no corre nada. Los días van abajo y las marcas
+   arriba de la tira, para que la línea de cada marca no cruce el nombre del día. */
+.semana__nada {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(100% * 2 / 7);
+  width: calc(100% * 4 / 7);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 6px;
+  background: repeating-linear-gradient(135deg, transparent 0 7px, var(--linea) 7px 8px);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-style: normal;
+  color: var(--texto-2);
+}
+
+.semana__marca {
+  position: absolute;
+  z-index: 2;
+  left: max(13px, var(--x));
+  top: -28px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  transform: translateX(-50%);
+  background: var(--acento);
+  color: var(--fondo);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.semana__marca::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 2px;
+  height: 18px;
+  margin-left: -1px;
+  background: var(--acento);
+}
+
+.corridas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--linea);
+}
+
+.corrida__cuando {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--acento);
+}
+
+.corrida__cuando b {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: var(--acento);
+  color: var(--fondo);
+  font-weight: 500;
+}
+
+.corrida h3 {
+  margin: 10px 0 18px;
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.pasos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pasos li {
+  position: relative;
+  padding: 10px 12px;
+  border: 1.5px solid var(--texto);
+  background: var(--tarjeta);
+}
+
+/* La flecha entre pasos: una línea y su punta, del paso anterior a éste */
+.pasos li + li { margin-top: 26px; }
+
+.pasos li + li::before,
+.pasos li + li::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+}
+
+.pasos li + li::before {
+  top: -27.5px;
+  height: 20px;
+  border-left: 1.5px solid var(--texto);
+}
+
+.pasos li + li::after {
+  top: -8.5px;
+  margin-left: -4.25px;
+  border: 5px solid transparent;
+  border-top: 7px solid var(--texto);
+  border-bottom: 0;
+}
+
+.pasos code {
+  display: block;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pasos span {
+  display: block;
+  margin-top: 2px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--texto-2);
+}
+
+.pasos a { color: inherit; text-decoration: none; }
+.pasos li:has(a.lupa):hover { border-color: var(--acento); }
+.pasos li:has(a.lupa):hover code { color: var(--acento); }
+
+.pasos .pasos__espera {
+  width: fit-content;
+  padding: 3px 10px;
+  border: 1.5px dashed var(--acento);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--acento);
+}
+
+.corrida__nota {
+  margin: 16px 0 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--texto-2);
+}
+
+.tarjetas--arriba {
+  margin-top: 40px;
+  align-items: start;
+}
+
+/* Lightbox */
+.lupa-dialogo {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+}
+
+.lupa-dialogo::backdrop { background: rgba(59, 36, 24, 0.88); }
+
+.lupa-dialogo img {
+  display: block;
+  max-width: 94vw;
+  max-height: 90vh;
+  border: 1px solid var(--linea);
+  background: var(--tarjeta);
+}
+
+.lupa-dialogo button {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  padding: 8px 12px;
+  border: 1px solid var(--fondo);
+  background: transparent;
+  color: var(--fondo);
+  font-family: var(--mono);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Tablet y móvil: el riel sube, las columnas se apilan (propuesta §1, regla 4) */
+@media (max-width: 1023px) {
+  .hero__arriba { grid-template-columns: 1fr; row-gap: 40px; }
+  .corridas { grid-template-columns: 1fr; max-width: 520px; }
+}
+
+@media (max-width: 767px) {
+  :root { --margen: 20px; }
+  .cabecera__titulo { display: none; }
+  .cabecera__nombre { font-size: 18px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .cabecera__enlaces { gap: 14px; font-size: 12px; }
+  .seccion { grid-template-columns: 1fr; padding: 32px 0 48px; }
+  .riel { position: static; flex-direction: row; align-items: baseline; gap: 14px; margin-bottom: 24px; }
+  .riel__num { font-size: 44px; margin: 0; }
+  .hero h1 { font-size: 36px; }
+  .hero__lede { font-size: 17px; }
+  .ficha__fila { flex-direction: column; gap: 0; }
+  .ficha__fila dd { text-align: left; }
+  .boton { padding: 10px 14px; font-size: 12px; }
+  .seccion__cabeza h2 { font-size: 28px; }
+  .tarjetas { grid-template-columns: 1fr; gap: 20px; }
+  .fuentes, .apoyo { grid-template-columns: 1fr; gap: 32px; }
+  /* El diagrama no se encoge a lo ilegible: se desplaza de lado */
+  .diagrama-marco { padding: 16px; }
+  .diagrama { min-width: 560px; }
+}
+
+/* Debajo de 1200 px no caben dos columnas junto al riel: la cabeza vuelve arriba */
+@media (max-width: 1199px) {
+  .cuerpo--lado { grid-template-columns: 1fr; }
+  .seccion__cabeza--fija { position: static; margin-bottom: 40px; }
+  .ventana--diagrama { max-width: 780px; }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .fuentes, .apoyo { grid-template-columns: 1fr 1fr; }
+}
