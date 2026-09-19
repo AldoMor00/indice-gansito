@@ -25,6 +25,10 @@ CELDA_NOTEBOOK = (864, 295, 2808, 1240)
 LIENZO_MODELO = (137, 371, 2254, 1656)
 LIENZO_PIPELINE = (144, 288, 2866, 1512)
 HUB_MONITOREO = (677, 122, 2822, 1786)
+CELDA_COMPUERTA = (763, 418, 2808, 1066)
+CORRIDA_ACTIONS = (0, 0, 2880, 1460)
+LAKEHOUSE = (151, 418, 2866, 1786)
+CONSULTA_LAKEHOUSE = (151, 230, 2866, 1238)
 RECORTES = {
     "02_responde_p1-el-numero.png": LIENZO_REPORTE,
     "02_responde_p2-donde.png": LIENZO_REPORTE,
@@ -33,10 +37,15 @@ RECORTES = {
     "04_como-corre_monitoring-hub-prod.png": HUB_MONITOREO,
     "04_como-corre_pl-bronze-sesion.png": LIENZO_PIPELINE,
     "04_como-corre_pl-master-corrida.png": LIENZO_PIPELINE,
+    "05_adentro_compuerta-truena.png": CELDA_COMPUERTA,
     "05_adentro_fila-bronze.png": CELDA_NOTEBOOK,
     "05_adentro_fila-silver.png": CELDA_NOTEBOOK,
     "05_adentro_fila-gold.png": CELDA_NOTEBOOK,
+    "06_donde-vive_explorador-lh-gold.png": LAKEHOUSE,
+    "06_donde-vive_historial-hechos-precios.png": CONSULTA_LAKEHOUSE,
     "06_donde-vive_vista-modelo-relaciones.png": LIENZO_MODELO,
+    "07_metodo_p5-metodo-y-cobertura.png": LIENZO_REPORTE,
+    "08_construye_corrida-deploy.png": CORRIDA_ACTIONS,
 }
 
 

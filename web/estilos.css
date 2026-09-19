@@ -463,9 +463,9 @@ a {
   transition: stroke 120ms;
 }
 
-.diagrama .nodo .titulo { font-weight: 500; font-size: 14px; }
+.diagrama .titulo { font-weight: 500; font-size: 14px; }
 
-.diagrama .nodo .sub {
+.diagrama .sub {
   font-family: var(--sans);
   font-size: 12px;
   fill: var(--texto-2);
@@ -693,6 +693,237 @@ a {
   align-items: start;
 }
 
+/* 5 · Una fila por las tres capas: el nombre de la capa arriba, su tabla a todo el ancho, y entre capas
+   lo que la transformación hace, colgado de una flecha roja */
+.capa__cabeza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  margin-bottom: 12px;
+}
+
+.capa__cabeza .fuente__que { margin: 0; }
+
+.capa__cabeza h3 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.tabla-marco {
+  overflow-x: auto;
+  border: 1px solid var(--texto);
+  background: var(--tarjeta);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.tabla th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--texto);
+  background: var(--fondo);
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-align: left;
+  color: var(--texto-2);
+}
+
+.tabla td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--linea);
+}
+
+.tabla tr:last-child td { border-bottom: 0; }
+.tabla .cambia { color: var(--acento); font-weight: 500; }
+
+/* El sha256 y la dirección completos van en el title; en la celda, cortados como en Fabric */
+.tabla .corta {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.capa__nota {
+  max-width: 72ch;
+  margin: 14px 0 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--texto-2);
+}
+
+.capa__ver {
+  display: inline-block;
+  margin-right: 20px;
+  padding-bottom: 2px;
+  border-bottom: 2px solid var(--acento);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.capa__ver:hover { color: var(--acento); }
+
+.capa__paso {
+  position: relative;
+  max-width: calc(36px + 72ch);
+  margin: 0;
+  padding: 28px 0 28px 36px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.capa__paso b { font-weight: 600; }
+.capa__paso code { font-family: var(--mono); font-size: 13.5px; }
+
+.capa__paso::before,
+.capa__paso::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+}
+
+.capa__paso::before {
+  top: 8px;
+  bottom: 16px;
+  border-left: 2px solid var(--acento);
+}
+
+.capa__paso::after {
+  bottom: 8px;
+  margin-left: -5px;
+  border: 6px solid transparent;
+  border-top: 8px solid var(--acento);
+  border-bottom: 0;
+}
+
+.compuerta {
+  margin-top: 48px;
+  padding-top: 40px;
+  border-top: 1px solid var(--linea);
+}
+
+/* El texto arriba y la captura a todo el ancho: el mensaje del error tiene que leerse */
+.compuerta > div {
+  max-width: 72ch;
+  margin-bottom: 12px;
+}
+
+.compuerta h3 {
+  margin: 0 0 12px;
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.compuerta p {
+  margin: 0 0 12px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--texto-2);
+}
+
+/* 6 · Debajo del modelo: las reglas de almacenamiento a la izquierda, el lakehouse a la derecha */
+.ventana__pie code,
+.reglas code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+
+.vive {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 40px;
+  align-items: start;
+  margin-top: 40px;
+}
+
+.reglas {
+  margin: 0;
+  border-top: 2px solid var(--texto);
+}
+
+.reglas div {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--linea);
+}
+
+.reglas dt {
+  margin-bottom: 4px;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--acento);
+}
+
+.reglas dd {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.reglas .capa__ver { display: table; margin-top: 10px; }
+
+/* 7 · El encadenado a la izquierda, las reglas que lo cuidan a la derecha, y la página 5 abajo */
+.metodo {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+
+.metodo__reporte { margin-top: 40px; }
+
+.diagrama .tienda-si { fill: var(--texto); }
+
+.diagrama .tienda-no {
+  fill: var(--tarjeta);
+  stroke: var(--texto-2);
+  stroke-width: 1.5;
+}
+
+.diagrama .par { stroke: var(--acento); stroke-width: 2; }
+.diagrama .regla { stroke: var(--linea); }
+.diagrama .eslabon { font-size: 16px; font-weight: 500; fill: var(--acento); }
+.diagrama .formula { font-size: 17px; font-weight: 500; }
+
+/* 8 · Cajas del diagrama que no abren nada: sin hover. Las de datos, punteadas y sobre el fondo. */
+.diagrama .caja rect {
+  fill: var(--tarjeta);
+  stroke: var(--texto);
+  stroke-width: 1.5;
+}
+
+.diagrama .caja--datos rect {
+  fill: var(--fondo);
+  stroke-dasharray: 4 3;
+}
+
+.diagrama .flecha--doble { marker-start: url(#punta); }
+
+.seccion__sub code { font-family: var(--mono); font-size: 0.9em; }
+
+.reglas--dos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 40px;
+  margin-top: 40px;
+}
+
 /* Lightbox */
 .lupa-dialogo {
   border: 0;
@@ -729,6 +960,7 @@ a {
 @media (max-width: 1023px) {
   .hero__arriba { grid-template-columns: 1fr; row-gap: 40px; }
   .corridas { grid-template-columns: 1fr; max-width: 520px; }
+  .vive { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 767px) {
@@ -736,7 +968,7 @@ a {
   .cabecera__titulo { display: none; }
   .cabecera__nombre { font-size: 18px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .cabecera__enlaces { gap: 14px; font-size: 12px; }
-  .seccion { grid-template-columns: 1fr; padding: 32px 0 48px; }
+  .seccion { grid-template-columns: minmax(0, 1fr); padding: 32px 0 48px; }
   .riel { position: static; flex-direction: row; align-items: baseline; gap: 14px; margin-bottom: 24px; }
   .riel__num { font-size: 44px; margin: 0; }
   .hero h1 { font-size: 36px; }
@@ -750,6 +982,8 @@ a {
   /* El diagrama no se encoge a lo ilegible: se desplaza de lado */
   .diagrama-marco { padding: 16px; }
   .diagrama { min-width: 560px; }
+  .diagrama--ancho { min-width: 760px; }
+  .reglas--dos { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Debajo de 1200 px no caben dos columnas junto al riel: la cabeza vuelve arriba */
@@ -757,6 +991,7 @@ a {
   .cuerpo--lado { grid-template-columns: 1fr; }
   .seccion__cabeza--fija { position: static; margin-bottom: 40px; }
   .ventana--diagrama { max-width: 780px; }
+  .metodo { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
