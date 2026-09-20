@@ -20,21 +20,21 @@
     </symbol>
   </svg>
 
-  <!-- Cabecera fija (propuesta §2). PENDIENTE: título de una línea, URL de LinkedIn y correo. -->
+  <!-- Cabecera fija (propuesta §2). -->
   <header class="cabecera">
     <div class="cabecera__contenido">
       <a class="cabecera__nombre" href="#inicio">Aldo Moreno Mandujano</a>
-      <span class="cabecera__titulo">PENDIENTE · título de una línea</span>
+      <span class="cabecera__titulo">Ingeniería de datos · de la fuente al reporte</span>
       <nav class="cabecera__enlaces" aria-label="Contacto">
         <a href="https://github.com/AldoMor00" target="_blank" rel="noopener">
           <svg class="icono" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
           GitHub
         </a>
-        <a href="#PENDIENTE-linkedin" target="_blank" rel="noopener">
+        <a href="https://www.linkedin.com/in/aldo-moreno-mandujano" target="_blank" rel="noopener">
           <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
           LinkedIn
         </a>
-        <a href="mailto:PENDIENTE">
+        <a href="mailto:aldo.moma00@gmail.com">
           <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 7l9 6 9-6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
           Correo
         </a>
@@ -1020,8 +1020,127 @@
       </div>
     </section>
 
+    <!-- 9 · Lo que no haría en producción: los bloques de Costo de las decisiones, puestos en tabla. -->
+    <section class="seccion" id="no-prod">
+      <aside class="riel">
+        <span class="riel__num">09</span>
+        <span class="riel__nombre">Lo que no haría</span>
+        <span class="riel__meta">alcance · capacidad de prueba</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Lo que no haría así con una capacidad de verdad.</h2>
+          <p class="seccion__sub">
+            Esto corre sobre una capacidad de prueba y una muestra pública de unos pocos megabytes. Varias
+            decisiones se tomaron por esa restricción, y cada una lo dice en su bloque de <b>Costo</b>. Esta
+            sección es ese bloque, junto.
+          </p>
+          <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md" target="_blank" rel="noopener">decisiones.md en GitHub <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </header>
+
+        <table class="trueques">
+          <thead>
+            <tr><th>aquí</th><th>en producción</th><th>por qué se acepta</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>La zona raw vive en un repo de git.</b></td>
+              <td>Viviría en ADLS. Git no es un almacén de datos.</td>
+              <td>La capacidad es una trial y va a desaparecer con sus datos. Con el raw afuera, el workspace se borra y se reconstruye sin perder historia (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#1-la-zona-raw-vive-fuera-de-fabric" target="_blank" rel="noopener">decisión #1</a>).</td>
+            </tr>
+            <tr>
+              <td><b>Bronze baja los parquets por HTTPS, con <code>requests</code>.</b></td>
+              <td>Sería un shortcut a ADLS, y <code>Files</code> sería una ventana en vez de una copia.</td>
+              <td>Los shortcuts de OneLake no hablan con GitHub, y el repo no lista directorio: el manifiesto es el índice (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#8-bronze-lee-por-https-no-por-shortcut" target="_blank" rel="noopener">decisión #8</a>).</td>
+            </tr>
+            <tr>
+              <td><b>El despliegue no borra huérfanos.</b></td>
+              <td>Con un repo que represente el estado completo de prod, el borrado se activaría.</td>
+              <td>Aquí la rama no lo representa: borraría cualquier reporte o modelo creado a mano en prod. Se prefiere limpiar a mano (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#4-prod-no-est%C3%A1-conectado-a-git" target="_blank" rel="noopener">decisión #4</a>).</td>
+            </tr>
+            <tr>
+              <td><b>Los helpers se comparten con <code>%run</code>, sin wheel ni Environment.</b></td>
+              <td>Serían una wheel versionada, publicada a un Environment.</td>
+              <td>Publicarla toma minutos en cada cambio y mata la iteración. La lógica pura es poca; los incidentes vienen de la fuente (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#7-nada-de-wheels-run-y-pruebas-en-notebook" target="_blank" rel="noopener">decisión #7</a>).</td>
+            </tr>
+            <tr>
+              <td><b>El layout de los hechos está declarado, pero nunca se aplica.</b></td>
+              <td>El mismo clustering, y ahí sí trabajando: a volumen real sí hay archivos que compactar.</td>
+              <td>A esta escala <code>OPTIMIZE</code> se salta la tabla, así que hoy lo que ordena las filas es el V-Order. El layout está elegido para el caso real (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#32-el-hecho-se-clusteriza-no-se-particiona" target="_blank" rel="noopener">decisión #32</a>).</td>
+            </tr>
+            <tr>
+              <td><b>No hay tabla de corridas: el registro es el monitoring hub.</b></td>
+              <td>Con años de historia, workspace monitoring o la Job API.</td>
+              <td>La retención del hub, 30 días de actividades y 60 de notebook, supera la vida de la trial: una tabla propia nunca tendría algo que el hub no tenga (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#31-la-observabilidad-de-las-corridas-es-el-monitoring-hub" target="_blank" rel="noopener">decisión #31</a>).</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <figure class="ventana no-prod__doc">
+          <figcaption class="ventana__barra"><span>docs/decisiones.md</span><span>en GitHub</span></figcaption>
+          <a class="lupa" href="img/09_no-prod_decisiones-render.webp">
+            <img src="img/09_no-prod_decisiones-render.webp" width="2000" height="1520" loading="lazy"
+                 alt="docs/decisiones.md renderizado en GitHub: las decisiones 1, 4 y 5, cada una con sus bloques Decisión, Motivo y Costo.">
+          </a>
+          <p class="ventana__pie">
+            Cada decisión son tres bloques: qué se hace, por qué y qué se descartó, y qué se acepta a cambio.
+            Los números no cambian nunca, porque se citan en el código, en los commits y en los PRs.
+          </p>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 10 · Cierre: adónde ir desde aquí, y el contacto. -->
+    <section class="seccion seccion--cierre" id="cierre">
+      <aside class="riel">
+        <span class="riel__num">10</span>
+        <span class="riel__nombre">Cierre</span>
+        <span class="riel__meta">todo es público</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Todo lo que hay detrás de esta página es público.</h2>
+          <p class="seccion__sub">
+            El código, los datos crudos con su manifiesto, las decisiones con su motivo y su costo, y el
+            reporte. Nada de lo que se cuenta aquí hay que creerlo: se puede abrir, leer y volver a correr.
+          </p>
+        </header>
+
+        <nav class="botones" aria-label="El proyecto">
+          <a class="boton boton--lleno" href="https://github.com/AldoMor00/indice-gansito" target="_blank" rel="noopener">El código <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+          <a class="boton" href="https://github.com/AldoMor00/indice-gansito-datos" target="_blank" rel="noopener">Los datos <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+          <a class="boton" href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md" target="_blank" rel="noopener">Las decisiones <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+          <a class="boton" href="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9" target="_blank" rel="noopener">El reporte <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </nav>
+
+        <div class="contacto">
+          <p class="contacto__texto">
+            Busco trabajo en ingeniería de datos. Si algo de lo que viste te sirve, o si quieres discutir
+            por qué tal decisión está mal, escríbeme.
+          </p>
+          <nav class="botones" aria-label="Contacto">
+            <a class="boton" href="mailto:aldo.moma00@gmail.com">aldo.moma00@gmail.com</a>
+            <a class="boton" href="https://www.linkedin.com/in/aldo-moreno-mandujano" target="_blank" rel="noopener">LinkedIn <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+          </nav>
+        </div>
+      </div>
+    </section>
+
   </main>
 
+  <footer class="pie">
+    <div class="pie__contenido">
+      <p>Aldo Moreno Mandujano · Índice Gansito</p>
+      <p>
+        Los datos son públicos: <a href="https://datos.profeco.gob.mx/datos_abiertos/qqp.php" target="_blank" rel="noopener">Profeco</a>,
+        <a href="https://www.gob.mx/conasami" target="_blank" rel="noopener">CONASAMI</a> e
+        <a href="https://www.inegi.org.mx/temas/inpc/" target="_blank" rel="noopener">INEGI</a>.
+      </p>
+      <p>Esta página es HTML y CSS, sin framework y sin build.</p>
+    </div>
+  </footer>
   <script src="pagina.js"></script>
 </body>
 </html>

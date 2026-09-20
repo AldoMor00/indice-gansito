@@ -27,6 +27,7 @@ LIENZO_PIPELINE = (144, 288, 2866, 1512)
 HUB_MONITOREO = (677, 122, 2822, 1786)
 CELDA_COMPUERTA = (763, 418, 2808, 1066)
 CORRIDA_ACTIONS = (0, 0, 2880, 1460)
+PANEL_GITHUB = (554, 29, 2866, 1786)
 LAKEHOUSE = (151, 418, 2866, 1786)
 CONSULTA_LAKEHOUSE = (151, 230, 2866, 1238)
 RECORTES = {
@@ -46,6 +47,7 @@ RECORTES = {
     "06_donde-vive_vista-modelo-relaciones.png": LIENZO_MODELO,
     "07_metodo_p5-metodo-y-cobertura.png": LIENZO_REPORTE,
     "08_construye_corrida-deploy.png": CORRIDA_ACTIONS,
+    "09_no-prod_decisiones-render.png": PANEL_GITHUB,
 }
 
 

@@ -924,6 +924,82 @@ a {
   margin-top: 40px;
 }
 
+/* 9 · La tabla de trueques: qué hay hoy, qué sería en producción, y por qué se acepta */
+.trueques {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 2px solid var(--texto);
+  text-align: left;
+}
+
+.trueques th {
+  padding: 10px 20px 10px 0;
+  border-bottom: 1px solid var(--texto);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--acento);
+}
+
+.trueques td {
+  padding: 16px 20px 16px 0;
+  border-bottom: 1px solid var(--linea);
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: var(--texto-2);
+  vertical-align: top;
+}
+
+.trueques td:first-child { width: 28%; color: var(--texto); }
+.trueques td:nth-child(2) { width: 30%; }
+.trueques td:last-child { padding-right: 0; }
+.trueques code { font-family: var(--mono); font-size: 0.9em; }
+.trueques a { color: var(--acento); text-decoration: none; border-bottom: 1px solid var(--acento); }
+
+.no-prod__doc { margin-top: 40px; }
+
+/* 10 · Cierre: los enlaces del proyecto y el contacto. Es la última, no lleva raya abajo. */
+.seccion--cierre { border-bottom: 0; }
+
+.contacto {
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid var(--linea);
+}
+
+.contacto__texto {
+  max-width: 62ch;
+  margin: 0 0 20px;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--texto-2);
+}
+
+/* Pie: fuera de la retícula del riel, a todo el ancho de la página */
+.pie {
+  border-top: 2px solid var(--texto);
+  background: var(--fondo);
+}
+
+.pie__contenido {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 28px var(--margen) 48px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 40px;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--texto-2);
+}
+
+.pie p { margin: 0; }
+.pie a { color: var(--texto-2); text-decoration: none; border-bottom: 1px solid var(--acento); }
+.pie a:hover { color: var(--acento); }
+
 /* Lightbox */
 .lupa-dialogo {
   border: 0;
@@ -984,6 +1060,22 @@ a {
   .diagrama { min-width: 560px; }
   .diagrama--ancho { min-width: 760px; }
   .reglas--dos { grid-template-columns: minmax(0, 1fr); }
+  /* La tabla de trueques no cabe en tres columnas: cada fila se vuelve un bloque con su etiqueta */
+  .trueques thead { display: none; }
+  .trueques tr { display: block; padding: 16px 0; border-bottom: 1px solid var(--linea); }
+  .trueques td { display: block; width: auto; padding: 0 0 8px; border: 0; }
+  .trueques td:last-child { padding-bottom: 0; }
+  .trueques td:nth-child(2)::before,
+  .trueques td:last-child::before {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--acento);
+  }
+  .trueques td:nth-child(2)::before { content: "en producción"; }
+  .trueques td:last-child::before { content: "por qué se acepta"; }
 }
 
 /* Debajo de 1200 px no caben dos columnas junto al riel: la cabeza vuelve arriba */
