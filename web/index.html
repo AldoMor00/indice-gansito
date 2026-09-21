@@ -98,6 +98,11 @@
               vende más caro, cuánto de lo que sube es inflación y si un día de salario mínimo alcanza
               para más o para menos.
             </p>
+            <p class="hero__porque">
+              ¿Por qué el Gansito? En Profeco es una sola presentación, 50 g de una sola marca: como en el
+              índice Big Mac, lo que cambia es el precio y no lo que se compra. Ocho pastelillos más forman
+              la canasta contra la que se compara.
+            </p>
             <nav class="botones" aria-label="Enlaces del proyecto">
               <a class="boton boton--lleno" href="https://github.com/AldoMor00/indice-gansito" target="_blank" rel="noopener">El código <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
               <a class="boton" href="https://github.com/AldoMor00/indice-gansito-datos" target="_blank" rel="noopener">Los datos <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
@@ -105,6 +110,25 @@
               <a class="boton" href="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9" target="_blank" rel="noopener">El reporte <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
             </nav>
           </div>
+        </div>
+
+        <!-- El reporte y la ficha, lado a lado: así el reporte entra en la primera pantalla. -->
+        <div class="hero__abajo">
+          <figure class="ventana">
+            <figcaption class="ventana__barra">
+              <span>gansito_publico · clon de rpt_gansito</span>
+              <span>Publish to web · refresh diario</span>
+            </figcaption>
+            <!-- Plan B: la captura de esta misma página va de fondo, detrás del iframe. Mientras
+                 el embebido carga —o si el navegador de quien lee no lo deja cargar— lo que se ve
+                 es el reporte igual, sólo que quieto. -->
+            <div class="reporte">
+              <iframe
+                title="Reporte Índice Gansito"
+                src="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9"
+                allowfullscreen></iframe>
+            </div>
+          </figure>
 
           <!-- La ficha: tabla de hechos del proyecto, al estilo de la información nutrimental -->
           <dl class="ficha">
@@ -114,11 +138,8 @@
             </div>
             <div class="ficha__fila"><dt>Estado</dt><dd>en producción desde 2026-09-14</dd></div>
             <div class="ficha__fila"><dt>Ingesta</dt><dd>lunes · GitHub Actions</dd></div>
-            <div class="ficha__fila"><dt>Pipeline</dt><dd>pl_master · una corrida encadena las tres capas</dd></div>
-            <div class="ficha__fila"><dt>Mantenimiento</dt><dd>pl_mantenimiento · aparte de la carga</dd></div>
+            <div class="ficha__fila"><dt>Pipeline</dt><dd>pl_master · las tres capas</dd></div>
             <div class="ficha__fila ficha__fila--gruesa"><dt>Fuentes</dt><dd>Profeco · CONASAMI · INEGI</dd></div>
-            <div class="ficha__fila"><dt>Zona raw</dt><dd>GitHub, fuera de Fabric</dd></div>
-            <div class="ficha__fila"><dt>Capas</dt><dd>bronze · silver · gold</dd></div>
             <div class="ficha__fila"><dt>Modelo</dt><dd>estrella · Direct Lake</dd></div>
             <div class="ficha__fila"><dt>Despliegue</dt><dd>PR a main · fabric-cicd</dd></div>
             <div class="ficha__fila ficha__fila--gruesa"><dt>Stack</dt><dd>Fabric&nbsp;· PySpark&nbsp;· Delta Lake&nbsp;· DAX&nbsp;· Python&nbsp;· GitHub Actions</dd></div>
@@ -129,22 +150,6 @@
             <p class="ficha__nota">Serie, duración y costo, medidos en septiembre de 2026: la corrida de dev del 18, y los 5,222 CU-s de la de prod del 15 a tarifa de pago por uso de una F2. Cifras del índice: ninguna en esta página. Viven en el reporte, que se refresca solo.</p>
           </dl>
         </div>
-
-        <figure class="ventana">
-          <figcaption class="ventana__barra">
-            <span>gansito_publico · clon de rpt_gansito</span>
-            <span>Publish to web · refresh diario</span>
-          </figcaption>
-          <!-- Plan B: la captura de esta misma página va de fondo, detrás del iframe. Mientras
-               el embebido carga —o si el navegador de quien lee no lo deja cargar— lo que se ve
-               es el reporte igual, sólo que quieto. -->
-          <div class="reporte">
-            <iframe
-              title="Reporte Índice Gansito"
-              src="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9"
-              allowfullscreen></iframe>
-          </div>
-        </figure>
       </div>
     </section>
 
@@ -651,7 +656,7 @@
           </article>
 
           <article class="corrida">
-            <p class="corrida__cuando"><b>2</b> cuando hay quincena nueva · Fabric prod</p>
+            <p class="corrida__cuando"><b>2</b> por horario o a mano · Fabric prod</p>
             <h3>pl_master</h3>
             <ol class="pasos">
               <li>
@@ -1053,6 +1058,18 @@
               <code>nb_90_pruebas</code>. Publicar una wheel a un Environment toma minutos en cada cambio
               (decisión #7).</dd>
           </div>
+          <div>
+            <dt>un solo secreto</dt>
+            <dd>El despliegue no guarda ninguno; el export de gold sí necesita uno: un token de GitHub con
+              escritura sobre el repo de datos, en Key Vault, que caduca y se rota a mano. Es lo que cuesta
+              que el reporte público no dependa de la capacidad (decisión #6).</dd>
+          </div>
+          <div>
+            <dt>el gasto avisa</dt>
+            <dd>Todo lo que cuesta dinero vive en un solo resource group de Azure, con un budget y sus
+              alertas por correo al 10 % y al 100 % del gasto. Un budget avisa, no frena: entre el gasto
+              y la alerta pasan horas (decisión #44).</dd>
+          </div>
         </dl>
 
         <div class="apoyo">
@@ -1138,6 +1155,40 @@
             </tr>
           </tbody>
         </table>
+
+        <!-- Los límites del dato, no de la plataforma: salen de fuentes.md y mediciones.md. -->
+        <div class="modelado">
+          <h3>Y lo que el índice no dice.</h3>
+          <p>
+            Los trueques de arriba son de la plataforma, y con otra capacidad se deshacen. Estos son de la
+            fuente, y ninguna capacidad los arregla.
+          </p>
+          <dl class="reglas reglas--dos">
+            <div>
+              <dt>la muestra</dt>
+              <dd>Profeco visita "los establecimientos más destacados de cada ciudad" y no publica el
+                criterio. El intervalo mide la variabilidad entre esas tiendas; no es inferencia sobre
+                todas las tiendas de México.</dd>
+            </div>
+            <div>
+              <dt>no es inflación</dt>
+              <dd>Profeco advierte que sus precios no sirven para medir la inflación. El índice no la
+                mide: la compara contra el INPC de INEGI, que sí.</dd>
+            </div>
+            <div>
+              <dt>el rezago</dt>
+              <dd>Profeco publica una vez al mes, con un mes de rezago y sin día fijo. El reporte va
+                siempre, por lo menos, un mes atrás.</dd>
+            </div>
+            <div>
+              <dt>un hueco lo detiene</dt>
+              <dd>Si Profeco se salta una quincena para siempre, el eslabón no existe y gold truena en
+                vez de dejar el índice plano sin avisar. Se decidió con la fuente medida: en las 62
+                quincenas de la serie, Profeco cambió el formato de sus archivos pero publicó todas, y
+                un hueco temporal se cura solo en la corrida siguiente (decisión #43).</dd>
+            </div>
+          </dl>
+        </div>
 
         <figure class="ventana no-prod__doc">
           <figcaption class="ventana__barra"><span>docs/decisiones.md</span><span>En GitHub</span></figcaption>

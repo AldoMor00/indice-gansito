@@ -196,12 +196,23 @@ a {
 .riel__nombre { color: var(--texto); font-weight: 500; }
 
 /* 0 · Hero */
-.hero__arriba {
+/* Arriba el texto a todo el ancho; abajo el reporte y la ficha lado a lado, para que el
+   reporte entre en la primera pantalla de una laptop */
+.hero__arriba { margin-bottom: 40px; }
+
+.hero__abajo {
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(300px, 4fr);
-  column-gap: 64px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  column-gap: 32px;
   align-items: start;
-  margin-bottom: 56px;
+}
+
+.hero__abajo .ficha { margin: 0; }
+
+/* Debajo de 1280 px el reporte quedaría muy angosto al lado de la ficha: la ficha baja */
+@media (max-width: 1279px) {
+  .hero__abajo { grid-template-columns: minmax(0, 1fr); row-gap: 40px; }
+  .hero__abajo .ficha { max-width: 480px; }
 }
 
 .hero h1 {
@@ -219,7 +230,16 @@ a {
   margin: 0 0 32px;
   font-size: 19px;
   line-height: 1.55;
-  max-width: 56ch;
+  max-width: 72ch;
+}
+
+/* El porqué del Gansito, debajo del lede y en voz secundaria */
+.hero__porque {
+  margin: -12px 0 32px;
+  font-size: 16px;
+  line-height: 1.55;
+  max-width: 80ch;
+  color: var(--texto-2);
 }
 
 /* Botones: rectos, con marco de 2 px como la ficha; el primero lleno, los demás huecos */
@@ -1052,7 +1072,6 @@ a {
 
 /* Tablet y móvil: el riel sube, las columnas se apilan (propuesta §1, regla 4) */
 @media (max-width: 1023px) {
-  .hero__arriba { grid-template-columns: 1fr; row-gap: 40px; }
   .corridas { grid-template-columns: 1fr; max-width: 520px; }
   .vive { grid-template-columns: minmax(0, 1fr); }
 }
