@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Índice Gansito · Aldo Moreno Mandujano</title>
-  <meta name="description" content="Pipeline de datos de punta a punta en Microsoft Fabric sobre Quién es Quién en los Precios (Profeco): cuánto cuesta un Gansito en México, quién lo vende más caro y cuánto de lo que sube es inflación.">
+  <meta name="description" content="Pipeline de datos de punta a punta en Microsoft Fabric sobre Quién es Quién en los Precios (Profeco): cuánto cuesta un Gansito en México, quién lo vende más caro, cuánto de lo que sube es inflación y si el salario mínimo alcanza para más o para menos.">
   <link rel="canonical" href="https://aldomor00.github.io/indice-gansito/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 
@@ -16,7 +16,7 @@
   <meta property="og:site_name" content="Aldo Moreno Mandujano">
   <meta property="og:locale" content="es_MX">
   <meta property="og:title" content="Índice Gansito · Aldo Moreno Mandujano">
-  <meta property="og:description" content="Pipeline de datos de punta a punta en Microsoft Fabric sobre Quién es Quién en los Precios (Profeco): cuánto cuesta un Gansito en México, quién lo vende más caro y cuánto de lo que sube es inflación.">
+  <meta property="og:description" content="Pipeline de datos de punta a punta en Microsoft Fabric sobre Quién es Quién en los Precios (Profeco): cuánto cuesta un Gansito en México, quién lo vende más caro, cuánto de lo que sube es inflación y si el salario mínimo alcanza para más o para menos.">
   <meta property="og:image" content="https://aldomor00.github.io/indice-gansito/img/tarjeta.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -71,7 +71,7 @@
         <a href="#corre"><b>05</b> <span>Cómo corre</span></a>
         <a href="#adentro"><b>06</b> <span>Las capas</span></a>
         <a href="#vive"><b>07</b> <span>Dónde vive</span></a>
-        <a href="#construye"><b>08</b> <span>Se construye</span></a>
+        <a href="#construye"><b>08</b> <span>Cómo se construye</span></a>
         <a href="#no-prod"><b>09</b> <span>Lo que no haría</span></a>
         <a href="#cierre"><b>10</b> <span>Cierre</span></a>
       </nav>
@@ -94,8 +94,9 @@
             <h1>Pipeline de datos <span class="hero__acento">end to end</span> en Microsoft&nbsp;Fabric.</h1>
             <p class="hero__lede">
               Toma <i>Quién es Quién en los Precios</i> de Profeco, el salario mínimo de CONASAMI y el
-              INPC de INEGI, y responde tres preguntas: cuánto cuesta un Gansito en México, quién lo
-              vende más caro y cuánto de lo que sube es inflación.
+              INPC de INEGI, y responde cuatro preguntas: cuánto cuesta un Gansito en México, quién lo
+              vende más caro, cuánto de lo que sube es inflación y si un día de salario mínimo alcanza
+              para más o para menos.
             </p>
             <nav class="botones" aria-label="Enlaces del proyecto">
               <a class="boton boton--lleno" href="https://github.com/AldoMor00/indice-gansito" target="_blank" rel="noopener">El código <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
@@ -109,20 +110,23 @@
           <dl class="ficha">
             <div class="ficha__cabeza">
               <span class="ficha__titulo">Información del proyecto</span>
-              <span class="ficha__sub">por porción de una semana</span>
+              <span class="ficha__sub">por porción de una corrida</span>
             </div>
             <div class="ficha__fila"><dt>Estado</dt><dd>en producción desde 2026-09-14</dd></div>
             <div class="ficha__fila"><dt>Ingesta</dt><dd>lunes · GitHub Actions</dd></div>
-            <div class="ficha__fila"><dt>Pipeline</dt><dd>martes 03:00 · pl_master</dd></div>
-            <div class="ficha__fila"><dt>Mantenimiento</dt><dd>domingo 03:00 · pl_mantenimiento</dd></div>
+            <div class="ficha__fila"><dt>Pipeline</dt><dd>pl_master · una corrida encadena las tres capas</dd></div>
+            <div class="ficha__fila"><dt>Mantenimiento</dt><dd>pl_mantenimiento · aparte de la carga</dd></div>
             <div class="ficha__fila ficha__fila--gruesa"><dt>Fuentes</dt><dd>Profeco · CONASAMI · INEGI</dd></div>
             <div class="ficha__fila"><dt>Zona raw</dt><dd>GitHub, fuera de Fabric</dd></div>
             <div class="ficha__fila"><dt>Capas</dt><dd>bronze · silver · gold</dd></div>
             <div class="ficha__fila"><dt>Modelo</dt><dd>estrella · Direct Lake</dd></div>
             <div class="ficha__fila"><dt>Despliegue</dt><dd>PR a main · fabric-cicd</dd></div>
             <div class="ficha__fila ficha__fila--gruesa"><dt>Stack</dt><dd>Fabric&nbsp;· PySpark&nbsp;· Delta Lake&nbsp;· DAX&nbsp;· Python&nbsp;· GitHub Actions</dd></div>
+            <div class="ficha__fila"><dt>Serie</dt><dd>62 quincenas · ene 2024 a jul 2026</dd></div>
+            <div class="ficha__fila"><dt>Una corrida</dt><dd>~20 min de reloj</dd></div>
+            <div class="ficha__fila ficha__fila--gruesa"><dt>Costo</dt><dd>~0.28 USD por corrida</dd></div>
             <div class="ficha__fila"><dt>A mano en prod</dt><dd>0 %</dd></div>
-            <p class="ficha__nota">Cifras del índice: ninguna en esta página. Viven en el reporte, que se refresca solo.</p>
+            <p class="ficha__nota">Serie, duración y costo, medidos en septiembre de 2026: la corrida de dev del 18, y los 5,222 CU-s de la de prod del 15 a tarifa de pago por uso de una F2. Cifras del índice: ninguna en esta página. Viven en el reporte, que se refresca solo.</p>
           </dl>
         </div>
 
@@ -155,7 +159,7 @@
 
       <div class="cuerpo cuerpo--lado">
         <header class="seccion__cabeza seccion__cabeza--fija">
-          <h2>De tres portales a un reporte, sin que nadie toque nada en medio.</h2>
+          <h2>De tres portales a un reporte, sin que nadie toque los datos en medio.</h2>
           <p class="seccion__sub">
             Arriba de la línea corre GitHub Actions; abajo, Spark sobre Delta en Fabric, orquestado por
             pipelines. Cada capa contesta una pregunta distinta y tiene una regla dura.
@@ -203,7 +207,7 @@
                 <rect x="230" y="168" width="300" height="96"/>
                 <text class="titulo" x="246" y="194">indice-gansito-datos</text>
                 <text class="sub" x="246" y="214">zona raw, en git (decisión #1)</text>
-                <text class="sub" x="246" y="232">cortes por quincena + manifiesto</text>
+                <text class="sub" x="246" y="232">cortes en parquet + manifiesto</text>
                 <text class="sub" x="246" y="250">url de origen + sha256 de cada archivo</text>
               </a>
 
@@ -211,7 +215,7 @@
               <line class="frontera" x1="0" y1="300" x2="760" y2="300"/>
               <text class="zona" x="0" y="292">fuera de Fabric</text>
               <text class="zona" x="0" y="318">dentro de Fabric</text>
-              <text class="banda" x="760" y="318" text-anchor="end">pl_master · martes 03:00</text>
+              <text class="banda" x="760" y="318" text-anchor="end">pl_master · bronze → silver → gold</text>
 
               <path class="flecha" d="M380 264 L380 340"/>
 
@@ -266,7 +270,7 @@
               <a class="lupa nodo" href="img/02_responde_p1-el-numero.webp" data-alt="Primera página del reporte, El número.">
                 <rect x="230" y="868" width="300" height="70"/>
                 <text class="titulo" x="246" y="894">rpt_gansito</text>
-                <text class="sub" x="246" y="914">cinco páginas, una por pregunta</text>
+                <text class="sub" x="246" y="914">cuatro preguntas y el método</text>
               </a>
 
               <!-- la salida pública: gold vuelve a git -->
@@ -287,7 +291,7 @@
                 <text class="sub" x="574" y="914">clon import · Publish to web</text>
               </a>
 
-              <text class="banda" x="0" y="982">pl_mantenimiento · domingo 03:00 · OPTIMIZE · VACUUM · refresh</text>
+              <text class="banda" x="0" y="982">pl_mantenimiento · OPTIMIZE · VACUUM · refresh</text>
             </svg>
           </div>
         </figure>
@@ -513,7 +517,7 @@
     <section class="seccion" id="fuentes">
       <aside class="riel">
         <span class="riel__num">04</span>
-        <span class="riel__nombre">De dónde salen</span>
+        <span class="riel__nombre">Las fuentes</span>
         <span class="riel__meta">ingesta.yml · lunes</span>
       </aside>
 
@@ -542,7 +546,7 @@
             <p>Los precios de cada tienda, producto por producto. Un bundle por año, publicado cada mes sin día fijo y con un mes de rezago.</p>
             <dl class="fuente__datos">
               <div><dt>llega</dt><dd>zip anual, un CSV de ~155 MB por quincena</dd></div>
-              <div><dt>se guarda</dt><dd>el corte del catálogo y las tiendas; el sha256 del original</dd></div>
+              <div><dt>se guarda</dt><dd>el corte del catálogo y las tiendas, en parquet; el sha256 del CSV original</dd></div>
             </dl>
           </article>
 
@@ -612,35 +616,27 @@
       </div>
     </section>
 
-    <!-- 5 · Cómo corre solo: la semana en una tira, y debajo lo que dispara cada horario. -->
+    <!-- 5 · Cómo corre: lo que hace cada corrida. Sin días fijos para Fabric, porque la
+         capacidad puede correr por horario o encenderse a mano. -->
     <section class="seccion" id="corre">
       <aside class="riel">
         <span class="riel__num">05</span>
-        <span class="riel__nombre">Cómo corre solo</span>
-        <span class="riel__meta">3 horarios · 0 clics</span>
+        <span class="riel__nombre">Cómo corre</span>
+        <span class="riel__meta">1 disparo · 0 pasos a mano</span>
       </aside>
 
       <div class="cuerpo">
         <header class="seccion__cabeza">
-          <h2>Tres horarios a la semana, y nadie le da a «Run».</h2>
+          <h2>Un disparo, y lo demás se encadena solo.</h2>
           <p class="seccion__sub">
-            El lunes se baja lo nuevo, el martes se procesa y el domingo se da mantenimiento, los tres en
-            hora de México. Cada capa
+            La ingesta baja lo nuevo cada lunes, fuera de Fabric. Dentro, <code>pl_master</code> procesa
+            las tres capas de un tirón y <code>pl_mantenimiento</code> compacta y limpia aparte. Cada capa
             espera a que la anterior salga en verde: si una truena, las de adelante no corren sobre
             datos a medias. No hay tabla de corridas hecha a mano; el registro es el monitoring hub de
             Fabric, y el aviso de falla es el suyo (decisión #31).
           </p>
           <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito#c%C3%B3mo-corre" target="_blank" rel="noopener">cómo corre, en el README <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
         </header>
-
-        <!-- La tira: cada marca va en su día y hora, (día + hora/24) / 7 del ancho. -->
-        <div class="semana" role="img" aria-label="La semana: la ingesta corre el lunes a las 06:00, pl_master el martes a las 03:00 y pl_mantenimiento el domingo a las 03:00. De miércoles a sábado no corre nada.">
-          <span>lun</span><span>mar</span><span>mié</span><span>jue</span><span>vie</span><span>sáb</span><span>dom</span>
-          <b class="semana__marca" style="--x: 3.57%">1</b>
-          <b class="semana__marca" style="--x: 16.07%">2</b>
-          <b class="semana__marca" style="--x: 87.5%">3</b>
-          <i class="semana__nada">mié a sáb no corre nada</i>
-        </div>
 
         <div class="corridas">
           <article class="corrida">
@@ -655,7 +651,7 @@
           </article>
 
           <article class="corrida">
-            <p class="corrida__cuando"><b>2</b> martes 03:00 · Fabric prod</p>
+            <p class="corrida__cuando"><b>2</b> cuando hay quincena nueva · Fabric prod</p>
             <h3>pl_master</h3>
             <ol class="pasos">
               <li>
@@ -672,7 +668,7 @@
           </article>
 
           <article class="corrida">
-            <p class="corrida__cuando"><b>3</b> domingo 03:00 · Fabric prod</p>
+            <p class="corrida__cuando"><b>3</b> aparte de la carga · Fabric prod</p>
             <h3>pl_mantenimiento</h3>
             <ol class="pasos">
               <li><code>OPTIMIZE</code><span>compacta los archivos chicos que dejan los MERGE</span></li>
@@ -711,7 +707,7 @@
     <section class="seccion" id="adentro">
       <aside class="riel">
         <span class="riel__num">06</span>
-        <span class="riel__nombre">Qué pasa adentro</span>
+        <span class="riel__nombre">Las capas</span>
         <span class="riel__meta">bronze · silver · gold</span>
       </aside>
 
@@ -897,7 +893,7 @@
             </div>
             <div>
               <dt>mantenimiento</dt>
-              <dd><code>OPTIMIZE</code> y <code>VACUUM</code> cada domingo desde un notebook, con los siete
+              <dd><code>OPTIMIZE</code> y <code>VACUUM</code> desde un notebook, en su propio pipeline, con los siete
                 días de retención escritos en el código, y después el refresh (decisión #33).
                 <a class="lupa capa__ver" href="img/06_donde-vive_historial-hechos-precios.webp" data-alt="DESCRIBE HISTORY de hechos_precios en lh_gold de dev: la escritura inicial, el CLUSTER BY, la constraint CHECK, dos WRITE de corridas y dos pares VACUUM START y VACUUM END. La columna userName va tapada.">el historial de una tabla</a></dd>
             </div>
@@ -930,22 +926,15 @@
           <dl class="reglas reglas--dos">
             <div>
               <dt>dim_salario_minimo · SCD2</dt>
-              <dd>Versiona. La clave natural es <code>(zona, inicio_vigencia)</code>, así que hay una fila
-                por vigencia y no una por zona, y el mismo <code>MERGE</code> cierra las vigencias con
-                <code>LEAD</code>. Nada que expirar a mano: CONASAMI reexpide la historia completa, y el
-                renglón abierto del año pasado vuelve a llegar con su <code>vigencia_hasta</code> ya cerrado
-                (decisión #14). Lo que versiona es real: <i>resto del país</i> y <i>general</i> son la misma
-                zona renombrada, pero <i>única</i> no se fusiona con ellas, porque al crearse la ZLFN en 2019
-                se le recortó territorio y eso es cambio de verdad, no de nombre (decisión #17).</dd>
+              <dd>Versiona. La clave natural es <code>(zona, inicio_vigencia)</code>, una fila por vigencia, y
+                el mismo <code>MERGE</code> cierra las vigencias con <code>LEAD</code>. Nada se expira a mano:
+                CONASAMI reexpide la historia completa en cada archivo (decisiones #14 y #17).</dd>
             </div>
             <div>
               <dt>dim_tienda · sin SCD2</dt>
-              <dd>No versiona, porque bajo su clave ningún atributo cambia: versionar sería teatro. Y no es
-                una suposición que envejezca sola —la compuerta <code>exige_uno_por_clave</code> truena si un
-                atributo trae dos valores bajo la misma llave, y <code>nb_90_pruebas</code> prueba la
-                compuerta—. Los conflictos que sí aparecieron eran grafías de la fuente, y normalizados
-                vuelven a cero. El día que una tienda cambie de verdad, la corrida se detiene y la decisión
-                se vuelve a tomar (decisiones #13 y #39).</dd>
+              <dd>No versiona, porque bajo su clave ningún atributo cambia, y la compuerta
+                <code>exige_uno_por_clave</code> lo vigila: el día que una tienda cambie de verdad, la corrida
+                se detiene y la decisión se vuelve a tomar (decisiones #13 y #39).</dd>
             </div>
           </dl>
         </div>
@@ -976,7 +965,7 @@
         <figure class="ventana">
           <figcaption class="ventana__barra"><span>Dev y prod</span><span>Clic en un nodo abre su captura</span></figcaption>
           <div class="diagrama-marco">
-            <svg class="diagrama diagrama--ancho" viewBox="0 0 900 295" role="img" aria-label="El código va de izquierda a derecha: ws-gansito-dev se sincroniza con la rama dev, la rama dev entra a main por un PR que revisa ci.yml, y al mergear deploy.yml despliega a ws-gansito-prod con fabric-cicd. Los datos van al revés: los lakehouses de dev son un shallow clone de los de prod, y bronze se re-clona cada domingo.">
+            <svg class="diagrama diagrama--ancho" viewBox="0 0 900 295" role="img" aria-label="El código va de izquierda a derecha: ws-gansito-dev se sincroniza con la rama dev, la rama dev entra a main por un PR que revisa ci.yml, y al mergear deploy.yml despliega a ws-gansito-prod con fabric-cicd. Los datos van al revés: los lakehouses de dev son un shallow clone de los de prod, y bronze se re-clona en cada mantenimiento.">
               <text class="banda" x="0" y="18">el código · de dev a prod</text>
 
               <a class="lupa nodo" href="img/08_construye_git-integration-dev.webp" data-alt="Configuración de git integration de ws-gansito-dev: GitHub, el repo indice-gansito, la carpeta /fabric y la rama dev.">
@@ -1027,7 +1016,7 @@
 
               <path class="flecha" d="M720 243 L156 243"/>
               <text class="etiqueta" x="435" y="233" text-anchor="middle">SHALLOW CLONE: el metadato, no los datos</text>
-              <text class="sub" x="435" y="265" text-anchor="middle">bronze se re-clona cada domingo</text>
+              <text class="sub" x="435" y="265" text-anchor="middle">bronze se re-clona en cada mantenimiento</text>
 
               <g class="caja caja--datos">
                 <rect x="720" y="208" width="170" height="70"/>
@@ -1102,14 +1091,15 @@
       <aside class="riel">
         <span class="riel__num">09</span>
         <span class="riel__nombre">Lo que no haría</span>
-        <span class="riel__meta">alcance · capacidad de prueba</span>
+        <span class="riel__meta">alcance · capacidad personal</span>
       </aside>
 
       <div class="cuerpo">
         <header class="seccion__cabeza">
           <h2>Lo que no haría así con una capacidad de verdad.</h2>
           <p class="seccion__sub">
-            Esto corre sobre una capacidad de prueba y una muestra pública de unos pocos megabytes. Varias
+            Esto corre sobre una capacidad personal, que se enciende para trabajar y se apaga, y sobre una
+            muestra pública de unos pocos megabytes. Varias
             decisiones se tomaron por esa restricción, y cada una lo dice en su bloque de <b>Costo</b>. Esta
             sección es ese bloque, junto.
           </p>
@@ -1124,7 +1114,7 @@
             <tr>
               <td><b>La zona raw vive en un repo de git.</b></td>
               <td>Viviría en ADLS. Git no es un almacén de datos.</td>
-              <td>La capacidad es una trial y va a desaparecer con sus datos. Con el raw afuera, el workspace se borra y se reconstruye sin perder historia (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#1-la-zona-raw-vive-fuera-de-fabric" target="_blank" rel="noopener">decisión #1</a>).</td>
+              <td>La capacidad es desechable: si desaparece, se lleva sus datos. Con el raw afuera, el workspace se borra y se reconstruye sin perder historia (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#1-la-zona-raw-vive-fuera-de-fabric" target="_blank" rel="noopener">decisión #1</a>).</td>
             </tr>
             <tr>
               <td><b>Bronze baja los parquets por HTTPS, con <code>requests</code>.</b></td>
@@ -1145,11 +1135,6 @@
               <td><b>El layout de los hechos está declarado, pero nunca se aplica.</b></td>
               <td>El mismo clustering, y ahí sí trabajando: a volumen real sí hay archivos que compactar.</td>
               <td>A esta escala <code>OPTIMIZE</code> se salta la tabla, así que hoy lo que ordena las filas es el V-Order. El layout está elegido para el caso real (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#32-el-hecho-se-clusteriza-no-se-particiona" target="_blank" rel="noopener">decisión #32</a>).</td>
-            </tr>
-            <tr>
-              <td><b>No hay tabla de corridas: el registro es el monitoring hub.</b></td>
-              <td>Con años de historia, workspace monitoring o la Job API.</td>
-              <td>La retención del hub, 30 días de actividades y 60 de notebook, supera la vida de la trial: una tabla propia nunca tendría algo que el hub no tenga (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#31-la-observabilidad-de-las-corridas-es-el-monitoring-hub" target="_blank" rel="noopener">decisión #31</a>).</td>
             </tr>
           </tbody>
         </table>
