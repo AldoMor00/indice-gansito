@@ -198,7 +198,9 @@ a {
 /* 0 · Hero */
 /* Arriba el texto a todo el ancho; abajo el reporte y la ficha lado a lado, para que el
    reporte entre en la primera pantalla de una laptop */
-.hero__arriba { margin-bottom: 40px; }
+.hero { padding-top: 40px; }
+
+.hero__arriba { margin-bottom: 32px; }
 
 .hero__abajo {
   display: grid;
@@ -216,9 +218,9 @@ a {
 }
 
 .hero h1 {
-  margin: 0 0 28px;
+  margin: 0 0 20px;
   font-family: var(--serif);
-  font-size: clamp(40px, 4.6vw, 68px);
+  font-size: clamp(36px, 3.6vw, 52px);
   font-weight: 500;
   line-height: 1.02;
   letter-spacing: -0.02em;
@@ -227,19 +229,10 @@ a {
 .hero__acento { color: var(--acento); }
 
 .hero__lede {
-  margin: 0 0 32px;
+  margin: 0 0 28px;
   font-size: 19px;
   line-height: 1.55;
   max-width: 72ch;
-}
-
-/* El porqué del Gansito, debajo del lede y en voz secundaria */
-.hero__porque {
-  margin: -12px 0 32px;
-  font-size: 16px;
-  line-height: 1.55;
-  max-width: 80ch;
-  color: var(--texto-2);
 }
 
 /* Botones: rectos, con marco de 2 px como la ficha; el primero lleno, los demás huecos */

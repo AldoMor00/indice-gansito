@@ -98,11 +98,6 @@
               vende más caro, cuánto de lo que sube es inflación y si un día de salario mínimo alcanza
               para más o para menos.
             </p>
-            <p class="hero__porque">
-              ¿Por qué el Gansito? En Profeco es una sola presentación, 50 g de una sola marca: como en el
-              índice Big Mac, lo que cambia es el precio y no lo que se compra. Ocho pastelillos más forman
-              la canasta contra la que se compara.
-            </p>
             <nav class="botones" aria-label="Enlaces del proyecto">
               <a class="boton boton--lleno" href="https://github.com/AldoMor00/indice-gansito" target="_blank" rel="noopener">El código <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
               <a class="boton" href="https://github.com/AldoMor00/indice-gansito-datos" target="_blank" rel="noopener">Los datos <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
@@ -128,6 +123,11 @@
                 src="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9"
                 allowfullscreen></iframe>
             </div>
+            <p class="ventana__pie">
+              ¿Por qué el Gansito? En Profeco es una sola presentación, 50 g de una sola marca: como en el
+              índice Big Mac, lo que cambia es el precio y no lo que se compra. Ocho pastelillos más forman
+              la canasta contra la que se compara.
+            </p>
           </figure>
 
           <!-- La ficha: tabla de hechos del proyecto, al estilo de la información nutrimental -->
@@ -136,13 +136,14 @@
               <span class="ficha__titulo">Información del proyecto</span>
               <span class="ficha__sub">por porción de una corrida</span>
             </div>
+            <div class="ficha__fila"><dt>Hecho por</dt><dd>una persona · desde ago 2026</dd></div>
             <div class="ficha__fila"><dt>Estado</dt><dd>en producción desde 2026-09-14</dd></div>
             <div class="ficha__fila"><dt>Ingesta</dt><dd>lunes · GitHub Actions</dd></div>
             <div class="ficha__fila"><dt>Pipeline</dt><dd>pl_master · las tres capas</dd></div>
             <div class="ficha__fila ficha__fila--gruesa"><dt>Fuentes</dt><dd>Profeco · CONASAMI · INEGI</dd></div>
             <div class="ficha__fila"><dt>Modelo</dt><dd>estrella · Direct Lake</dd></div>
             <div class="ficha__fila"><dt>Despliegue</dt><dd>PR a main · fabric-cicd</dd></div>
-            <div class="ficha__fila ficha__fila--gruesa"><dt>Stack</dt><dd>Fabric&nbsp;· PySpark&nbsp;· Delta Lake&nbsp;· DAX&nbsp;· Python&nbsp;· GitHub Actions</dd></div>
+            <div class="ficha__fila ficha__fila--gruesa"><dt>Stack</dt><dd>Fabric&nbsp;· PySpark&nbsp;· Delta Lake&nbsp;· DAX&nbsp;· Python&nbsp;· Azure&nbsp;· GitHub Actions</dd></div>
             <div class="ficha__fila"><dt>Serie</dt><dd>62 quincenas · ene 2024 a jul 2026</dd></div>
             <div class="ficha__fila"><dt>Una corrida</dt><dd>~20 min de reloj</dd></div>
             <div class="ficha__fila ficha__fila--gruesa"><dt>Costo</dt><dd>~0.28 USD por corrida</dd></div>
@@ -814,7 +815,9 @@
               </div>
               <p class="capa__nota">
                 Es la fila que el modelo semántico lee por Direct Lake, sin copiarla. De estos precios
-                promedio sale el índice encadenado de la sección 03.
+                promedio sale el índice encadenado de la sección 03. <code>id_quincena</code> va cortado:
+                como los otros ids, es un hash de 64 bits con signo, y por eso puede salir negativo
+                (decisión #13).
               </p>
               <a class="lupa capa__ver" href="img/05_adentro_fila-gold.webp" data-alt="La consulta a gold en Fabric: la misma fila con id_quincena.">la consulta en Fabric</a>
               <a class="lupa capa__ver" href="img/05_adentro_nb-30-gold.webp" data-alt="nb_30_gold abierto en Fabric: el %run de nb_00_config, el parámetro de quincenas y la explicación del modelo en estrella, con la tabla de contenidos Definiciones y Corrida.">nb_30_gold abierto</a>
@@ -894,7 +897,8 @@
               <dt>layout</dt>
               <dd>Liquid clustering por <code>(_quincena, id_producto)</code> en vez de particiones: hay un
                 solo escritor, y una quincena no llena ni de lejos el tamaño de archivo que el runtime
-                considera bueno (decisión #32).</dd>
+                considera bueno (decisión #32). A esta escala todavía no llega a aplicarse: la sección 09
+                dice por qué.</dd>
             </div>
             <div>
               <dt>mantenimiento</dt>
@@ -933,7 +937,9 @@
               <dt>dim_salario_minimo · SCD2</dt>
               <dd>Versiona. La clave natural es <code>(zona, inicio_vigencia)</code>, una fila por vigencia, y
                 el mismo <code>MERGE</code> cierra las vigencias con <code>LEAD</code>. Nada se expira a mano:
-                CONASAMI reexpide la historia completa en cada archivo (decisiones #14 y #17).</dd>
+                CONASAMI reexpide la historia completa en cada archivo (decisiones #14 y #17). Se queda en
+                silver y por eso no está en la estrella de arriba: el reporte usa la serie mensual,
+                <code>hechos_salario_mensual</code>.</dd>
             </div>
             <div>
               <dt>dim_tienda · sin SCD2</dt>
@@ -1230,8 +1236,8 @@
 
         <div class="contacto">
           <p class="contacto__texto">
-            Busco trabajo en ingeniería de datos. Si algo de lo que viste te sirve, o si quieres discutir
-            por qué tal decisión está mal, escríbeme.
+            Si algo de lo que viste te sirve, o si quieres discutir por qué tal decisión está mal,
+            escríbeme.
           </p>
           <nav class="botones" aria-label="Contacto">
             <a class="boton" href="mailto:aldo.moma00@gmail.com">aldo.moma00@gmail.com</a>
