@@ -16,7 +16,9 @@
   --canal: 48px;
   --ancho: 1400px;
   --margen: 40px;
-  --cabecera: 56px;
+  --cabezal: 56px;
+  --indice: 34px;
+  --cabecera: calc(var(--cabezal) + var(--indice));
 }
 
 * { box-sizing: border-box; }
@@ -51,7 +53,7 @@ a {
 
 .cabecera__contenido {
   max-width: var(--ancho);
-  height: 100%;
+  height: var(--cabezal);
   margin: 0 auto;
   padding: 0 var(--margen);
   display: flex;
@@ -99,6 +101,60 @@ a {
 .cabecera__enlaces a:hover { color: var(--acento); }
 
 .icono { width: 15px; height: 15px; flex: none; }
+
+/* Índice de secciones: banda de secciones bajo el cabezal, como la de un periódico. La
+   sección que se está viendo la marca pagina.js con aria-current. */
+/* El degradado de la derecha: cuando la barra no cabe, avisa que sigue. Va sobre el marco y
+   no sobre la barra, que es la que se desplaza. */
+.indice-marco {
+  position: relative;
+  border-top: 1px solid var(--linea);
+}
+
+.indice-marco::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--fondo));
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.indice-marco[data-desborda]::after { opacity: 1; }
+
+.indice {
+  display: flex;
+  max-width: var(--ancho);
+  height: var(--indice);
+  margin: 0 auto;
+  padding: 0 var(--margen);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.indice::-webkit-scrollbar { display: none; }
+
+.indice a {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-bottom: 2px solid transparent;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--texto-2);
+  text-decoration: none;
+}
+
+.indice a:first-child { padding-left: 0; }
+.indice a:hover { color: var(--texto); }
+.indice b { font-weight: 500; color: var(--acento); }
+.indice a[aria-current] { color: var(--texto); border-bottom-color: var(--acento); }
 
 /* Página: cada sección es una fila con riel a la izquierda y cuerpo a la derecha */
 .pagina {
@@ -279,6 +335,17 @@ a {
   font-family: var(--mono);
   font-size: 13px;
 }
+
+/* El plan B del hero: la captura del lienzo detrás del iframe, alineada arriba para que
+   coincida con él. El iframe va transparente, así que la captura es lo que se ve hasta que
+   Power BI pinta encima. */
+.reporte {
+  background: url("img/02_responde_p1-el-numero.webp") no-repeat top center;
+  background-size: 100% auto;
+  background-color: var(--tarjeta);
+}
+
+.reporte iframe { background: transparent; }
 
 /* 16:9 del ancho más 56 px de la barra inferior de Power BI
    (https://learn.microsoft.com/power-bi/collaborate-share/service-publish-to-web). */
@@ -831,6 +898,30 @@ a {
 
 .compuerta p {
   margin: 0 0 12px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--texto-2);
+}
+
+/* 7 · Cierre de la sección: qué hace cada dimensión con su historia */
+.modelado {
+  margin-top: 48px;
+  padding-top: 40px;
+  border-top: 1px solid var(--linea);
+}
+
+.modelado h3 {
+  margin: 0 0 12px;
+  max-width: 72ch;
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.modelado > p {
+  margin: 0 0 28px;
+  max-width: 72ch;
   font-size: 16px;
   line-height: 1.55;
   color: var(--texto-2);
