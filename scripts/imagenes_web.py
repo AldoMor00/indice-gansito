@@ -74,7 +74,8 @@ def tarjeta() -> None:
     origen = ((TARJETA[0] - im.width) // 2, (TARJETA[1] - im.height) // 2)
     lienzo.paste(im, origen)
     ImageDraw.Draw(lienzo).rectangle(
-        (origen[0] - 1, origen[1] - 1, origen[0] + im.width, origen[1] + im.height), outline=LINEA
+        (origen[0] - 1, origen[1] - 1, origen[0] + im.width, origen[1] + im.height),
+        outline=LINEA,
     )
     salida = DESTINO / "tarjeta.png"
     lienzo.save(salida, "PNG", optimize=True)
