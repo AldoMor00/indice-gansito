@@ -1,0 +1,1265 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Índice Gansito · Aldo Moreno Mandujano</title>
+  <meta name="description" content="Pipeline de datos de punta a punta en Microsoft Fabric sobre Quién es Quién en los Precios (Profeco): cuánto cuesta un Gansito en México, quién lo vende más caro, cuánto de lo que sube es inflación y si el salario mínimo alcanza para más o para menos.">
+  <link rel="canonical" href="https://aldomor00.github.io/indice-gansito/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+  <!-- La tarjeta que arman LinkedIn, Slack y WhatsApp al pegar el enlace. Las URL tienen que
+       ser absolutas, y la imagen va en PNG porque LinkedIn no lee WebP; la genera
+       scripts/imagenes_web.py a partir de la captura de la primera página del reporte. -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://aldomor00.github.io/indice-gansito/">
+  <meta property="og:site_name" content="Aldo Moreno Mandujano">
+  <meta property="og:locale" content="es_MX">
+  <meta property="og:title" content="Índice Gansito · Aldo Moreno Mandujano">
+  <meta property="og:description" content="Pipeline de datos de punta a punta en Microsoft Fabric sobre Quién es Quién en los Precios (Profeco): cuánto cuesta un Gansito en México, quién lo vende más caro, cuánto de lo que sube es inflación y si el salario mínimo alcanza para más o para menos.">
+  <meta property="og:image" content="https://aldomor00.github.io/indice-gansito/img/tarjeta.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="La primera página del reporte: el índice encadenado del Gansito desde enero de 2024, con su intervalo, contra el INPC y contra el resto de la canasta.">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Serif:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+  <!-- Ícono de enlace externo, definido una vez y referenciado con <use> -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="ico-externo" viewBox="0 0 12 12">
+      <path d="M4.5 1.5H1.5v9h9V7.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M7 1.5h3.5V5M10.5 1.5L5.5 6.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    </symbol>
+  </svg>
+
+  <!-- Cabecera fija (propuesta §2). -->
+  <header class="cabecera">
+    <div class="cabecera__contenido">
+      <a class="cabecera__nombre" href="#inicio">Aldo Moreno Mandujano</a>
+      <span class="cabecera__titulo">Ingeniería de datos · de la fuente al reporte</span>
+      <nav class="cabecera__enlaces" aria-label="Contacto">
+        <a href="https://github.com/AldoMor00" target="_blank" rel="noopener">
+          <svg class="icono" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+        <a href="https://www.linkedin.com/in/aldo-moreno-mandujano" target="_blank" rel="noopener">
+          <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+          LinkedIn
+        </a>
+        <a href="mailto:aldo.moma00@gmail.com">
+          <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 7l9 6 9-6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          Correo
+        </a>
+      </nav>
+    </div>
+
+    <!-- Índice de secciones: la página mide dieciocho pantallas y el riel sólo dice dónde
+         estás, no adónde puedes ir. pagina.js marca la sección que se está viendo. -->
+    <div class="indice-marco">
+      <nav class="indice" aria-label="Secciones">
+        <a href="#inicio"><b>00</b> <span>Inicio</span></a>
+        <a href="#fluye"><b>01</b> <span>Cómo fluye</span></a>
+        <a href="#responde"><b>02</b> <span>Qué responde</span></a>
+        <a href="#metodo"><b>03</b> <span>El método</span></a>
+        <a href="#fuentes"><b>04</b> <span>Las fuentes</span></a>
+        <a href="#corre"><b>05</b> <span>Cómo corre</span></a>
+        <a href="#adentro"><b>06</b> <span>Las capas</span></a>
+        <a href="#vive"><b>07</b> <span>Dónde vive</span></a>
+        <a href="#construye"><b>08</b> <span>Cómo se construye</span></a>
+        <a href="#no-prod"><b>09</b> <span>Lo que no haría</span></a>
+        <a href="#cierre"><b>10</b> <span>Cierre</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pagina">
+
+    <!-- 0 · Hero: qué es el proyecto, como lo cuenta el README, y el reporte incrustado. -->
+    <section class="seccion hero" id="inicio">
+      <aside class="riel">
+        <span class="riel__num">00</span>
+        <span class="riel__nombre">Índice Gansito</span>
+        <span class="riel__meta">2026 · Fabric</span>
+      </aside>
+
+      <div class="cuerpo">
+        <div class="hero__arriba">
+          <div class="hero__texto">
+            <h1>Pipeline de datos <span class="hero__acento">end to end</span> en Microsoft&nbsp;Fabric.</h1>
+            <p class="hero__lede">
+              Toma <i>Quién es Quién en los Precios</i> de Profeco, el salario mínimo de CONASAMI y el
+              INPC de INEGI, y responde cuatro preguntas: cuánto cuesta un Gansito en México, quién lo
+              vende más caro, cuánto de lo que sube es inflación y si un día de salario mínimo alcanza
+              para más o para menos.
+            </p>
+            <nav class="botones" aria-label="Enlaces del proyecto">
+              <a class="boton boton--lleno" href="https://github.com/AldoMor00/indice-gansito" target="_blank" rel="noopener">El código <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+              <a class="boton" href="https://github.com/AldoMor00/indice-gansito-datos" target="_blank" rel="noopener">Los datos <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+              <a class="boton" href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md" target="_blank" rel="noopener">Las decisiones <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+              <a class="boton" href="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9" target="_blank" rel="noopener">El reporte <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+            </nav>
+          </div>
+        </div>
+
+        <!-- El reporte y la ficha, lado a lado: así el reporte entra en la primera pantalla. -->
+        <div class="hero__abajo">
+          <figure class="ventana">
+            <figcaption class="ventana__barra">
+              <span>gansito_publico · clon de rpt_gansito</span>
+              <span>Publish to web · refresh diario</span>
+            </figcaption>
+            <!-- Plan B: la captura de esta misma página va de fondo, detrás del iframe. Mientras
+                 el embebido carga —o si el navegador de quien lee no lo deja cargar— lo que se ve
+                 es el reporte igual, sólo que quieto. -->
+            <div class="reporte">
+              <iframe
+                title="Reporte Índice Gansito"
+                src="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9"
+                allowfullscreen></iframe>
+            </div>
+            <p class="ventana__pie">
+              ¿Por qué el Gansito? En Profeco es una sola presentación, 50 g de una sola marca: como en el
+              índice Big Mac, lo que cambia es el precio y no lo que se compra. Ocho pastelillos más forman
+              la canasta contra la que se compara.
+            </p>
+          </figure>
+
+          <!-- La ficha: tabla de hechos del proyecto, al estilo de la información nutrimental -->
+          <dl class="ficha">
+            <div class="ficha__cabeza">
+              <span class="ficha__titulo">Información del proyecto</span>
+              <span class="ficha__sub">por porción de una corrida</span>
+            </div>
+            <div class="ficha__fila"><dt>Hecho por</dt><dd>una persona · desde ago 2026</dd></div>
+            <div class="ficha__fila"><dt>Estado</dt><dd>en producción desde 2026-09-14</dd></div>
+            <div class="ficha__fila"><dt>Ingesta</dt><dd>lunes · GitHub Actions</dd></div>
+            <div class="ficha__fila"><dt>Pipeline</dt><dd>pl_master · las tres capas</dd></div>
+            <div class="ficha__fila ficha__fila--gruesa"><dt>Fuentes</dt><dd>Profeco · CONASAMI · INEGI</dd></div>
+            <div class="ficha__fila"><dt>Modelo</dt><dd>estrella · Direct Lake</dd></div>
+            <div class="ficha__fila"><dt>Despliegue</dt><dd>PR a main · fabric-cicd</dd></div>
+            <div class="ficha__fila ficha__fila--gruesa"><dt>Stack</dt><dd>Fabric&nbsp;· PySpark&nbsp;· Delta Lake&nbsp;· DAX&nbsp;· Python&nbsp;· Azure&nbsp;· GitHub Actions</dd></div>
+            <div class="ficha__fila"><dt>Serie</dt><dd>62 quincenas · ene 2024 a jul 2026</dd></div>
+            <div class="ficha__fila"><dt>Una corrida</dt><dd>~20 min de reloj</dd></div>
+            <div class="ficha__fila ficha__fila--gruesa"><dt>Costo</dt><dd>~0.28 USD por corrida</dd></div>
+            <div class="ficha__fila"><dt>A mano en prod</dt><dd>0 %</dd></div>
+            <p class="ficha__nota">Serie, duración y costo, medidos en septiembre de 2026: la corrida de dev del 18, y los 5,222 CU-s de la de prod del 15 a tarifa de pago por uso de una F2. Cifras del índice: ninguna en esta página. Viven en el reporte, que se refresca solo.</p>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1 · Cómo fluye: el diagrama de arquitectura, vertical. Va inline y no como archivo porque
+         los nodos abren su captura con el lightbox, y fetch() no funciona abriendo index.html desde disco. -->
+    <section class="seccion" id="fluye">
+      <aside class="riel">
+        <span class="riel__num">01</span>
+        <span class="riel__nombre">Cómo fluye</span>
+        <span class="riel__meta">raw · bronze · silver · gold</span>
+      </aside>
+
+      <div class="cuerpo cuerpo--lado">
+        <header class="seccion__cabeza seccion__cabeza--fija">
+          <h2>De tres portales a un reporte, sin que nadie toque los datos en medio.</h2>
+          <p class="seccion__sub">
+            Arriba de la línea corre GitHub Actions; abajo, Spark sobre Delta en Fabric, orquestado por
+            pipelines. Cada capa contesta una pregunta distinta y tiene una regla dura.
+          </p>
+          <p class="seccion__sub">Clic en un nodo abre su captura.</p>
+          <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito#arquitectura" target="_blank" rel="noopener">el README <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </header>
+
+        <figure class="ventana ventana--diagrama">
+          <figcaption class="ventana__barra"><span>Arquitectura</span><span>De arriba abajo</span></figcaption>
+          <div class="diagrama-marco">
+            <svg class="diagrama" viewBox="0 0 760 990" role="img" aria-label="Diagrama de arquitectura, de arriba abajo: Profeco, CONASAMI e INEGI llegan por GitHub Actions al repo de datos; debajo de la frontera con Fabric pasan por bronze, silver y gold, luego al modelo semántico y al reporte. De gold sale una rama al parquet público en GitHub, y de ahí el clon publicado a la web.">
+              <defs>
+                <marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M0 0L10 5L0 10z" fill="#3B2418"/>
+                </marker>
+              </defs>
+
+              <text class="banda" x="0" y="18">GitHub Actions · lunes</text>
+
+              <!-- fuentes -->
+              <a class="lupa nodo" href="img/03_donde-salen_portal-profeco.webp" data-alt="Portal de datos abiertos de Profeco.">
+                <rect x="40" y="36" width="200" height="60"/>
+                <text class="titulo" x="54" y="60">Profeco</text>
+                <text class="sub" x="54" y="80">Quién es Quién · CSV</text>
+              </a>
+              <a class="lupa nodo" href="img/03_donde-salen_portal-conasami.webp" data-alt="Página de CONASAMI con las tablas de salarios mínimos.">
+                <rect x="280" y="36" width="200" height="60"/>
+                <text class="titulo" x="294" y="60">CONASAMI</text>
+                <text class="sub" x="294" y="80">salario mínimo · CSV</text>
+              </a>
+              <a class="lupa nodo" href="img/03_donde-salen_portal-inegi.webp" data-alt="Página de INEGI del INPC.">
+                <rect x="520" y="36" width="200" height="60"/>
+                <text class="titulo" x="534" y="60">INEGI</text>
+                <text class="sub" x="534" y="80">INPC quincenal · API</text>
+              </a>
+
+              <path class="flecha" d="M140 96 C140 140 320 130 320 168"/>
+              <path class="flecha" d="M380 96 L380 168"/>
+              <path class="flecha" d="M620 96 C620 140 440 130 440 168"/>
+              <text class="etiqueta" x="390" y="138">ingesta.yml</text>
+
+              <!-- raw -->
+              <a class="lupa nodo" href="img/03_donde-salen_carpeta-profeco.webp" data-alt="El repo de datos en GitHub con el manifiesto de Profeco.">
+                <rect x="230" y="168" width="300" height="96"/>
+                <text class="titulo" x="246" y="194">indice-gansito-datos</text>
+                <text class="sub" x="246" y="214">zona raw, en git (decisión #1)</text>
+                <text class="sub" x="246" y="232">cortes en parquet + manifiesto</text>
+                <text class="sub" x="246" y="250">url de origen + sha256 de cada archivo</text>
+              </a>
+
+              <!-- frontera -->
+              <line class="frontera" x1="0" y1="300" x2="760" y2="300"/>
+              <text class="zona" x="0" y="292">fuera de Fabric</text>
+              <text class="zona" x="0" y="318">dentro de Fabric</text>
+              <text class="banda" x="760" y="318" text-anchor="end">pl_master · bronze → silver → gold</text>
+
+              <path class="flecha" d="M380 264 L380 340"/>
+
+              <!-- capas -->
+              <a class="lupa nodo" href="img/05_adentro_fila-bronze.webp" data-alt="Una fila de bronze: las observaciones crudas de una tienda y quincena, con sha256 e intento.">
+                <rect x="230" y="340" width="300" height="96"/>
+                <text class="titulo" x="246" y="366">lh_bronze</text>
+                <text class="sub" x="246" y="386">¿qué dijo la fuente, y cuándo?</text>
+                <text class="sub" x="246" y="404">crudo + linaje</text>
+                <text class="sub" x="246" y="422">no castea, no filtra, no deduplica</text>
+              </a>
+              <text class="etiqueta" x="210" y="380" text-anchor="end">pl_bronze</text>
+              <text class="lateral" x="210" y="398" text-anchor="end">nb_10 · nb_11 · nb_12</text>
+
+              <path class="flecha" d="M380 436 L380 476"/>
+
+              <a class="lupa nodo" href="img/05_adentro_fila-silver.webp" data-alt="La misma fila en silver: una por tienda, producto y quincena, con promedio, mínimo y máximo.">
+                <rect x="230" y="476" width="300" height="96"/>
+                <text class="titulo" x="246" y="502">lh_silver</text>
+                <text class="sub" x="246" y="522">¿qué es cierto?</text>
+                <text class="sub" x="246" y="540">identidad + calidad</text>
+                <text class="sub" x="246" y="558">nada aterriza si una compuerta truena</text>
+              </a>
+              <text class="etiqueta" x="210" y="516" text-anchor="end">pl_silver</text>
+              <text class="lateral" x="210" y="534" text-anchor="end">nb_20 · nb_21 · nb_22</text>
+
+              <path class="flecha" d="M380 572 L380 612"/>
+
+              <a class="lupa nodo" href="img/05_adentro_fila-gold.webp" data-alt="La misma fila en gold: con id de quincena, lista para el modelo.">
+                <rect x="230" y="612" width="300" height="96"/>
+                <text class="titulo" x="246" y="638">lh_gold</text>
+                <text class="sub" x="246" y="658">¿qué le van a preguntar?</text>
+                <text class="sub" x="246" y="676">estrella + intervalo</text>
+                <text class="sub" x="246" y="694">sólo lo que el modelo consume</text>
+              </a>
+              <text class="etiqueta" x="210" y="652" text-anchor="end">pl_gold</text>
+              <text class="lateral" x="210" y="670" text-anchor="end">nb_30</text>
+
+              <path class="flecha" d="M380 708 L380 758"/>
+
+              <!-- modelo y reporte -->
+              <a class="lupa nodo" href="img/06_donde-vive_vista-modelo-relaciones.webp" data-alt="Vista de modelo de sm_gansito: cuatro dimensiones, cuatro hechos y tres tablas desconectadas.">
+                <rect x="230" y="758" width="300" height="70"/>
+                <text class="titulo" x="246" y="784">sm_gansito</text>
+                <text class="sub" x="246" y="804">Direct Lake · estrella · medidas</text>
+              </a>
+              <text class="lateral" x="210" y="790" text-anchor="end">refresh al final</text>
+              <text class="lateral" x="210" y="808" text-anchor="end">de pl_master</text>
+
+              <path class="flecha" d="M380 828 L380 868"/>
+
+              <a class="lupa nodo" href="img/02_responde_p1-el-numero.webp" data-alt="Primera página del reporte, El número.">
+                <rect x="230" y="868" width="300" height="70"/>
+                <text class="titulo" x="246" y="894">rpt_gansito</text>
+                <text class="sub" x="246" y="914">cuatro preguntas y el método</text>
+              </a>
+
+              <!-- la salida pública: gold vuelve a git -->
+              <path class="flecha" d="M530 660 C650 660 655 700 655 758"/>
+              <text class="etiqueta" x="545" y="648">nb_50_export · sólo prod</text>
+
+              <a class="nodo nodo--externo" href="https://github.com/AldoMor00/indice-gansito-datos/tree/main/publico" target="_blank" rel="noopener">
+                <rect x="560" y="758" width="190" height="70"/>
+                <text class="titulo" x="574" y="784">publico/</text>
+                <text class="sub" x="574" y="804">parquet, en el repo de datos</text>
+              </a>
+
+              <path class="flecha" d="M655 828 L655 868"/>
+
+              <a class="nodo nodo--externo" href="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9" target="_blank" rel="noopener">
+                <rect x="560" y="868" width="190" height="70"/>
+                <text class="titulo" x="574" y="894">gansito_publico</text>
+                <text class="sub" x="574" y="914">clon import · Publish to web</text>
+              </a>
+
+              <text class="banda" x="0" y="982">pl_mantenimiento · OPTIMIZE · VACUUM · refresh</text>
+            </svg>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 2 · Qué responde: una tarjeta por página del reporte, con el lienzo recortado. -->
+    <section class="seccion" id="responde">
+      <aside class="riel">
+        <span class="riel__num">02</span>
+        <span class="riel__nombre">Qué responde</span>
+        <span class="riel__meta">rpt_gansito · 5 páginas</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Cada pregunta, su página.</h2>
+          <p class="seccion__sub">
+            En prod el reporte lee gold por Direct Lake. El que ves al inicio es un clon en modo import,
+            publicado a la web y regenerado desde el mismo código. La quinta página, método y
+            cobertura, va en la sección 03, la que sigue.
+          </p>
+          <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito/tree/main/fabric/rpt_gansito.Report" target="_blank" rel="noopener">rpt_gansito en GitHub <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </header>
+
+        <div class="tarjetas">
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>El número</span><span>Página 1</span></figcaption>
+            <a class="lupa" href="img/02_responde_p1-el-numero.webp">
+              <img src="img/02_responde_p1-el-numero.webp" width="2000" height="1140" loading="lazy"
+                   alt="Página 'El número' del reporte: tarjetas de cambio encadenado, cambio real, intervalo y precio al cierre; el índice encadenado con su banda; el índice contra el INPC; y el Gansito contra la canasta.">
+            </a>
+            <p class="ventana__pie">El índice encadenado desde enero de 2024, con su intervalo, contra el INPC y contra el resto de la canasta.</p>
+          </figure>
+
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>Dónde</span><span>Página 2</span></figcaption>
+            <a class="lupa" href="img/02_responde_p2-donde.webp">
+              <img src="img/02_responde_p2-donde.webp" width="2000" height="1140" loading="lazy"
+                   alt="Página 'Dónde cuesta más' del reporte: precio promedio, mediano, dispersión y tiendas observadas de una quincena; precio por cadena; mapa por estado; histograma de precios; y municipios más caros y más baratos.">
+            </a>
+            <p class="ventana__pie">Un corte de una quincena: precio por cadena, por estado y por municipio, y cuántas tiendas cobran cada precio.</p>
+          </figure>
+
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>Quién subió</span><span>Página 3</span></figcaption>
+            <a class="lupa" href="img/02_responde_p3-quien-subio.webp">
+              <img src="img/02_responde_p3-quien-subio.webp" width="2000" height="1140" loading="lazy"
+                   alt="Página 'Quién subió' del reporte: cambio encadenado por canal, pareo mínimo; el índice y el precio promedio por canal; y del precio inicial al final por cadena.">
+            </a>
+            <p class="ventana__pie">El índice partido por canal y el nivel de precio por cadena. Un canal sin tiendas pareadas suficientes no publica.</p>
+          </figure>
+
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>Poder adquisitivo</span><span>Página 4</span></figcaption>
+            <a class="lupa" href="img/02_responde_p4-poder-adquisitivo.webp">
+              <img src="img/02_responde_p4-poder-adquisitivo.webp" width="2000" height="1140" loading="lazy"
+                   alt="Página 'Alcanza para más o para menos' del reporte: Gansitos que compra un día de salario mínimo al inicio y al cierre, lo que subió el salario y lo que subió el Gansito, y las dos series quincena a quincena.">
+            </a>
+            <p class="ventana__pie">Cuántos Gansitos compra un día de salario mínimo, quincena a quincena, y cuál de los dos sube más rápido.</p>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · El método: el encadenado en un dibujo, las tres reglas que lo cuidan, y la página del
+         reporte que declara la cobertura. El SVG sale de un script; las tiendas son de ejemplo. -->
+    <section class="seccion" id="metodo">
+      <aside class="riel">
+        <span class="riel__num">03</span>
+        <span class="riel__nombre">El método</span>
+        <span class="riel__meta">Jevons encadenado</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Cada quincena contra la anterior, sólo con las tiendas que estuvieron en las dos.</h2>
+          <p class="seccion__sub">
+            Profeco no visita las mismas tiendas cada quincena: unas entran, otras salen. Comparar el
+            promedio de hoy contra el de hace un año mezcla el cambio de precio con el cambio de muestra.
+            El índice parea cada quincena con la inmediata anterior y encadena los eslabones (decisión #19).
+          </p>
+          <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#gold-y-el-%C3%ADndice" target="_blank" rel="noopener">el método, en las decisiones <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </header>
+
+        <div class="metodo">
+          <figure class="ventana ventana--diagrama">
+            <figcaption class="ventana__barra"><span>El encadenado</span><span>Ocho tiendas de ejemplo</span></figcaption>
+            <div class="diagrama-marco">
+              <svg class="diagrama" viewBox="0 0 620 458" role="img" aria-label="Ocho tiendas en cuatro quincenas seguidas. Algunas entran, salen o faltan una quincena. Entre cada par de quincenas sólo se parean las tiendas presentes en las dos: 5, 5 y 6 pares. Cada eslabón J es la media geométrica de los relativos de precio de sus pares, y el índice de la cuarta quincena es 100 por J1 por J2 por J3.">
+              <circle class="tienda-si" cx="46" cy="18" r="6"/>
+              <text class="sub" x="60" y="22">Profeco la visitó</text>
+              <circle class="tienda-no" cx="196" cy="18" r="6"/>
+              <text class="sub" x="210" y="22">no la visitó</text>
+              <line class="par" x1="316" y1="18" x2="352" y2="18"/>
+              <text class="sub" x="362" y="22">par: está en las dos quincenas</text>
+              <text class="banda" x="110" y="66" text-anchor="middle">q1</text>
+              <text class="banda" x="240" y="66" text-anchor="middle">q2</text>
+              <text class="banda" x="370" y="66" text-anchor="middle">q3</text>
+              <text class="banda" x="500" y="66" text-anchor="middle">q4</text>
+              <text class="banda" x="40" y="66">tienda</text>
+              <text x="40" y="104">A</text>
+              <line class="par" x1="119" y1="100" x2="231" y2="100"/>
+              <line class="par" x1="249" y1="100" x2="361" y2="100"/>
+              <line class="par" x1="379" y1="100" x2="491" y2="100"/>
+              <circle class="tienda-si" cx="110" cy="100" r="6"/>
+              <circle class="tienda-si" cx="240" cy="100" r="6"/>
+              <circle class="tienda-si" cx="370" cy="100" r="6"/>
+              <circle class="tienda-si" cx="500" cy="100" r="6"/>
+              <text x="40" y="134">B</text>
+              <line class="par" x1="119" y1="130" x2="231" y2="130"/>
+              <circle class="tienda-si" cx="110" cy="130" r="6"/>
+              <circle class="tienda-si" cx="240" cy="130" r="6"/>
+              <circle class="tienda-no" cx="370" cy="130" r="6"/>
+              <circle class="tienda-no" cx="500" cy="130" r="6"/>
+              <text class="etiqueta" x="522" y="134">sale en q3</text>
+              <text x="40" y="164">C</text>
+              <line class="par" x1="119" y1="160" x2="231" y2="160"/>
+              <line class="par" x1="249" y1="160" x2="361" y2="160"/>
+              <line class="par" x1="379" y1="160" x2="491" y2="160"/>
+              <circle class="tienda-si" cx="110" cy="160" r="6"/>
+              <circle class="tienda-si" cx="240" cy="160" r="6"/>
+              <circle class="tienda-si" cx="370" cy="160" r="6"/>
+              <circle class="tienda-si" cx="500" cy="160" r="6"/>
+              <text x="40" y="194">D</text>
+              <line class="par" x1="249" y1="190" x2="361" y2="190"/>
+              <line class="par" x1="379" y1="190" x2="491" y2="190"/>
+              <circle class="tienda-no" cx="110" cy="190" r="6"/>
+              <circle class="tienda-si" cx="240" cy="190" r="6"/>
+              <circle class="tienda-si" cx="370" cy="190" r="6"/>
+              <circle class="tienda-si" cx="500" cy="190" r="6"/>
+              <text class="etiqueta" x="522" y="194">entra en q2</text>
+              <text x="40" y="224">E</text>
+              <line class="par" x1="379" y1="220" x2="491" y2="220"/>
+              <circle class="tienda-si" cx="110" cy="220" r="6"/>
+              <circle class="tienda-no" cx="240" cy="220" r="6"/>
+              <circle class="tienda-si" cx="370" cy="220" r="6"/>
+              <circle class="tienda-si" cx="500" cy="220" r="6"/>
+              <text class="etiqueta" x="522" y="224">falta en q2</text>
+              <text x="40" y="254">F</text>
+              <line class="par" x1="119" y1="250" x2="231" y2="250"/>
+              <line class="par" x1="249" y1="250" x2="361" y2="250"/>
+              <circle class="tienda-si" cx="110" cy="250" r="6"/>
+              <circle class="tienda-si" cx="240" cy="250" r="6"/>
+              <circle class="tienda-si" cx="370" cy="250" r="6"/>
+              <circle class="tienda-no" cx="500" cy="250" r="6"/>
+              <text class="etiqueta" x="522" y="254">sale en q4</text>
+              <text x="40" y="284">G</text>
+              <line class="par" x1="379" y1="280" x2="491" y2="280"/>
+              <circle class="tienda-no" cx="110" cy="280" r="6"/>
+              <circle class="tienda-no" cx="240" cy="280" r="6"/>
+              <circle class="tienda-si" cx="370" cy="280" r="6"/>
+              <circle class="tienda-si" cx="500" cy="280" r="6"/>
+              <text class="etiqueta" x="522" y="284">entra en q3</text>
+              <text x="40" y="314">H</text>
+              <line class="par" x1="119" y1="310" x2="231" y2="310"/>
+              <line class="par" x1="249" y1="310" x2="361" y2="310"/>
+              <line class="par" x1="379" y1="310" x2="491" y2="310"/>
+              <circle class="tienda-si" cx="110" cy="310" r="6"/>
+              <circle class="tienda-si" cx="240" cy="310" r="6"/>
+              <circle class="tienda-si" cx="370" cy="310" r="6"/>
+              <circle class="tienda-si" cx="500" cy="310" r="6"/>
+              <text class="eslabon" x="175" y="340" text-anchor="middle">J₁</text>
+              <text class="sub" x="175" y="358" text-anchor="middle">5 pares</text>
+              <text class="eslabon" x="305" y="340" text-anchor="middle">J₂</text>
+              <text class="sub" x="305" y="358" text-anchor="middle">5 pares</text>
+              <text class="eslabon" x="435" y="340" text-anchor="middle">J₃</text>
+              <text class="sub" x="435" y="358" text-anchor="middle">6 pares</text>
+              <line class="regla" x1="40" y1="384" x2="600" y2="384"/>
+              <text class="formula" x="40" y="418">índice(q4) = 100 × J₁ × J₂ × J₃</text>
+              <text class="sub" x="40" y="442">J: media geométrica de precio(q) / precio(q−1), sólo en las tiendas pareadas</text>
+              </svg>
+            </div>
+            <p class="ventana__pie">
+              Cada línea roja es una tienda que entra a la comparación de ese eslabón. B, D, E, F y G no se
+              tiran: cuentan en cada eslabón donde tienen con quién compararse.
+            </p>
+          </figure>
+
+          <dl class="reglas">
+            <div>
+              <dt>Jevons</dt>
+              <dd>La media del eslabón es geométrica, así que vive en logaritmos, y los logaritmos se suman.
+                Por eso el índice es una sola medida DAX sobre <code>hechos_relativos</code> y cualquier
+                corte lo recalcula, sin tablas pre-agregadas (decisión #19).</dd>
+            </div>
+            <div>
+              <dt>guarda</dt>
+              <dd>Se publica sólo si el pareo efectivo, la media armónica de tiendas pareadas por eslabón,
+                alcanza el umbral y ningún eslabón baja de 10 tiendas. Si no, la medida devuelve blanco
+                en vez de un número frágil (decisión #42).</dd>
+            </div>
+            <div>
+              <dt>intervalo</dt>
+              <dd>IC 95 % por bootstrap de tiendas, 2,000 réplicas con semilla fija, calculado en
+                <code>nb_30_gold</code>. DAX no puede: las mismas tiendas reaparecen eslabón tras eslabón,
+                y sus errores no se suman en cuadratura (decisión #20).</dd>
+            </div>
+            <div>
+              <dt>cobertura</dt>
+              <dd>El reporte declara cuánto del panel usa cada comparación: la mediana por eslabón de
+                tiendas pareadas sobre observadas, por tienda, cadena, municipio y estado (decisión #30).</dd>
+            </div>
+          </dl>
+        </div>
+
+        <figure class="ventana metodo__reporte">
+          <figcaption class="ventana__barra"><span>Método y cobertura</span><span>Página 5</span></figcaption>
+          <a class="lupa" href="img/07_metodo_p5-metodo-y-cobertura.webp">
+            <img src="img/07_metodo_p5-metodo-y-cobertura.webp" width="2000" height="1140" loading="lazy"
+                 alt="Quinta página del reporte, Método y cobertura: tarjetas de tiendas observadas, de panel completo, pareo mediano y eslabones bajo el umbral; una línea de tiendas observadas contra pareadas por quincena con el umbral; barras de cobertura por tienda, cadena, municipio y estado; y una tabla por cadena con su pareo efectivo.">
+          </a>
+          <p class="ventana__pie">
+            La quinta página del reporte, la que no responde una pregunta sino que dice de cuántas tiendas
+            sale cada respuesta. El umbral es un parámetro: al moverlo, la tabla por cadena muestra qué
+            series se publican y cuáles se apagan.
+          </p>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 4 · De dónde salen los datos: tres fuentes públicas, y cómo se bajan y se guardan. -->
+    <section class="seccion" id="fuentes">
+      <aside class="riel">
+        <span class="riel__num">04</span>
+        <span class="riel__nombre">Las fuentes</span>
+        <span class="riel__meta">ingesta.yml · lunes</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Tres fuentes públicas, un lunes a la semana.</h2>
+          <p class="seccion__sub">
+            GitHub Actions baja las tres cada lunes y las commitea en un repo de datos, con la URL de
+            origen y el sha256 de cada archivo en un manifiesto. La zona raw vive fuera de Fabric a
+            propósito: la capacidad es desechable y el histórico no (decisión #1).
+          </p>
+          <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito/blob/main/.github/workflows/ingesta.yml" target="_blank" rel="noopener">ingesta.yml en GitHub <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </header>
+
+        <div class="fuentes">
+          <article class="fuente">
+            <figure class="ventana">
+              <figcaption class="ventana__barra"><span>datos.profeco.gob.mx</span><span>Portal</span></figcaption>
+              <a class="lupa" href="img/03_donde-salen_portal-profeco.webp">
+                <img src="img/03_donde-salen_portal-profeco.webp" width="2000" height="1250" loading="lazy"
+                     alt="Portal de datos abiertos de Profeco con la lista de Quién es Quién en los Precios por año.">
+              </a>
+            </figure>
+            <h3>Profeco</h3>
+            <p class="fuente__que">Quién es Quién en los Precios</p>
+            <p>Los precios de cada tienda, producto por producto. Un bundle por año, publicado cada mes sin día fijo y con un mes de rezago.</p>
+            <dl class="fuente__datos">
+              <div><dt>llega</dt><dd>zip anual, un CSV de ~155 MB por quincena</dd></div>
+              <div><dt>se guarda</dt><dd>el corte del catálogo y las tiendas, en parquet; el sha256 del CSV original</dd></div>
+            </dl>
+          </article>
+
+          <article class="fuente">
+            <figure class="ventana">
+              <figcaption class="ventana__barra"><span>gob.mx/conasami</span><span>Portal</span></figcaption>
+              <a class="lupa" href="img/03_donde-salen_portal-conasami.webp">
+                <img src="img/03_donde-salen_portal-conasami.webp" width="2000" height="1250" loading="lazy"
+                     alt="Página de CONASAMI con las tablas de salarios mínimos generales y profesionales por año.">
+              </a>
+            </figure>
+            <h3>CONASAMI</h3>
+            <p class="fuente__que">salario mínimo</p>
+            <p>El salario nominal mensual y el vigente por zona. Dos CSV de unos 20 KB, sin token, que cambian una vez al año.</p>
+            <dl class="fuente__datos">
+              <div><dt>llega</dt><dd>CSV desde el CDN de datos abiertos</dd></div>
+              <div><dt>se guarda</dt><dd>una versión nueva sólo si el sha256 cambió</dd></div>
+            </dl>
+          </article>
+
+          <article class="fuente">
+            <figure class="ventana">
+              <figcaption class="ventana__barra"><span>inegi.org.mx</span><span>Tabulados del INPC</span></figcaption>
+              <a class="lupa" href="img/03_donde-salen_portal-inegi.webp">
+                <img src="img/03_donde-salen_portal-inegi.webp" width="2000" height="1250" loading="lazy"
+                     alt="Página de INEGI del Índice Nacional de Precios al Consumidor, con los tabulados quincenales y mensuales.">
+              </a>
+            </figure>
+            <h3>INEGI</h3>
+            <p class="fuente__que">INPC quincenal</p>
+            <p>El nivel del índice general, base 2018, desde 1988. Se lee por la API de indicadores, que pide token; la respuesta es estable byte a byte.</p>
+            <dl class="fuente__datos">
+              <div><dt>llega</dt><dd>JSON por API, unos 140 KB</dd></div>
+              <div><dt>se guarda</dt><dd>una versión nueva sólo si el sha256 cambió</dd></div>
+            </dl>
+          </article>
+        </div>
+
+        <div class="apoyo">
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>CSV de Profeco</span><span>Como llega</span></figcaption>
+            <a class="lupa" href="img/03_donde-salen_csv-profeco.webp">
+              <img src="img/03_donde-salen_csv-profeco.webp" width="2000" height="1250" loading="lazy"
+                   alt="Un CSV de Profeco abierto: columnas producto, presentación, marca, categoría, precio, fecha de registro, cadena comercial, giro, nombre comercial y dirección.">
+            </a>
+            <p class="ventana__pie">Así llega: todos los productos de todas las tiendas de una quincena. De cada archivo sobreviven las filas del catálogo del proyecto y las tuplas distintas de tienda.</p>
+          </figure>
+
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>indice-gansito-datos</span><span>profeco/manifiesto.jsonl</span></figcaption>
+            <a class="lupa" href="img/03_donde-salen_carpeta-profeco.webp">
+              <img src="img/03_donde-salen_carpeta-profeco.webp" width="2000" height="1250" loading="lazy"
+                   alt="El repo de datos en GitHub: carpetas conasami, inpc y profeco, y el manifiesto con una línea por quincena con su URL de origen y su sha256.">
+            </a>
+            <p class="ventana__pie">El manifiesto: una línea por quincena con la URL de origen y el sha256 del CSV. Con eso cualquier corte se puede rehacer desde la fuente.</p>
+          </figure>
+
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>ingesta #13</span><span>GitHub Actions</span></figcaption>
+            <a class="lupa" href="img/03_donde-salen_corrida-ingesta.webp">
+              <img src="img/03_donde-salen_corrida-ingesta.webp" width="2000" height="1250" loading="lazy"
+                   alt="Una corrida del workflow de ingesta en GitHub Actions: tres jobs en verde, profeco, conasami e inpc, encadenados.">
+            </a>
+            <p class="ventana__pie">Una corrida: tres jobs encadenados, uno por fuente, para que si Profeco truena CONASAMI e INEGI sigan. Lo normal es que no encuentren nada nuevo.</p>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · Cómo corre: lo que hace cada corrida. Sin días fijos para Fabric, porque la
+         capacidad puede correr por horario o encenderse a mano. -->
+    <section class="seccion" id="corre">
+      <aside class="riel">
+        <span class="riel__num">05</span>
+        <span class="riel__nombre">Cómo corre</span>
+        <span class="riel__meta">1 disparo · 0 pasos a mano</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Un disparo, y lo demás se encadena solo.</h2>
+          <p class="seccion__sub">
+            La ingesta baja lo nuevo cada lunes, fuera de Fabric. Dentro, <code>pl_master</code> procesa
+            las tres capas de un tirón y <code>pl_mantenimiento</code> compacta y limpia aparte. Cada capa
+            espera a que la anterior salga en verde: si una truena, las de adelante no corren sobre
+            datos a medias. No hay tabla de corridas hecha a mano; el registro es el monitoring hub de
+            Fabric, y el aviso de falla es el suyo (decisión #31).
+          </p>
+          <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito#c%C3%B3mo-corre" target="_blank" rel="noopener">cómo corre, en el README <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </header>
+
+        <div class="corridas">
+          <article class="corrida">
+            <p class="corrida__cuando"><b>1</b> lunes 06:00 · GitHub Actions</p>
+            <h3>ingesta.yml</h3>
+            <ol class="pasos">
+              <li><code>profeco</code><span>una sonda de metadatos decide si vale la pena bajar el bundle</span></li>
+              <li><code>conasami · inpc</code><span>se bajan siempre y se escriben sólo si cambió el sha256</span></li>
+              <li><code>commit</code><span>en indice-gansito-datos, con su manifiesto</span></li>
+            </ol>
+            <p class="corrida__nota">Lo normal es no encontrar nada: Profeco publica una vez al mes, sin día fijo.</p>
+          </article>
+
+          <article class="corrida">
+            <p class="corrida__cuando"><b>2</b> por horario o a mano · Fabric prod</p>
+            <h3>pl_master</h3>
+            <ol class="pasos">
+              <li>
+                <a class="lupa" href="img/04_como-corre_pl-bronze-sesion.webp" data-alt="pl_bronze en el editor: nb_10_profeco, nb_11_conasami y nb_12_inegi en serie, y el session tag bronze en la configuración de la actividad.">
+                  <code>pl_bronze</code><span>nb_10 → nb_11 → nb_12, en serie y en una sola sesión de Spark</span>
+                </a>
+              </li>
+              <li class="pasos__espera">Wait 120 s</li>
+              <li><code>pl_silver</code><span>nb_20 → nb_21 → nb_22, igual</span></li>
+              <li class="pasos__espera">Wait 120 s</li>
+              <li><code>pl_gold</code><span>nb_30 → refresh de sm_gansito → nb_50_export</span></li>
+            </ol>
+            <p class="corrida__nota">La espera es fija a propósito: la sesión de la capa anterior tarda hasta dos minutos en soltar la capacidad (decisión #41).</p>
+          </article>
+
+          <article class="corrida">
+            <p class="corrida__cuando"><b>3</b> aparte de la carga · Fabric prod</p>
+            <h3>pl_mantenimiento</h3>
+            <ol class="pasos">
+              <li><code>OPTIMIZE</code><span>compacta los archivos chicos que dejan los MERGE</span></li>
+              <li><code>VACUUM</code><span>borra los archivos que ya nadie referencia y tienen más de siete días</span></li>
+              <li><code>refresh</code><span>el modelo vuelve a apuntar a la versión nueva</span></li>
+              <li><code>re-clon</code><span>el bronze de dev se copia de prod</span></li>
+            </ol>
+            <p class="corrida__nota">El refresh va justo después: el modelo apunta a una versión concreta de cada tabla, y el mantenimiento acaba de dejar otra (decisión #33).</p>
+          </article>
+        </div>
+
+        <div class="tarjetas tarjetas--arriba">
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>pl_master</span><span>Una corrida</span></figcaption>
+            <a class="lupa" href="img/04_como-corre_pl-master-corrida.webp">
+              <img src="img/04_como-corre_pl-master-corrida.webp" width="2000" height="899" loading="lazy"
+                   alt="pl_master en el editor de Fabric: pl_bronze, una espera, pl_silver, otra espera y pl_gold, todos en verde, y abajo la salida de la corrida con la duración de cada actividad.">
+            </a>
+            <p class="ventana__pie">Tres invokes y dos esperas, todos con <i>on success</i>. Los pipelines hijos no aparecen en su propio historial: se leen desde la corrida del padre.</p>
+          </figure>
+
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>Monitoring hub</span><span>ws-gansito-prod</span></figcaption>
+            <a class="lupa" href="img/04_como-corre_monitoring-hub-prod.webp">
+              <img src="img/04_como-corre_monitoring-hub-prod.webp" width="2000" height="1552" loading="lazy"
+                   alt="El monitoring hub de Fabric filtrado a ws-gansito-prod: los notebooks de cada capa, el refresh de sm_gansito, nb_50_export y pl_master, todos Succeeded.">
+            </a>
+            <p class="ventana__pie">Prod, visto desde el hub: abajo los notebooks de la corrida programada del martes 15, arriba una corrida manual del 18. Los notebooks aparecen a nombre del service principal del despliegue, no de una cuenta personal.</p>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 · Qué pasa adentro: una misma fila por las tres capas. Los valores son los reales, sacados
+         de las mismas consultas que muestran las capturas; las celdas en rojo son lo que la capa agrega. -->
+    <section class="seccion" id="adentro">
+      <aside class="riel">
+        <span class="riel__num">06</span>
+        <span class="riel__nombre">Las capas</span>
+        <span class="riel__meta">bronze · silver · gold</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Un Gansito, una tienda, una quincena, por las tres capas.</h2>
+          <p class="seccion__sub">
+            El Chedraui Selecto de la calle 60, en Mérida, en la primera quincena de septiembre de 2025.
+            Profeco pasó tres veces a ver el precio. Así se ve ese mismo dato en cada capa, tal como lo
+            devuelve Fabric.
+          </p>
+          <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito/tree/main/fabric" target="_blank" rel="noopener">los notebooks en GitHub <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </header>
+
+        <div class="traza">
+          <article class="capa">
+            <header class="capa__cabeza">
+              <h3>bronze</h3>
+              <p class="fuente__que">¿qué dijo la fuente, y cuándo?</p>
+            </header>
+            <div class="capa__cuerpo">
+              <div class="tabla-marco">
+                <table class="tabla">
+                  <thead>
+                    <tr><th>_quincena</th><th>_intento</th><th>_sha256</th><th>fecha_registro</th><th>nombre_comercial</th><th>direccion</th><th>presentacion</th><th>marca</th><th>precio</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td class="cambia">2025-09_q1</td><td class="cambia">1</td><td class="cambia corta" title="720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041">720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041</td><td>2025/09/01</td><td class="corta" title="Chedraui Sucursal Selecto Merida">Chedraui Sucursal Selecto Merida</td><td class="corta" title="C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110">C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110</td><td>Paquete con 1 Gansito (50 Gr.)</td><td>Marinela</td><td>"20"</td></tr>
+                    <tr><td class="cambia">2025-09_q1</td><td class="cambia">1</td><td class="cambia corta" title="720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041">720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041</td><td>2025/09/08</td><td class="corta" title="Chedraui Sucursal Selecto Merida">Chedraui Sucursal Selecto Merida</td><td class="corta" title="C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110">C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110</td><td>Paquete con 1 Gansito (50 Gr.)</td><td>Marinela</td><td>"20"</td></tr>
+                    <tr><td class="cambia">2025-09_q1</td><td class="cambia">1</td><td class="cambia corta" title="720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041">720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041</td><td>2025/09/15</td><td class="corta" title="Chedraui Sucursal Selecto Merida">Chedraui Sucursal Selecto Merida</td><td class="corta" title="C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110">C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110</td><td>Paquete con 1 Gansito (50 Gr.)</td><td>Marinela</td><td>"22.5"</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="capa__nota">
+                Tres filas, como llegaron: el precio sigue siendo texto y la fecha no trae hora. Bronze no
+                castea, no filtra y no deduplica; sólo agrega linaje: la quincena, el intento de descarga
+                y el sha256 del parquet que bajó por HTTPS del repo de datos (decisión #8). El filtro ya pasó
+                antes, en la puerta: de las
+                542,922 filas de ese CSV, la ingesta guardó 4,441 (decisión #2).
+              </p>
+              <a class="lupa capa__ver" href="img/05_adentro_fila-bronze.webp" data-alt="La consulta a bronze en un notebook de Fabric: ocho filas de Chedraui Selecto en 2025-09_q1, tres de ellas de la tienda de la calle 60.">la consulta en Fabric</a>
+            </div>
+          </article>
+
+          <p class="capa__paso">
+            <b>3 filas → 1.</b> Las compuertas de entrada revisan el lote crudo. La tienda es
+            <code>(nombre_comercial, direccion)</code> y el producto <code>(presentacion, marca)</code>, cada
+            uno convertido en un id con hash (decisión #13). Se agrupa por tienda, producto y quincena, y el
+            precio se castea a decimal, con ANSI encendido para que un valor que no es número truene en vez
+            de volverse nulo (decisiones #12 y #16).
+          </p>
+
+          <article class="capa">
+            <header class="capa__cabeza">
+              <h3>silver</h3>
+              <p class="fuente__que">¿qué es cierto?</p>
+            </header>
+            <div class="capa__cuerpo">
+              <div class="tabla-marco">
+                <table class="tabla">
+                  <thead>
+                    <tr><th>id_tienda</th><th>id_producto</th><th>_quincena</th><th>precio_promedio</th><th>observaciones</th><th>precio_min</th><th>precio_max</th><th>_intento</th><th>quincena_inicio</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td class="cambia">4844430634035148630</td><td class="cambia">3071728268572450142</td><td>2025-09_q1</td><td class="cambia">20.8333</td><td class="cambia">3</td><td class="cambia">20.00</td><td class="cambia">22.50</td><td>1</td><td class="cambia">2025-09-01</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="capa__nota">
+                Una fila. 20.8333 es (20 + 20 + 22.50) / 3: Profeco no da la hora de la visita, así que no hay
+                una observación "buena" que escoger. Mínimo y máximo distintos dicen, sin una bandera que
+                mantener, que el precio sí se movió dentro de la quincena.
+              </p>
+              <a class="lupa capa__ver" href="img/05_adentro_fila-silver.webp" data-alt="La consulta a silver en Fabric: una fila con precio_promedio 20.8333, tres observaciones, mínimo 20.00 y máximo 22.50.">la consulta en Fabric</a>
+            </div>
+          </article>
+
+          <p class="capa__paso">
+            <b>Sólo lo que el modelo consume.</b> Se agrega <code>id_quincena</code>, la llave hacia la
+            dimensión de tiempo, y se quedan fuera <code>_intento</code> y <code>quincena_inicio</code>. Gold
+            no vuelve a validar lo que silver ya garantizó (decisión #16).
+          </p>
+
+          <article class="capa">
+            <header class="capa__cabeza">
+              <h3>gold</h3>
+              <p class="fuente__que">¿qué le van a preguntar?</p>
+            </header>
+            <div class="capa__cuerpo">
+              <div class="tabla-marco">
+                <table class="tabla">
+                  <thead>
+                    <tr><th>id_quincena</th><th>id_tienda</th><th>id_producto</th><th>precio_promedio</th><th>observaciones</th><th>precio_min</th><th>precio_max</th><th>_quincena</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td class="cambia">-1899466559839…</td><td>4844430634035148630</td><td>3071728268572450142</td><td>20.8333</td><td>3</td><td>20.00</td><td>22.50</td><td>2025-09_q1</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="capa__nota">
+                Es la fila que el modelo semántico lee por Direct Lake, sin copiarla. De estos precios
+                promedio sale el índice encadenado de la sección 03. <code>id_quincena</code> va cortado:
+                como los otros ids, es un hash de 64 bits con signo, y por eso puede salir negativo
+                (decisión #13).
+              </p>
+              <a class="lupa capa__ver" href="img/05_adentro_fila-gold.webp" data-alt="La consulta a gold en Fabric: la misma fila con id_quincena.">la consulta en Fabric</a>
+              <a class="lupa capa__ver" href="img/05_adentro_nb-30-gold.webp" data-alt="nb_30_gold abierto en Fabric: el %run de nb_00_config, el parámetro de quincenas y la explicación del modelo en estrella, con la tabla de contenidos Definiciones y Corrida.">nb_30_gold abierto</a>
+            </div>
+          </article>
+        </div>
+
+        <div class="compuerta">
+          <div>
+            <h3>Y si algo no cumple, no aterriza nada.</h3>
+            <p>
+              Silver no tiene cuarentena ni bandera de válido. Una compuerta que truena detiene la corrida
+              antes de escribir, lo que ya estaba queda intacto y la quincena sigue pendiente para la
+              siguiente corrida (decisiones #15 y #16).
+            </p>
+            <p>
+              Aquí la compuerta de entrada, disparada a propósito: un lote de dos filas de la misma tienda,
+              una sin dirección. El error dice qué columna, cuántas filas y cuál.
+            </p>
+          </div>
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>exige_completo()</span><span>A propósito</span></figcaption>
+            <a class="lupa" href="img/05_adentro_compuerta-truena.webp">
+              <img src="img/05_adentro_compuerta-truena.webp" width="2000" height="634" loading="lazy"
+                   alt="Una celda de notebook arma un DataFrame de dos filas, una con la dirección vacía, y llama a exige_completo. Sale RuntimeError: columnas obligatorias vacías, dirección, 1 filas, con la quincena y el nombre comercial de la fila.">
+            </a>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 · Dónde vive: el modelo en estrella a todo el ancho, y debajo cómo se guardan las tablas. -->
+    <section class="seccion" id="vive">
+      <aside class="riel">
+        <span class="riel__num">07</span>
+        <span class="riel__nombre">Dónde vive</span>
+        <span class="riel__meta">estrella · SCD2 · Direct Lake</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Delta en OneLake, y un modelo que lo lee sin copiarlo.</h2>
+          <p class="seccion__sub">
+            Cada capa es un lakehouse con esquemas. El modelado de datos de gold es un esquema en
+            estrella —<i>star schema</i>—: ocho tablas, cuatro dimensiones y cuatro hechos, y el modelo
+            semántico las lee por Direct Lake: el refresh no mueve datos, sólo apunta a la versión nueva
+            de cada tabla.
+          </p>
+          <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#escritura-y-layout-de-tablas" target="_blank" rel="noopener">escritura y layout, en las decisiones <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </header>
+
+        <figure class="ventana">
+          <figcaption class="ventana__barra"><span>sm_gansito</span><span>Vista de modelo</span></figcaption>
+          <a class="lupa" href="img/06_donde-vive_vista-modelo-relaciones.webp">
+            <img src="img/06_donde-vive_vista-modelo-relaciones.webp" width="2000" height="1214" loading="lazy"
+                 alt="Vista de modelo de sm_gansito: dim_producto, dim_tienda, dim_tiempo_quincena y dim_mes relacionadas con hechos_precios, hechos_relativos, hechos_ic_indice y hechos_salario_mensual; a la derecha las tablas desconectadas Umbral de pareo, Rango de precio, Nivel de cobertura y Medidas.">
+          </a>
+          <p class="ventana__pie">
+            Un <i>star schema</i> con dos granos de tiempo: el precio es quincenal y el salario mensual, y
+            <code>dim_mes</code> los concilia sin deformar ningún hecho para que quepa en el otro. A la
+            derecha, las tablas desconectadas: un parámetro, los rangos del histograma (decisión #22), los
+            niveles de cobertura y las medidas.
+          </p>
+        </figure>
+
+        <div class="vive">
+          <dl class="reglas">
+            <div>
+              <dt>escritura</dt>
+              <dd>Un patrón por tipo de tabla: <code>append</code> en bronze, <code>MERGE</code> por clave en
+                dimensiones —cerrando vigencias con <code>LEAD</code> si son SCD2— y <code>replaceWhere</code>
+                sobre las quincenas recalculadas en los hechos.
+                Ninguna tabla se reescribe completa, para que el historial diga qué cambió en cada corrida
+                (decisión #14).</dd>
+            </div>
+            <div>
+              <dt>layout</dt>
+              <dd>Liquid clustering por <code>(_quincena, id_producto)</code> en vez de particiones: hay un
+                solo escritor, y una quincena no llena ni de lejos el tamaño de archivo que el runtime
+                considera bueno (decisión #32). A esta escala todavía no llega a aplicarse: la sección 09
+                dice por qué.</dd>
+            </div>
+            <div>
+              <dt>mantenimiento</dt>
+              <dd><code>OPTIMIZE</code> y <code>VACUUM</code> desde un notebook, en su propio pipeline, con los siete
+                días de retención escritos en el código, y después el refresh (decisión #33).
+                <a class="lupa capa__ver" href="img/06_donde-vive_historial-hechos-precios.webp" data-alt="DESCRIBE HISTORY de hechos_precios en lh_gold de dev: la escritura inicial, el CLUSTER BY, la constraint CHECK, dos WRITE de corridas y dos pares VACUUM START y VACUUM END. La columna userName va tapada.">el historial de una tabla</a></dd>
+            </div>
+            <div>
+              <dt>lectura</dt>
+              <dd>Direct Lake necesita capacidad encendida. La versión pública es un clon import que lee
+                los mismos parquets de gold desde GitHub, así que para mostrar el reporte no hace falta
+                Fabric (decisión #6).</dd>
+            </div>
+          </dl>
+
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>lh_gold</span><span>Explorador</span></figcaption>
+            <a class="lupa" href="img/06_donde-vive_explorador-lh-gold.webp">
+              <img src="img/06_donde-vive_explorador-lh-gold.webp" width="2000" height="1008" loading="lazy"
+                   alt="lh_gold en el explorador de Fabric: las ocho tablas bajo dbo, la carpeta publico en Files, y hechos_precios abierta con sus columnas.">
+            </a>
+            <p class="ventana__pie">Las ocho tablas en el esquema <code>dbo</code>. En <code>Files/publico</code>, los parquets que <code>nb_50_export</code> sube al repo de datos.</p>
+          </figure>
+        </div>
+
+        <!-- SCD2: las dos dimensiones que construye silver decidieron distinto, y la que no
+             versiona lo tiene medido. Es lo que sostiene la decisión #13. -->
+        <div class="modelado">
+          <h3>¿Y cuando un atributo de una dimensión cambia?</h3>
+          <p>
+            Modelar no se acaba al dibujar la estrella. Cada dimensión decide si guarda su historia, y
+            las dos que construye silver decidieron distinto, con la fuente en la mano.
+          </p>
+          <dl class="reglas reglas--dos">
+            <div>
+              <dt>dim_salario_minimo · SCD2</dt>
+              <dd>Versiona. La clave natural es <code>(zona, inicio_vigencia)</code>, una fila por vigencia, y
+                el mismo <code>MERGE</code> cierra las vigencias con <code>LEAD</code>. Nada se expira a mano:
+                CONASAMI reexpide la historia completa en cada archivo (decisiones #14 y #17). Se queda en
+                silver y por eso no está en la estrella de arriba: el reporte usa la serie mensual,
+                <code>hechos_salario_mensual</code>.</dd>
+            </div>
+            <div>
+              <dt>dim_tienda · sin SCD2</dt>
+              <dd>No versiona, porque bajo su clave ningún atributo cambia, y la compuerta
+                <code>exige_uno_por_clave</code> lo vigila: el día que una tienda cambie de verdad, la corrida
+                se detiene y la decisión se vuelve a tomar (decisiones #13 y #39).</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 · Cómo se construye: el código va de dev a prod por git, los datos van de prod a dev por clon.
+         Usa el marcador #punta definido en el SVG de la sección 1. -->
+    <section class="seccion" id="construye">
+      <aside class="riel">
+        <span class="riel__num">08</span>
+        <span class="riel__nombre">Cómo se construye</span>
+        <span class="riel__meta">dev · PR · main · prod</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Se edita en dev, se revisa en un PR, y a prod nadie la toca.</h2>
+          <p class="seccion__sub">
+            Dev está sincronizado con la rama <code>dev</code> por git integration. Prod no está conectado
+            a git: al mergear a <code>main</code>, GitHub Actions le despliega los items con
+            <code>fabric-cicd</code>, con credencial federada OIDC y sin secretos guardados (decisión #4).
+            El código viaja de dev a prod; los datos, al revés.
+          </p>
+          <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito/blob/main/.github/workflows/deploy.yml" target="_blank" rel="noopener">deploy.yml en GitHub <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </header>
+
+        <figure class="ventana">
+          <figcaption class="ventana__barra"><span>Dev y prod</span><span>Clic en un nodo abre su captura</span></figcaption>
+          <div class="diagrama-marco">
+            <svg class="diagrama diagrama--ancho" viewBox="0 0 900 295" role="img" aria-label="El código va de izquierda a derecha: ws-gansito-dev se sincroniza con la rama dev, la rama dev entra a main por un PR que revisa ci.yml, y al mergear deploy.yml despliega a ws-gansito-prod con fabric-cicd. Los datos van al revés: los lakehouses de dev son un shallow clone de los de prod, y bronze se re-clona en cada mantenimiento.">
+              <text class="banda" x="0" y="18">el código · de dev a prod</text>
+
+              <a class="lupa nodo" href="img/08_construye_git-integration-dev.webp" data-alt="Configuración de git integration de ws-gansito-dev: GitHub, el repo indice-gansito, la carpeta /fabric y la rama dev.">
+                <rect x="0" y="40" width="150" height="84"/>
+                <text class="titulo" x="14" y="66">ws-gansito-dev</text>
+                <text class="sub" x="14" y="88">se edita aquí</text>
+                <text class="sub" x="14" y="106">git integration</text>
+              </a>
+
+              <path class="flecha flecha--doble" d="M156 82 L234 82"/>
+              <text class="etiqueta" x="195" y="72" text-anchor="middle">sincroniza</text>
+
+              <g class="caja">
+                <rect x="240" y="40" width="150" height="84"/>
+                <text class="titulo" x="254" y="66">rama dev</text>
+                <text class="sub" x="254" y="88">commit desde el</text>
+                <text class="sub" x="254" y="106">panel de Fabric</text>
+              </g>
+
+              <path class="flecha" d="M390 82 L474 82"/>
+              <text class="etiqueta" x="435" y="72" text-anchor="middle">PR · ci.yml</text>
+
+              <a class="lupa nodo" href="img/08_construye_corrida-deploy.webp" data-alt="La corrida de deploy-prod en GitHub Actions que disparó el merge del PR #76 a main: un job, publicar, en verde.">
+                <rect x="480" y="40" width="150" height="84"/>
+                <text class="titulo" x="494" y="66">main</text>
+                <text class="sub" x="494" y="88">protegida</text>
+                <text class="sub" x="494" y="106">sólo entra por PR</text>
+              </a>
+
+              <path class="flecha" d="M630 82 L714 82"/>
+              <text class="etiqueta" x="675" y="72" text-anchor="middle">deploy.yml</text>
+              <text class="etiqueta" x="675" y="100" text-anchor="middle">fabric-cicd</text>
+
+              <a class="lupa nodo" href="img/08_construye_items-prod.webp" data-alt="Los items de ws-gansito-prod: notebooks y pipelines a nombre del service principal del despliegue, más el reporte y el modelo.">
+                <rect x="720" y="40" width="170" height="84"/>
+                <text class="titulo" x="734" y="66">ws-gansito-prod</text>
+                <text class="sub" x="734" y="88">sin git</text>
+                <text class="sub" x="734" y="106">nadie lo edita a mano</text>
+              </a>
+
+              <text class="banda" x="0" y="186">los datos · de prod a dev</text>
+
+              <g class="caja caja--datos">
+                <rect x="0" y="208" width="150" height="70"/>
+                <text class="titulo" x="14" y="236">lh_* de dev</text>
+                <text class="sub" x="14" y="258">clon de prod</text>
+              </g>
+
+              <path class="flecha" d="M720 243 L156 243"/>
+              <text class="etiqueta" x="435" y="233" text-anchor="middle">SHALLOW CLONE: el metadato, no los datos</text>
+              <text class="sub" x="435" y="265" text-anchor="middle">bronze se re-clona en cada mantenimiento</text>
+
+              <g class="caja caja--datos">
+                <rect x="720" y="208" width="170" height="70"/>
+                <text class="titulo" x="734" y="236">lh_* de prod</text>
+                <text class="sub" x="734" y="258">dueños de los datos</text>
+              </g>
+            </svg>
+          </div>
+        </figure>
+
+        <dl class="reglas reglas--dos">
+          <div>
+            <dt>sin lakehouse por defecto</dt>
+            <dd>El enlace del UI guarda el GUID del lakehouse: desplegado a prod, el notebook seguiría
+              leyendo dev y saldría en verde. Ningún notebook lleva uno; cada uno lee su workspace al
+              correr y arma la ruta por nombre, y <code>ci.yml</code> revisa que ninguno lo traiga (decisión #3).
+              <a class="lupa capa__ver" href="img/08_construye_ruta-tabla.webp" data-alt="ruta_tabla en nb_00_config: toma el workspace de la corrida, busca el lakehouse por nombre y arma la ruta abfss de la tabla.">ruta_tabla en nb_00_config</a></dd>
+          </div>
+          <div>
+            <dt>dev es un clon</dt>
+            <dd>Los lakehouses de dev son <code>SHALLOW CLONE</code> de los de prod: mismas tablas, mismos
+              nombres, mismas rutas, y el código no parametriza nada. Lo que dev escribe crea archivos
+              propios y no toca prod (decisión #5).</dd>
+          </div>
+          <div>
+            <dt>el despliegue no borra</dt>
+            <dd><code>fabric-cicd</code> no borra huérfanos, porque se llevaría cualquier reporte creado a
+              mano en prod, ni toca los lakehouses, que son los dueños de los datos. Rollback es revertir
+              el commit (decisión #4).</dd>
+          </div>
+          <div>
+            <dt>sin wheels</dt>
+            <dd>Los helpers se comparten con <code>%run nb_00_config</code> y las pruebas de código viven en
+              <code>nb_90_pruebas</code>. Publicar una wheel a un Environment toma minutos en cada cambio
+              (decisión #7).</dd>
+          </div>
+          <div>
+            <dt>un solo secreto</dt>
+            <dd>El despliegue no guarda ninguno; el export de gold sí necesita uno: un token de GitHub con
+              escritura sobre el repo de datos, en Key Vault, que caduca y se rota a mano. Es lo que cuesta
+              que el reporte público no dependa de la capacidad (decisión #6).</dd>
+          </div>
+          <div>
+            <dt>el gasto avisa</dt>
+            <dd>Todo lo que cuesta dinero vive en un solo resource group de Azure, con un budget y sus
+              alertas por correo al 10 % y al 100 % del gasto. Un budget avisa, no frena: entre el gasto
+              y la alerta pasan horas (decisión #44).</dd>
+          </div>
+        </dl>
+
+        <div class="apoyo">
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>ws-gansito-dev</span><span>Git integration</span></figcaption>
+            <a class="lupa" href="img/08_construye_git-integration-dev.webp">
+              <img src="img/08_construye_git-integration-dev.webp" width="2000" height="1250" loading="lazy"
+                   alt="Configuración de git integration de ws-gansito-dev: GitHub, el repo indice-gansito, la carpeta /fabric y la rama dev.">
+            </a>
+            <p class="ventana__pie">Dev contra la carpeta <code>/fabric</code> de la rama <code>dev</code>. Los notebooks y pipelines se commitean desde este panel.</p>
+          </figure>
+
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>deploy-prod #12</span><span>GitHub Actions</span></figcaption>
+            <a class="lupa" href="img/08_construye_corrida-deploy.webp">
+              <img src="img/08_construye_corrida-deploy.webp" width="2000" height="1014" loading="lazy"
+                   alt="La corrida de deploy-prod en GitHub Actions que disparó el merge del PR #76 a main: un job, publicar, en verde.">
+            </a>
+            <p class="ventana__pie">El merge de un PR a <code>main</code> dispara el despliegue: un job, menos de un minuto.</p>
+          </figure>
+
+          <figure class="ventana">
+            <figcaption class="ventana__barra"><span>ws-gansito-prod</span><span>Items</span></figcaption>
+            <a class="lupa" href="img/08_construye_items-prod.webp">
+              <img src="img/08_construye_items-prod.webp" width="2000" height="1250" loading="lazy"
+                   alt="Los items de ws-gansito-prod: notebooks y pipelines a nombre del service principal del despliegue, más el reporte y el modelo.">
+            </a>
+            <p class="ventana__pie">Prod por dentro: notebooks y pipelines a nombre del service principal que los despliega.</p>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9 · Lo que no haría en producción: los bloques de Costo de las decisiones, puestos en tabla. -->
+    <section class="seccion" id="no-prod">
+      <aside class="riel">
+        <span class="riel__num">09</span>
+        <span class="riel__nombre">Lo que no haría</span>
+        <span class="riel__meta">alcance · capacidad personal</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Lo que no haría así con una capacidad de verdad.</h2>
+          <p class="seccion__sub">
+            Esto corre sobre una capacidad personal, que se enciende para trabajar y se apaga, y sobre una
+            muestra pública de unos pocos megabytes. Varias
+            decisiones se tomaron por esa restricción, y cada una lo dice en su bloque de <b>Costo</b>. Esta
+            sección es ese bloque, junto.
+          </p>
+          <a class="seccion__enlace" href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md" target="_blank" rel="noopener">decisiones.md en GitHub <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </header>
+
+        <table class="trueques">
+          <thead>
+            <tr><th>aquí</th><th>en producción</th><th>por qué se acepta</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>La zona raw vive en un repo de git.</b></td>
+              <td>Viviría en ADLS. Git no es un almacén de datos.</td>
+              <td>La capacidad es desechable: si desaparece, se lleva sus datos. Con el raw afuera, el workspace se borra y se reconstruye sin perder historia (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#1-la-zona-raw-vive-fuera-de-fabric" target="_blank" rel="noopener">decisión #1</a>).</td>
+            </tr>
+            <tr>
+              <td><b>Bronze baja los parquets por HTTPS, con <code>requests</code>.</b></td>
+              <td>Sería un shortcut a ADLS, y <code>Files</code> sería una ventana en vez de una copia.</td>
+              <td>Los shortcuts de OneLake no hablan con GitHub, y el repo no lista directorio: el manifiesto es el índice (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#8-bronze-lee-por-https-no-por-shortcut" target="_blank" rel="noopener">decisión #8</a>).</td>
+            </tr>
+            <tr>
+              <td><b>El despliegue no borra huérfanos.</b></td>
+              <td>Con un repo que represente el estado completo de prod, el borrado se activaría.</td>
+              <td>Aquí la rama no lo representa: borraría cualquier reporte o modelo creado a mano en prod. Se prefiere limpiar a mano (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#4-prod-no-est%C3%A1-conectado-a-git" target="_blank" rel="noopener">decisión #4</a>).</td>
+            </tr>
+            <tr>
+              <td><b>Los helpers se comparten con <code>%run</code>, sin wheel ni Environment.</b></td>
+              <td>Serían una wheel versionada, publicada a un Environment.</td>
+              <td>Publicarla toma minutos en cada cambio y mata la iteración. La lógica pura es poca; los incidentes vienen de la fuente (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#7-nada-de-wheels-run-y-pruebas-en-notebook" target="_blank" rel="noopener">decisión #7</a>).</td>
+            </tr>
+            <tr>
+              <td><b>El layout de los hechos está declarado, pero nunca se aplica.</b></td>
+              <td>El mismo clustering, y ahí sí trabajando: a volumen real sí hay archivos que compactar.</td>
+              <td>A esta escala <code>OPTIMIZE</code> se salta la tabla, así que hoy lo que ordena las filas es el V-Order. El layout está elegido para el caso real (<a href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md#32-el-hecho-se-clusteriza-no-se-particiona" target="_blank" rel="noopener">decisión #32</a>).</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Los límites del dato, no de la plataforma: salen de fuentes.md y mediciones.md. -->
+        <div class="modelado">
+          <h3>Y lo que el índice no dice.</h3>
+          <p>
+            Los trueques de arriba son de la plataforma, y con otra capacidad se deshacen. Estos son de la
+            fuente, y ninguna capacidad los arregla.
+          </p>
+          <dl class="reglas reglas--dos">
+            <div>
+              <dt>la muestra</dt>
+              <dd>Profeco visita "los establecimientos más destacados de cada ciudad" y no publica el
+                criterio. El intervalo mide la variabilidad entre esas tiendas; no es inferencia sobre
+                todas las tiendas de México.</dd>
+            </div>
+            <div>
+              <dt>no es inflación</dt>
+              <dd>Profeco advierte que sus precios no sirven para medir la inflación. El índice no la
+                mide: la compara contra el INPC de INEGI, que sí.</dd>
+            </div>
+            <div>
+              <dt>el rezago</dt>
+              <dd>Profeco publica una vez al mes, con un mes de rezago y sin día fijo. El reporte va
+                siempre, por lo menos, un mes atrás.</dd>
+            </div>
+            <div>
+              <dt>un hueco lo detiene</dt>
+              <dd>Si Profeco se salta una quincena para siempre, el eslabón no existe y gold truena en
+                vez de dejar el índice plano sin avisar. Se decidió con la fuente medida: en las 62
+                quincenas de la serie, Profeco cambió el formato de sus archivos pero publicó todas, y
+                un hueco temporal se cura solo en la corrida siguiente (decisión #43).</dd>
+            </div>
+          </dl>
+        </div>
+
+        <figure class="ventana no-prod__doc">
+          <figcaption class="ventana__barra"><span>docs/decisiones.md</span><span>En GitHub</span></figcaption>
+          <a class="lupa" href="img/09_no-prod_decisiones-render.webp">
+            <img src="img/09_no-prod_decisiones-render.webp" width="2000" height="1520" loading="lazy"
+                 alt="docs/decisiones.md renderizado en GitHub: las decisiones 1, 4 y 5, cada una con sus bloques Decisión, Motivo y Costo.">
+          </a>
+          <p class="ventana__pie">
+            Cada decisión son tres bloques: qué se hace, por qué y qué se descartó, y qué se acepta a cambio.
+            Los números no cambian nunca, porque se citan en el código, en los commits y en los PRs.
+          </p>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 10 · Cierre: adónde ir desde aquí, y el contacto. -->
+    <section class="seccion seccion--cierre" id="cierre">
+      <aside class="riel">
+        <span class="riel__num">10</span>
+        <span class="riel__nombre">Cierre</span>
+        <span class="riel__meta">todo es público</span>
+      </aside>
+
+      <div class="cuerpo">
+        <header class="seccion__cabeza">
+          <h2>Todo lo que hay detrás de esta página es público.</h2>
+          <p class="seccion__sub">
+            El código, los datos crudos con su manifiesto, las decisiones con su motivo y su costo, y el
+            reporte. Nada de lo que se cuenta aquí hay que creerlo: se puede abrir, leer y volver a correr.
+          </p>
+        </header>
+
+        <nav class="botones" aria-label="El proyecto">
+          <a class="boton boton--lleno" href="https://github.com/AldoMor00/indice-gansito" target="_blank" rel="noopener">El código <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+          <a class="boton" href="https://github.com/AldoMor00/indice-gansito-datos" target="_blank" rel="noopener">Los datos <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+          <a class="boton" href="https://github.com/AldoMor00/indice-gansito/blob/main/docs/decisiones.md" target="_blank" rel="noopener">Las decisiones <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+          <a class="boton" href="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9" target="_blank" rel="noopener">El reporte <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+        </nav>
+
+        <div class="contacto">
+          <p class="contacto__texto">
+            Si algo de lo que viste te sirve, o si quieres discutir por qué tal decisión está mal,
+            escríbeme.
+          </p>
+          <nav class="botones" aria-label="Contacto">
+            <a class="boton" href="mailto:aldo.moma00@gmail.com">aldo.moma00@gmail.com</a>
+            <a class="boton" href="https://www.linkedin.com/in/aldo-moreno-mandujano" target="_blank" rel="noopener">LinkedIn <svg class="externo" viewBox="0 0 12 12" aria-hidden="true"><use href="#ico-externo"/></svg></a>
+          </nav>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="pie">
+    <div class="pie__contenido">
+      <p>Aldo Moreno Mandujano · Índice Gansito</p>
+      <p>
+        Los datos son públicos: <a href="https://datos.profeco.gob.mx/datos_abiertos/qqp.php" target="_blank" rel="noopener">Profeco</a>,
+        <a href="https://www.gob.mx/conasami" target="_blank" rel="noopener">CONASAMI</a> e
+        <a href="https://www.inegi.org.mx/temas/inpc/" target="_blank" rel="noopener">INEGI</a>.
+      </p>
+      <p>Esta página es HTML y CSS, sin framework y sin build.</p>
+    </div>
+  </footer>
+  <script src="pagina.js"></script>
+</body>
+</html>
