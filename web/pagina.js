@@ -21,8 +21,12 @@ document.addEventListener("click", (evento) => {
   }
 });
 
+// La imagen se quita hasta que termina el fundido de salida, si lo hay, para que no se desvanezca
+// un marco vacío. allSettled porque si se reabre a medio fundido, la transición se cancela.
 dialogo.addEventListener("close", () => {
-  imagen.removeAttribute("src");
+  Promise.allSettled(dialogo.getAnimations().map((animacion) => animacion.finished)).then(() => {
+    if (!dialogo.open) imagen.removeAttribute("src");
+  });
 });
 
 // Índice de secciones: marca la que está en pantalla. Se calcula con la posición de cada
@@ -58,8 +62,81 @@ function avisaDesborde() {
   marcoBarra.toggleAttribute("data-desborda", hay);
 }
 
+// La arquitectura (sección 01): cada flecha se traza cuando sube a 75 % de la ventana, para que
+// el flujo baje al ritmo de la lectura. El diagrama mide más que una pantalla: con un solo
+// disparo, las de abajo se dibujarían antes de que nadie las viera.
+const arquitectura = document.querySelector(".arquitectura");
+let flechasPendientes = [...arquitectura.querySelectorAll(".flecha")];
+arquitectura.classList.add("espera");
+
+function trazaFlechas() {
+  const linea = innerHeight * 0.75;
+  flechasPendientes = flechasPendientes.filter((flecha) => {
+    if (flecha.getBoundingClientRect().top > linea) return true;
+    flecha.classList.add("trazada");
+    return false;
+  });
+  if (!flechasPendientes.length) removeEventListener("scroll", trazaFlechas);
+}
+
+// El encadenado (sección 03): con mouse se resalta el eslabón bajo el cursor; con el dedo, el
+// último que se tocó, hasta tocar fuera. El eslabón lo dicen las zonas invisibles del SVG.
+const encadenado = document.querySelector(".encadenado");
+
+function activaEslabon(eslabon) {
+  if (eslabon) encadenado.dataset.activo = eslabon;
+  else delete encadenado.dataset.activo;
+}
+
+encadenado.addEventListener("pointerover", (evento) => {
+  if (evento.pointerType === "mouse") activaEslabon(evento.target.dataset.eslabon);
+});
+encadenado.addEventListener("pointerleave", (evento) => {
+  if (evento.pointerType === "mouse") activaEslabon();
+});
+document.addEventListener("pointerdown", (evento) => activaEslabon(evento.target.dataset?.eslabon));
+
+// Y una sola vez, cuando el diagrama sube a 75 % de la ventana, los eslabones se arman uno tras
+// otro. Con scroll y no con IntersectionObserver por la misma razón que el índice: si la página
+// carga ya más abajo, el observer nunca avisa y los pares se quedarían escondidos. Con
+// prefers-reduced-motion las dos clases no hacen nada.
+encadenado.classList.add("espera");
+
+function reproduceEncadenado() {
+  if (encadenado.getBoundingClientRect().top > innerHeight * 0.75) return;
+  removeEventListener("scroll", reproduceEncadenado);
+  encadenado.classList.replace("espera", "reproduce");
+  encadenado.querySelector("tspan.e3").addEventListener("animationend", () => {
+    encadenado.classList.remove("reproduce");
+  }, { once: true });
+}
+
+// Las capas (sección 06): una celda de silver con data-traza marca las de bronze de las que sale,
+// las que llevan esa clave en data-traza-de. Mouse y dedo, igual que el encadenado.
+const traza = document.querySelector(".traza");
+
+function marcaTraza(celda) {
+  traza.querySelectorAll(".trazado").forEach((marcada) => marcada.classList.remove("trazado"));
+  if (!celda) return;
+  celda.classList.add("trazado");
+  traza.querySelectorAll(`[data-traza-de~="${celda.dataset.traza}"]`)
+    .forEach((origen) => origen.classList.add("trazado"));
+}
+
+traza.addEventListener("pointerover", (evento) => {
+  if (evento.pointerType === "mouse") marcaTraza(evento.target.closest("[data-traza]"));
+});
+traza.addEventListener("pointerleave", (evento) => {
+  if (evento.pointerType === "mouse") marcaTraza();
+});
+document.addEventListener("pointerdown", (evento) => marcaTraza(evento.target.closest("[data-traza]")));
+
 addEventListener("scroll", marcaSeccion, { passive: true });
+addEventListener("scroll", trazaFlechas, { passive: true });
+addEventListener("scroll", reproduceEncadenado, { passive: true });
 addEventListener("resize", avisaDesborde, { passive: true });
 barra.addEventListener("scroll", avisaDesborde, { passive: true });
 marcaSeccion();
 avisaDesborde();
+trazaFlechas();
+reproduceEncadenado();
