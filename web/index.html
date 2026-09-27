@@ -177,7 +177,7 @@
         <figure class="ventana ventana--diagrama">
           <figcaption class="ventana__barra"><span>Arquitectura</span><span>De arriba abajo</span></figcaption>
           <div class="diagrama-marco">
-            <svg class="diagrama" viewBox="0 0 760 990" role="img" aria-label="Diagrama de arquitectura, de arriba abajo: Profeco, CONASAMI e INEGI llegan por GitHub Actions al repo de datos; debajo de la frontera con Fabric pasan por bronze, silver y gold, luego al modelo semántico y al reporte. De gold sale una rama al parquet público en GitHub, y de ahí el clon publicado a la web.">
+            <svg class="diagrama arquitectura" viewBox="0 0 760 990" role="img" aria-label="Diagrama de arquitectura, de arriba abajo: Profeco, CONASAMI e INEGI llegan por GitHub Actions al repo de datos; debajo de la frontera con Fabric pasan por bronze, silver y gold, luego al modelo semántico y al reporte. De gold sale una rama al parquet público en GitHub, y de ahí el clon publicado a la web.">
               <defs>
                 <marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                   <path d="M0 0L10 5L0 10z" fill="#3B2418"/>
@@ -203,9 +203,9 @@
                 <text class="sub" x="534" y="80">INPC quincenal · API</text>
               </a>
 
-              <path class="flecha" d="M140 96 C140 140 320 130 320 168"/>
-              <path class="flecha" d="M380 96 L380 168"/>
-              <path class="flecha" d="M620 96 C620 140 440 130 440 168"/>
+              <path class="flecha" pathLength="1" d="M140 96 C140 140 320 130 320 168"/>
+              <path class="flecha" pathLength="1" d="M380 96 L380 168"/>
+              <path class="flecha" pathLength="1" d="M620 96 C620 140 440 130 440 168"/>
               <text class="etiqueta" x="390" y="138">ingesta.yml</text>
 
               <!-- raw -->
@@ -223,7 +223,7 @@
               <text class="zona" x="0" y="318">dentro de Fabric</text>
               <text class="banda" x="760" y="318" text-anchor="end">pl_master · bronze → silver → gold</text>
 
-              <path class="flecha" d="M380 264 L380 340"/>
+              <path class="flecha" pathLength="1" d="M380 264 L380 340"/>
 
               <!-- capas -->
               <a class="lupa nodo" href="img/05_adentro_fila-bronze.webp" data-alt="Una fila de bronze: las observaciones crudas de una tienda y quincena, con sha256 e intento.">
@@ -236,7 +236,7 @@
               <text class="etiqueta" x="210" y="380" text-anchor="end">pl_bronze</text>
               <text class="lateral" x="210" y="398" text-anchor="end">nb_10 · nb_11 · nb_12</text>
 
-              <path class="flecha" d="M380 436 L380 476"/>
+              <path class="flecha" pathLength="1" d="M380 436 L380 476"/>
 
               <a class="lupa nodo" href="img/05_adentro_fila-silver.webp" data-alt="La misma fila en silver: una por tienda, producto y quincena, con promedio, mínimo y máximo.">
                 <rect x="230" y="476" width="300" height="96"/>
@@ -248,7 +248,7 @@
               <text class="etiqueta" x="210" y="516" text-anchor="end">pl_silver</text>
               <text class="lateral" x="210" y="534" text-anchor="end">nb_20 · nb_21 · nb_22</text>
 
-              <path class="flecha" d="M380 572 L380 612"/>
+              <path class="flecha" pathLength="1" d="M380 572 L380 612"/>
 
               <a class="lupa nodo" href="img/05_adentro_fila-gold.webp" data-alt="La misma fila en gold: con id de quincena, lista para el modelo.">
                 <rect x="230" y="612" width="300" height="96"/>
@@ -260,7 +260,7 @@
               <text class="etiqueta" x="210" y="652" text-anchor="end">pl_gold</text>
               <text class="lateral" x="210" y="670" text-anchor="end">nb_30</text>
 
-              <path class="flecha" d="M380 708 L380 758"/>
+              <path class="flecha" pathLength="1" d="M380 708 L380 758"/>
 
               <!-- modelo y reporte -->
               <a class="lupa nodo" href="img/06_donde-vive_vista-modelo-relaciones.webp" data-alt="Vista de modelo de sm_gansito: cuatro dimensiones, cuatro hechos y tres tablas desconectadas.">
@@ -271,7 +271,7 @@
               <text class="lateral" x="210" y="790" text-anchor="end">refresh al final</text>
               <text class="lateral" x="210" y="808" text-anchor="end">de pl_master</text>
 
-              <path class="flecha" d="M380 828 L380 868"/>
+              <path class="flecha" pathLength="1" d="M380 828 L380 868"/>
 
               <a class="lupa nodo" href="img/02_responde_p1-el-numero.webp" data-alt="Primera página del reporte, El número.">
                 <rect x="230" y="868" width="300" height="70"/>
@@ -280,7 +280,7 @@
               </a>
 
               <!-- la salida pública: gold vuelve a git -->
-              <path class="flecha" d="M530 660 C650 660 655 700 655 758"/>
+              <path class="flecha" pathLength="1" d="M530 660 C650 660 655 700 655 758"/>
               <text class="etiqueta" x="545" y="648">nb_50_export · sólo prod</text>
 
               <a class="nodo nodo--externo" href="https://github.com/AldoMor00/indice-gansito-datos/tree/main/publico" target="_blank" rel="noopener">
@@ -289,7 +289,7 @@
                 <text class="sub" x="574" y="804">parquet, en el repo de datos</text>
               </a>
 
-              <path class="flecha" d="M655 828 L655 868"/>
+              <path class="flecha" pathLength="1" d="M655 828 L655 868"/>
 
               <a class="nodo nodo--externo" href="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9" target="_blank" rel="noopener">
                 <rect x="560" y="868" width="190" height="70"/>
@@ -387,7 +387,7 @@
           <figure class="ventana ventana--diagrama">
             <figcaption class="ventana__barra"><span>El encadenado</span><span>Ocho tiendas de ejemplo</span></figcaption>
             <div class="diagrama-marco">
-              <svg class="diagrama" viewBox="0 0 620 458" role="img" aria-label="Ocho tiendas en cuatro quincenas seguidas. Algunas entran, salen o faltan una quincena. Entre cada par de quincenas sólo se parean las tiendas presentes en las dos: 5, 5 y 6 pares. Cada eslabón J es la media geométrica de los relativos de precio de sus pares, y el índice de la cuarta quincena es 100 por J1 por J2 por J3.">
+              <svg class="diagrama encadenado" viewBox="0 0 620 458" role="img" aria-label="Ocho tiendas en cuatro quincenas seguidas. Algunas entran, salen o faltan una quincena. Entre cada par de quincenas sólo se parean las tiendas presentes en las dos: 5, 5 y 6 pares. Cada eslabón J es la media geométrica de los relativos de precio de sus pares, y el índice de la cuarta quincena es 100 por J1 por J2 por J3.">
               <circle class="tienda-si" cx="46" cy="18" r="6"/>
               <text class="sub" x="60" y="22">Profeco la visitó</text>
               <circle class="tienda-no" cx="196" cy="18" r="6"/>
@@ -400,80 +400,86 @@
               <text class="banda" x="500" y="66" text-anchor="middle">q4</text>
               <text class="banda" x="40" y="66">tienda</text>
               <text x="40" y="104">A</text>
-              <line class="par" x1="119" y1="100" x2="231" y2="100"/>
-              <line class="par" x1="249" y1="100" x2="361" y2="100"/>
-              <line class="par" x1="379" y1="100" x2="491" y2="100"/>
+              <line class="par e1" x1="119" y1="100" x2="231" y2="100"/>
+              <line class="par e2" x1="249" y1="100" x2="361" y2="100"/>
+              <line class="par e3" x1="379" y1="100" x2="491" y2="100"/>
               <circle class="tienda-si" cx="110" cy="100" r="6"/>
               <circle class="tienda-si" cx="240" cy="100" r="6"/>
               <circle class="tienda-si" cx="370" cy="100" r="6"/>
               <circle class="tienda-si" cx="500" cy="100" r="6"/>
               <text x="40" y="134">B</text>
-              <line class="par" x1="119" y1="130" x2="231" y2="130"/>
+              <line class="par e1" x1="119" y1="130" x2="231" y2="130"/>
               <circle class="tienda-si" cx="110" cy="130" r="6"/>
               <circle class="tienda-si" cx="240" cy="130" r="6"/>
               <circle class="tienda-no" cx="370" cy="130" r="6"/>
               <circle class="tienda-no" cx="500" cy="130" r="6"/>
               <text class="etiqueta" x="522" y="134">sale en q3</text>
               <text x="40" y="164">C</text>
-              <line class="par" x1="119" y1="160" x2="231" y2="160"/>
-              <line class="par" x1="249" y1="160" x2="361" y2="160"/>
-              <line class="par" x1="379" y1="160" x2="491" y2="160"/>
+              <line class="par e1" x1="119" y1="160" x2="231" y2="160"/>
+              <line class="par e2" x1="249" y1="160" x2="361" y2="160"/>
+              <line class="par e3" x1="379" y1="160" x2="491" y2="160"/>
               <circle class="tienda-si" cx="110" cy="160" r="6"/>
               <circle class="tienda-si" cx="240" cy="160" r="6"/>
               <circle class="tienda-si" cx="370" cy="160" r="6"/>
               <circle class="tienda-si" cx="500" cy="160" r="6"/>
               <text x="40" y="194">D</text>
-              <line class="par" x1="249" y1="190" x2="361" y2="190"/>
-              <line class="par" x1="379" y1="190" x2="491" y2="190"/>
+              <line class="par e2" x1="249" y1="190" x2="361" y2="190"/>
+              <line class="par e3" x1="379" y1="190" x2="491" y2="190"/>
               <circle class="tienda-no" cx="110" cy="190" r="6"/>
               <circle class="tienda-si" cx="240" cy="190" r="6"/>
               <circle class="tienda-si" cx="370" cy="190" r="6"/>
               <circle class="tienda-si" cx="500" cy="190" r="6"/>
               <text class="etiqueta" x="522" y="194">entra en q2</text>
               <text x="40" y="224">E</text>
-              <line class="par" x1="379" y1="220" x2="491" y2="220"/>
+              <line class="par e3" x1="379" y1="220" x2="491" y2="220"/>
               <circle class="tienda-si" cx="110" cy="220" r="6"/>
               <circle class="tienda-no" cx="240" cy="220" r="6"/>
               <circle class="tienda-si" cx="370" cy="220" r="6"/>
               <circle class="tienda-si" cx="500" cy="220" r="6"/>
               <text class="etiqueta" x="522" y="224">falta en q2</text>
               <text x="40" y="254">F</text>
-              <line class="par" x1="119" y1="250" x2="231" y2="250"/>
-              <line class="par" x1="249" y1="250" x2="361" y2="250"/>
+              <line class="par e1" x1="119" y1="250" x2="231" y2="250"/>
+              <line class="par e2" x1="249" y1="250" x2="361" y2="250"/>
               <circle class="tienda-si" cx="110" cy="250" r="6"/>
               <circle class="tienda-si" cx="240" cy="250" r="6"/>
               <circle class="tienda-si" cx="370" cy="250" r="6"/>
               <circle class="tienda-no" cx="500" cy="250" r="6"/>
               <text class="etiqueta" x="522" y="254">sale en q4</text>
               <text x="40" y="284">G</text>
-              <line class="par" x1="379" y1="280" x2="491" y2="280"/>
+              <line class="par e3" x1="379" y1="280" x2="491" y2="280"/>
               <circle class="tienda-no" cx="110" cy="280" r="6"/>
               <circle class="tienda-no" cx="240" cy="280" r="6"/>
               <circle class="tienda-si" cx="370" cy="280" r="6"/>
               <circle class="tienda-si" cx="500" cy="280" r="6"/>
               <text class="etiqueta" x="522" y="284">entra en q3</text>
               <text x="40" y="314">H</text>
-              <line class="par" x1="119" y1="310" x2="231" y2="310"/>
-              <line class="par" x1="249" y1="310" x2="361" y2="310"/>
-              <line class="par" x1="379" y1="310" x2="491" y2="310"/>
+              <line class="par e1" x1="119" y1="310" x2="231" y2="310"/>
+              <line class="par e2" x1="249" y1="310" x2="361" y2="310"/>
+              <line class="par e3" x1="379" y1="310" x2="491" y2="310"/>
               <circle class="tienda-si" cx="110" cy="310" r="6"/>
               <circle class="tienda-si" cx="240" cy="310" r="6"/>
               <circle class="tienda-si" cx="370" cy="310" r="6"/>
               <circle class="tienda-si" cx="500" cy="310" r="6"/>
-              <text class="eslabon" x="175" y="340" text-anchor="middle">J₁</text>
-              <text class="sub" x="175" y="358" text-anchor="middle">5 pares</text>
-              <text class="eslabon" x="305" y="340" text-anchor="middle">J₂</text>
-              <text class="sub" x="305" y="358" text-anchor="middle">5 pares</text>
-              <text class="eslabon" x="435" y="340" text-anchor="middle">J₃</text>
-              <text class="sub" x="435" y="358" text-anchor="middle">6 pares</text>
+              <text class="eslabon e1" x="175" y="340" text-anchor="middle">J₁</text>
+              <text class="sub e1" x="175" y="358" text-anchor="middle">5 pares</text>
+              <text class="eslabon e2" x="305" y="340" text-anchor="middle">J₂</text>
+              <text class="sub e2" x="305" y="358" text-anchor="middle">5 pares</text>
+              <text class="eslabon e3" x="435" y="340" text-anchor="middle">J₃</text>
+              <text class="sub e3" x="435" y="358" text-anchor="middle">6 pares</text>
               <line class="regla" x1="40" y1="384" x2="600" y2="384"/>
-              <text class="formula" x="40" y="418">índice(q4) = 100 × J₁ × J₂ × J₃</text>
+              <text class="formula" x="40" y="418">índice(q4) = 100<tspan class="e1"> × J₁</tspan><tspan class="e2"> × J₂</tspan><tspan class="e3"> × J₃</tspan></text>
               <text class="sub" x="40" y="442">J: media geométrica de precio(q) / precio(q−1), sólo en las tiendas pareadas</text>
+              <!-- Zonas invisibles, una por eslabón, encima de todo: pagina.js resalta el eslabón
+                   que está bajo el cursor o que se tocó -->
+              <rect class="eslabon-zona" data-eslabon="1" x="110" y="80" width="130" height="286"/>
+              <rect class="eslabon-zona" data-eslabon="2" x="240" y="80" width="130" height="286"/>
+              <rect class="eslabon-zona" data-eslabon="3" x="370" y="80" width="130" height="286"/>
               </svg>
             </div>
             <p class="ventana__pie">
               Cada línea roja es una tienda que entra a la comparación de ese eslabón. B, D, E, F y G no se
-              tiran: cuentan en cada eslabón donde tienen con quién compararse.
+              tiran: cuentan en cada eslabón donde tienen con quién compararse. Pasa el cursor o toca un
+              eslabón para ver sólo sus pares.
             </p>
           </figure>
 
@@ -741,9 +747,9 @@
                     <tr><th>_quincena</th><th>_intento</th><th>_sha256</th><th>fecha_registro</th><th>nombre_comercial</th><th>direccion</th><th>presentacion</th><th>marca</th><th>precio</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td class="cambia">2025-09_q1</td><td class="cambia">1</td><td class="cambia corta" title="720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041">720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041</td><td>2025/09/01</td><td class="corta" title="Chedraui Sucursal Selecto Merida">Chedraui Sucursal Selecto Merida</td><td class="corta" title="C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110">C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110</td><td>Paquete con 1 Gansito (50 Gr.)</td><td>Marinela</td><td>"20"</td></tr>
-                    <tr><td class="cambia">2025-09_q1</td><td class="cambia">1</td><td class="cambia corta" title="720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041">720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041</td><td>2025/09/08</td><td class="corta" title="Chedraui Sucursal Selecto Merida">Chedraui Sucursal Selecto Merida</td><td class="corta" title="C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110">C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110</td><td>Paquete con 1 Gansito (50 Gr.)</td><td>Marinela</td><td>"20"</td></tr>
-                    <tr><td class="cambia">2025-09_q1</td><td class="cambia">1</td><td class="cambia corta" title="720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041">720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041</td><td>2025/09/15</td><td class="corta" title="Chedraui Sucursal Selecto Merida">Chedraui Sucursal Selecto Merida</td><td class="corta" title="C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110">C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110</td><td>Paquete con 1 Gansito (50 Gr.)</td><td>Marinela</td><td>"22.5"</td></tr>
+                    <tr data-traza-de="observaciones"><td class="cambia">2025-09_q1</td><td class="cambia">1</td><td class="cambia corta" title="720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041">720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041</td><td>2025/09/01</td><td class="corta" data-traza-de="tienda" title="Chedraui Sucursal Selecto Merida">Chedraui Sucursal Selecto Merida</td><td class="corta" data-traza-de="tienda" title="C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110">C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110</td><td data-traza-de="producto">Paquete con 1 Gansito (50 Gr.)</td><td data-traza-de="producto">Marinela</td><td data-traza-de="promedio minimo">"20"</td></tr>
+                    <tr data-traza-de="observaciones"><td class="cambia">2025-09_q1</td><td class="cambia">1</td><td class="cambia corta" title="720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041">720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041</td><td>2025/09/08</td><td class="corta" data-traza-de="tienda" title="Chedraui Sucursal Selecto Merida">Chedraui Sucursal Selecto Merida</td><td class="corta" data-traza-de="tienda" title="C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110">C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110</td><td data-traza-de="producto">Paquete con 1 Gansito (50 Gr.)</td><td data-traza-de="producto">Marinela</td><td data-traza-de="promedio minimo">"20"</td></tr>
+                    <tr data-traza-de="observaciones"><td class="cambia">2025-09_q1</td><td class="cambia">1</td><td class="cambia corta" title="720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041">720f24dcde2a59ee20dd2cb58e927cda5f8dfdad392b69db3725c2f189257041</td><td>2025/09/15</td><td class="corta" data-traza-de="tienda" title="Chedraui Sucursal Selecto Merida">Chedraui Sucursal Selecto Merida</td><td class="corta" data-traza-de="tienda" title="C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110">C. 60 No.301 a. Av. Xcumpich X Prol C. 21. Col. Cordemex. Cp. 97110</td><td data-traza-de="producto">Paquete con 1 Gansito (50 Gr.)</td><td data-traza-de="producto">Marinela</td><td data-traza-de="promedio maximo">"22.5"</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -778,14 +784,15 @@
                     <tr><th>id_tienda</th><th>id_producto</th><th>_quincena</th><th>precio_promedio</th><th>observaciones</th><th>precio_min</th><th>precio_max</th><th>_intento</th><th>quincena_inicio</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td class="cambia">4844430634035148630</td><td class="cambia">3071728268572450142</td><td>2025-09_q1</td><td class="cambia">20.8333</td><td class="cambia">3</td><td class="cambia">20.00</td><td class="cambia">22.50</td><td>1</td><td class="cambia">2025-09-01</td></tr>
+                    <tr><td class="cambia" data-traza="tienda">4844430634035148630</td><td class="cambia" data-traza="producto">3071728268572450142</td><td>2025-09_q1</td><td class="cambia" data-traza="promedio">20.8333</td><td class="cambia" data-traza="observaciones">3</td><td class="cambia" data-traza="minimo">20.00</td><td class="cambia" data-traza="maximo">22.50</td><td>1</td><td class="cambia">2025-09-01</td></tr>
                   </tbody>
                 </table>
               </div>
               <p class="capa__nota">
                 Una fila. 20.8333 es (20 + 20 + 22.50) / 3: Profeco no da la hora de la visita, así que no hay
                 una observación "buena" que escoger. Mínimo y máximo distintos dicen, sin una bandera que
-                mantener, que el precio sí se movió dentro de la quincena.
+                mantener, que el precio sí se movió dentro de la quincena. Pasa el cursor o toca una
+                celda subrayada para ver de qué celdas de bronze sale.
               </p>
               <a class="lupa capa__ver" href="img/05_adentro_fila-silver.webp" data-alt="La consulta a silver en Fabric: una fila con precio_promedio 20.8333, tres observaciones, mínimo 20.00 y máximo 22.50.">la consulta en Fabric</a>
             </div>
