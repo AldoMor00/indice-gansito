@@ -25,6 +25,12 @@
 
 html { scroll-padding-top: var(--cabecera); }
 
+/* Al saltar desde el índice la página se desliza, para que se vea hacia dónde fue. La barra del
+   índice también, cuando pagina.js centra la sección marcada. */
+@media (prefers-reduced-motion: no-preference) {
+  html, .indice { scroll-behavior: smooth; }
+}
+
 body {
   margin: 0;
   background: var(--fondo);
