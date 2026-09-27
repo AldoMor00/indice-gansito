@@ -58,8 +58,42 @@ function avisaDesborde() {
   marcoBarra.toggleAttribute("data-desborda", hay);
 }
 
+// El encadenado (sección 03): con mouse se resalta el eslabón bajo el cursor; con el dedo, el
+// último que se tocó, hasta tocar fuera. El eslabón lo dicen las zonas invisibles del SVG.
+const encadenado = document.querySelector(".encadenado");
+
+function activaEslabon(eslabon) {
+  if (eslabon) encadenado.dataset.activo = eslabon;
+  else delete encadenado.dataset.activo;
+}
+
+encadenado.addEventListener("pointerover", (evento) => {
+  if (evento.pointerType === "mouse") activaEslabon(evento.target.dataset.eslabon);
+});
+encadenado.addEventListener("pointerleave", (evento) => {
+  if (evento.pointerType === "mouse") activaEslabon();
+});
+document.addEventListener("pointerdown", (evento) => activaEslabon(evento.target.dataset?.eslabon));
+
+// Y una sola vez, cuando el diagrama sube a 75 % de la ventana, los eslabones se arman uno tras
+// otro. Con scroll y no con IntersectionObserver por la misma razón que el índice: si la página
+// carga ya más abajo, el observer nunca avisa y los pares se quedarían escondidos. Con
+// prefers-reduced-motion las dos clases no hacen nada.
+encadenado.classList.add("espera");
+
+function reproduceEncadenado() {
+  if (encadenado.getBoundingClientRect().top > innerHeight * 0.75) return;
+  removeEventListener("scroll", reproduceEncadenado);
+  encadenado.classList.replace("espera", "reproduce");
+  encadenado.querySelector("tspan.e3").addEventListener("animationend", () => {
+    encadenado.classList.remove("reproduce");
+  }, { once: true });
+}
+
 addEventListener("scroll", marcaSeccion, { passive: true });
+addEventListener("scroll", reproduceEncadenado, { passive: true });
 addEventListener("resize", avisaDesborde, { passive: true });
 barra.addEventListener("scroll", avisaDesborde, { passive: true });
 marcaSeccion();
 avisaDesborde();
+reproduceEncadenado();

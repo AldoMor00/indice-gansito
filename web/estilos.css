@@ -932,6 +932,35 @@ a {
 .diagrama .eslabon { font-size: 16px; font-weight: 500; fill: var(--acento); }
 .diagrama .formula { font-size: 17px; font-weight: 500; }
 
+/* El eslabón activo deja a los otros dos en tenue: sus pares, su J y su factor en la fórmula.
+   stroke-opacity le toca a las líneas y fill-opacity al texto; opacity no aplica a un tspan. */
+.diagrama .eslabon-zona { fill: transparent; }
+
+.encadenado[data-activo="1"] :is(.e2, .e3),
+.encadenado[data-activo="2"] :is(.e1, .e3),
+.encadenado[data-activo="3"] :is(.e1, .e2) { stroke-opacity: 0.15; fill-opacity: 0.25; }
+
+/* Al entrar a la pantalla, una sola vez: cada eslabón traza sus pares de izquierda a derecha y
+   luego aparecen su J y su factor. pagina.js pone .espera al cargar y la cambia por .reproduce.
+   112 es el largo de cada línea de par. */
+@media screen and (prefers-reduced-motion: no-preference) {
+  .encadenado :is(.e1, .e2, .e3) { transition: stroke-opacity 150ms, fill-opacity 150ms; }
+
+  .encadenado:is(.espera, .reproduce) line:is(.e1, .e2, .e3) { stroke-dasharray: 112; }
+  .encadenado.espera line:is(.e1, .e2, .e3) { stroke-dashoffset: 112; }
+  .encadenado.espera :is(text, tspan):is(.e1, .e2, .e3) { fill-opacity: 0; }
+
+  .encadenado.reproduce line:is(.e1, .e2, .e3) { animation: traza 500ms ease-out both; }
+  .encadenado.reproduce :is(text, tspan):is(.e1, .e2, .e3) { animation: aparece 400ms 300ms both; }
+  .encadenado.reproduce line.e2 { animation-delay: 700ms; }
+  .encadenado.reproduce line.e3 { animation-delay: 1400ms; }
+  .encadenado.reproduce :is(text, tspan).e2 { animation-delay: 1000ms; }
+  .encadenado.reproduce :is(text, tspan).e3 { animation-delay: 1700ms; }
+}
+
+@keyframes traza { from { stroke-dashoffset: 112; } }
+@keyframes aparece { from { fill-opacity: 0; } }
+
 /* 8 · Cajas del diagrama que no abren nada: sin hover. Las de datos, punteadas y sobre el fondo. */
 .diagrama .caja rect {
   fill: var(--tarjeta);
