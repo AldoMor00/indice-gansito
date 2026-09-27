@@ -58,6 +58,23 @@ function avisaDesborde() {
   marcoBarra.toggleAttribute("data-desborda", hay);
 }
 
+// La arquitectura (sección 01): cada flecha se traza cuando sube a 75 % de la ventana, para que
+// el flujo baje al ritmo de la lectura. El diagrama mide más que una pantalla: con un solo
+// disparo, las de abajo se dibujarían antes de que nadie las viera.
+const arquitectura = document.querySelector(".arquitectura");
+let flechasPendientes = [...arquitectura.querySelectorAll(".flecha")];
+arquitectura.classList.add("espera");
+
+function trazaFlechas() {
+  const linea = innerHeight * 0.75;
+  flechasPendientes = flechasPendientes.filter((flecha) => {
+    if (flecha.getBoundingClientRect().top > linea) return true;
+    flecha.classList.add("trazada");
+    return false;
+  });
+  if (!flechasPendientes.length) removeEventListener("scroll", trazaFlechas);
+}
+
 // El encadenado (sección 03): con mouse se resalta el eslabón bajo el cursor; con el dedo, el
 // último que se tocó, hasta tocar fuera. El eslabón lo dicen las zonas invisibles del SVG.
 const encadenado = document.querySelector(".encadenado");
@@ -111,9 +128,11 @@ traza.addEventListener("pointerleave", (evento) => {
 document.addEventListener("pointerdown", (evento) => marcaTraza(evento.target.closest("[data-traza]")));
 
 addEventListener("scroll", marcaSeccion, { passive: true });
+addEventListener("scroll", trazaFlechas, { passive: true });
 addEventListener("scroll", reproduceEncadenado, { passive: true });
 addEventListener("resize", avisaDesborde, { passive: true });
 barra.addEventListener("scroll", avisaDesborde, { passive: true });
 marcaSeccion();
 avisaDesborde();
+trazaFlechas();
 reproduceEncadenado();

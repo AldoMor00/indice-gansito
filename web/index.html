@@ -177,7 +177,7 @@
         <figure class="ventana ventana--diagrama">
           <figcaption class="ventana__barra"><span>Arquitectura</span><span>De arriba abajo</span></figcaption>
           <div class="diagrama-marco">
-            <svg class="diagrama" viewBox="0 0 760 990" role="img" aria-label="Diagrama de arquitectura, de arriba abajo: Profeco, CONASAMI e INEGI llegan por GitHub Actions al repo de datos; debajo de la frontera con Fabric pasan por bronze, silver y gold, luego al modelo semántico y al reporte. De gold sale una rama al parquet público en GitHub, y de ahí el clon publicado a la web.">
+            <svg class="diagrama arquitectura" viewBox="0 0 760 990" role="img" aria-label="Diagrama de arquitectura, de arriba abajo: Profeco, CONASAMI e INEGI llegan por GitHub Actions al repo de datos; debajo de la frontera con Fabric pasan por bronze, silver y gold, luego al modelo semántico y al reporte. De gold sale una rama al parquet público en GitHub, y de ahí el clon publicado a la web.">
               <defs>
                 <marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                   <path d="M0 0L10 5L0 10z" fill="#3B2418"/>
@@ -203,9 +203,9 @@
                 <text class="sub" x="534" y="80">INPC quincenal · API</text>
               </a>
 
-              <path class="flecha" d="M140 96 C140 140 320 130 320 168"/>
-              <path class="flecha" d="M380 96 L380 168"/>
-              <path class="flecha" d="M620 96 C620 140 440 130 440 168"/>
+              <path class="flecha" pathLength="1" d="M140 96 C140 140 320 130 320 168"/>
+              <path class="flecha" pathLength="1" d="M380 96 L380 168"/>
+              <path class="flecha" pathLength="1" d="M620 96 C620 140 440 130 440 168"/>
               <text class="etiqueta" x="390" y="138">ingesta.yml</text>
 
               <!-- raw -->
@@ -223,7 +223,7 @@
               <text class="zona" x="0" y="318">dentro de Fabric</text>
               <text class="banda" x="760" y="318" text-anchor="end">pl_master · bronze → silver → gold</text>
 
-              <path class="flecha" d="M380 264 L380 340"/>
+              <path class="flecha" pathLength="1" d="M380 264 L380 340"/>
 
               <!-- capas -->
               <a class="lupa nodo" href="img/05_adentro_fila-bronze.webp" data-alt="Una fila de bronze: las observaciones crudas de una tienda y quincena, con sha256 e intento.">
@@ -236,7 +236,7 @@
               <text class="etiqueta" x="210" y="380" text-anchor="end">pl_bronze</text>
               <text class="lateral" x="210" y="398" text-anchor="end">nb_10 · nb_11 · nb_12</text>
 
-              <path class="flecha" d="M380 436 L380 476"/>
+              <path class="flecha" pathLength="1" d="M380 436 L380 476"/>
 
               <a class="lupa nodo" href="img/05_adentro_fila-silver.webp" data-alt="La misma fila en silver: una por tienda, producto y quincena, con promedio, mínimo y máximo.">
                 <rect x="230" y="476" width="300" height="96"/>
@@ -248,7 +248,7 @@
               <text class="etiqueta" x="210" y="516" text-anchor="end">pl_silver</text>
               <text class="lateral" x="210" y="534" text-anchor="end">nb_20 · nb_21 · nb_22</text>
 
-              <path class="flecha" d="M380 572 L380 612"/>
+              <path class="flecha" pathLength="1" d="M380 572 L380 612"/>
 
               <a class="lupa nodo" href="img/05_adentro_fila-gold.webp" data-alt="La misma fila en gold: con id de quincena, lista para el modelo.">
                 <rect x="230" y="612" width="300" height="96"/>
@@ -260,7 +260,7 @@
               <text class="etiqueta" x="210" y="652" text-anchor="end">pl_gold</text>
               <text class="lateral" x="210" y="670" text-anchor="end">nb_30</text>
 
-              <path class="flecha" d="M380 708 L380 758"/>
+              <path class="flecha" pathLength="1" d="M380 708 L380 758"/>
 
               <!-- modelo y reporte -->
               <a class="lupa nodo" href="img/06_donde-vive_vista-modelo-relaciones.webp" data-alt="Vista de modelo de sm_gansito: cuatro dimensiones, cuatro hechos y tres tablas desconectadas.">
@@ -271,7 +271,7 @@
               <text class="lateral" x="210" y="790" text-anchor="end">refresh al final</text>
               <text class="lateral" x="210" y="808" text-anchor="end">de pl_master</text>
 
-              <path class="flecha" d="M380 828 L380 868"/>
+              <path class="flecha" pathLength="1" d="M380 828 L380 868"/>
 
               <a class="lupa nodo" href="img/02_responde_p1-el-numero.webp" data-alt="Primera página del reporte, El número.">
                 <rect x="230" y="868" width="300" height="70"/>
@@ -280,7 +280,7 @@
               </a>
 
               <!-- la salida pública: gold vuelve a git -->
-              <path class="flecha" d="M530 660 C650 660 655 700 655 758"/>
+              <path class="flecha" pathLength="1" d="M530 660 C650 660 655 700 655 758"/>
               <text class="etiqueta" x="545" y="648">nb_50_export · sólo prod</text>
 
               <a class="nodo nodo--externo" href="https://github.com/AldoMor00/indice-gansito-datos/tree/main/publico" target="_blank" rel="noopener">
@@ -289,7 +289,7 @@
                 <text class="sub" x="574" y="804">parquet, en el repo de datos</text>
               </a>
 
-              <path class="flecha" d="M655 828 L655 868"/>
+              <path class="flecha" pathLength="1" d="M655 828 L655 868"/>
 
               <a class="nodo nodo--externo" href="https://app.fabric.microsoft.com/view?r=eyJrIjoiNzZlYjQwYWQtZTNjOS00YzliLTg0MzctYzdmMGZlM2MzNmNkIiwidCI6IjQzYzg1M2FhLTFjNzctNDdjYy1iZDYxLWM5NzNiNzZiMzBlNSJ9" target="_blank" rel="noopener">
                 <rect x="560" y="868" width="190" height="70"/>
