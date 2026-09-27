@@ -21,8 +21,12 @@ document.addEventListener("click", (evento) => {
   }
 });
 
+// La imagen se quita hasta que termina el fundido de salida, si lo hay, para que no se desvanezca
+// un marco vacío. allSettled porque si se reabre a medio fundido, la transición se cancela.
 dialogo.addEventListener("close", () => {
-  imagen.removeAttribute("src");
+  Promise.allSettled(dialogo.getAnimations().map((animacion) => animacion.finished)).then(() => {
+    if (!dialogo.open) imagen.removeAttribute("src");
+  });
 });
 
 // Índice de secciones: marca la que está en pantalla. Se calcula con la posición de cada

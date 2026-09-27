@@ -1108,6 +1108,28 @@ a {
   background: var(--tarjeta);
 }
 
+/* Entra y sale con un fundido, y la imagen crece de 96 % a 100 %. overlay y display van
+   discretos para que el <dialog> siga en pantalla mientras se desvanece; donde el navegador no
+   los soporta, abre y cierra de golpe como antes. */
+@media (prefers-reduced-motion: no-preference) {
+  .lupa-dialogo,
+  .lupa-dialogo::backdrop {
+    transition-property: opacity, transform, overlay, display;
+    transition-duration: 200ms;
+    transition-behavior: allow-discrete;
+  }
+
+  .lupa-dialogo:not([open]),
+  .lupa-dialogo:not([open])::backdrop { opacity: 0; }
+  .lupa-dialogo:not([open]) { transform: scale(0.96); }
+
+  @starting-style {
+    .lupa-dialogo[open],
+    .lupa-dialogo[open]::backdrop { opacity: 0; }
+    .lupa-dialogo[open] { transform: scale(0.96); }
+  }
+}
+
 .lupa-dialogo button {
   position: fixed;
   top: 16px;
