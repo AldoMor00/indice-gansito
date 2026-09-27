@@ -753,6 +753,20 @@ a {
 .tabla tr:last-child td { border-bottom: 0; }
 .tabla .cambia { color: var(--acento); font-weight: 500; }
 
+/* 6 · La traza: la celda de silver bajo el cursor y las de bronze de las que sale, en dorado
+   como marcatextos. La marca la pone pagina.js; el subrayado punteado avisa cuáles se pueden. */
+.tabla [data-traza] {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.tabla .trazado,
+.tabla tr.trazado td { background: rgba(214, 154, 76, 0.3); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .traza td { transition: background-color 150ms; }
+}
+
 /* El sha256 y la dirección completos van en el title; en la celda, cortados como en Fabric */
 .tabla .corta {
   max-width: 14ch;

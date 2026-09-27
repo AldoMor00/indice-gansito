@@ -90,6 +90,26 @@ function reproduceEncadenado() {
   }, { once: true });
 }
 
+// Las capas (sección 06): una celda de silver con data-traza marca las de bronze de las que sale,
+// las que llevan esa clave en data-traza-de. Mouse y dedo, igual que el encadenado.
+const traza = document.querySelector(".traza");
+
+function marcaTraza(celda) {
+  traza.querySelectorAll(".trazado").forEach((marcada) => marcada.classList.remove("trazado"));
+  if (!celda) return;
+  celda.classList.add("trazado");
+  traza.querySelectorAll(`[data-traza-de~="${celda.dataset.traza}"]`)
+    .forEach((origen) => origen.classList.add("trazado"));
+}
+
+traza.addEventListener("pointerover", (evento) => {
+  if (evento.pointerType === "mouse") marcaTraza(evento.target.closest("[data-traza]"));
+});
+traza.addEventListener("pointerleave", (evento) => {
+  if (evento.pointerType === "mouse") marcaTraza();
+});
+document.addEventListener("pointerdown", (evento) => marcaTraza(evento.target.closest("[data-traza]")));
+
 addEventListener("scroll", marcaSeccion, { passive: true });
 addEventListener("scroll", reproduceEncadenado, { passive: true });
 addEventListener("resize", avisaDesborde, { passive: true });
