@@ -6,6 +6,7 @@ lo que hay que probar es qué hace el script con ese sha, no cómo lo bajó.
 
 import hashlib
 import json
+import sys
 
 import ingesta_conasami as conasami
 
@@ -82,6 +83,50 @@ def test_sha_distinto_abre_v2_y_conserva_la_v1(tmp_path, monkeypatch):
 def test_no_publicado_no_es_error(tmp_path, monkeypatch):
     monkeypatch.setattr(conasami, "descarga", lambda _url, _destino: None)
     assert conasami.procesa("sm_real_indice", tmp_path, []) is None
+
+
+def _corre(monkeypatch, tmp_path, descarga):
+    """Corre main() contra un destino temporal, con la descarga sustituida."""
+    monkeypatch.setattr(conasami, "descarga", descarga)
+    monkeypatch.setattr(sys, "argv", ["ingesta_conasami.py", "--destino", str(tmp_path)])
+    github_output = tmp_path / "github_output.txt"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(github_output))
+    return github_output
+
+
+def _bloquea(url, _destino):
+    raise conasami.Bloqueada(url, 403, "Forbidden", {}, None)
+
+
+def test_bloqueo_sale_en_verde_y_avisa(tmp_path, monkeypatch, capsys):
+    github_output = _corre(monkeypatch, tmp_path, _bloquea)
+
+    assert conasami.main() == 0
+    stdout = capsys.readouterr().out
+    assert "bloqueado (403)" in stdout
+    assert "::warning::" in stdout
+    # Sin commit: nada actualizado, y el manifiesto no crece (se crea vacío).
+    assert "actualizados=" in github_output.read_text(encoding="utf-8")
+    manifiesto = tmp_path / "conasami" / "manifiesto.jsonl"
+    assert not manifiesto.exists() or manifiesto.read_text(encoding="utf-8") == ""
+
+
+def test_un_archivo_bloqueado_no_frena_al_otro(tmp_path, monkeypatch, capsys):
+    crudo = CSV.encode("utf-8")
+
+    def selectiva(url, destino):
+        if "sm_real_indice" in url:
+            raise conasami.Bloqueada(url, 403, "Forbidden", {}, None)
+        destino.write_bytes(crudo)
+        return hashlib.sha256(crudo).hexdigest(), len(crudo)
+
+    _corre(monkeypatch, tmp_path, selectiva)
+
+    assert conasami.main() == 0
+    manifiesto = (tmp_path / "conasami" / "manifiesto.jsonl").read_text(encoding="utf-8")
+    assert "sm_general_profesionales_zonas" in manifiesto
+    assert "sm_real_indice" not in manifiesto
+    assert "bloqueado (403)" in capsys.readouterr().out
 
 
 def test_la_entrada_del_manifiesto_es_una_linea_json(tmp_path, monkeypatch):

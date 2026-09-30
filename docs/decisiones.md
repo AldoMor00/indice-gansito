@@ -16,7 +16,7 @@ y lo que hay que configurar a mano en [`entorno.md`](entorno.md).
 | tema | decisiones |
 |---|---|
 | [Alcance y ambientes](#alcance-y-ambientes) | 1, 4, 5, 6, 11, 18 |
-| [Zona raw e ingesta](#zona-raw-e-ingesta) | 2, 9, 34, 36, 37, 43 |
+| [Zona raw e ingesta](#zona-raw-e-ingesta) | 2, 9, 34, 36, 37, 43, 44 |
 | [Bronze y notebooks](#bronze-y-notebooks) | 3, 7, 8 |
 | [Silver: identidad y calidad](#silver-identidad-y-calidad) | 12, 13, 15, 16, 17, 38, 39 |
 | [Escritura y layout de tablas](#escritura-y-layout-de-tablas) | 14, 32, 33 |
@@ -210,6 +210,23 @@ corrompe: gold truena antes de escribir. Si el hueco es temporal se cura solo.
 
 **Costo.** Si un día es permanente, raw, bronze y silver avanzan y gold se queda congelado en la
 última quincena antes del hueco, tronando cada martes, hasta que se decida con el caso a la vista.
+
+### 44. El 403 de CONASAMI es "bloqueado", no fallo
+
+**Decisión.** La ingesta de CONASAMI declara "bloqueado" el archivo cuyo host contesta 403:
+lo avisa como warning, sale en verde y no commitea. Si en enero de 2027 sigue bloqueado, el
+salario nuevo se baja a mano desde el navegador.
+
+**Motivo.** Desde el 2026-09-14 `repodatos` contesta 403 de Akamai a clientes no-navegador
+(verificado desde Actions y en local; el navegador sí entra), y es el endpoint canónico de
+`datos.gob.mx`, no uno equivocado. Tronarlo cada lunes no aporta: la fuente publica anual y
+la serie ya llega a 2026-01, así que no hay nada que perder esperando. Se descartó imitar
+navegador (carrera armamentista contra el bot-manager) y cambiar de fuente (las tablas de
+`gob.mx/conasami` son otro formato y romperían la comparación por hash).
+
+**Costo.** Un bloqueo que siga vivo en enero de 2027 no se verá en rojo: hay que revisar el
+warning antes de esa fecha. La descarga manual rompería para esa versión la cadena de
+`sha256` descarga-contra-descarga (#9).
 
 ---
 

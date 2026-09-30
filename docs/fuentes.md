@@ -182,7 +182,12 @@ salario profesional por oficio.
 
 ## Defectos conocidos
 
-Ninguno. Los 86 salarios profesionales traen celdas vacías, pero no entran.
+Desde el 2026-09-14 el host contesta `403` (Akamai, "Access Denied") a clientes que no
+son navegador: `urllib` y `curl` fallan igual en Actions que en local, mientras el navegador
+sí entra. Es el endpoint canónico —los botones de descarga de `datos.gob.mx` apuntan ahí—,
+no uno equivocado. La ingesta lo declara "bloqueado" y sale en verde (decisión #44); si sigue
+así cuando se publique el salario de 2027, ese archivo entrará por descarga manual desde el
+navegador. Los 86 salarios profesionales traen celdas vacías, pero no entran.
 
 ---
 
