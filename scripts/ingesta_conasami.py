@@ -119,7 +119,7 @@ def main() -> int:
             try:
                 entrada = procesa(archivo, args.destino, manifiesto)
             except Bloqueada:
-                # El host no deja entrar (decisión #44): se declara y se sigue con el
+                # El host no deja entrar (decisión #45): se declara y se sigue con el
                 # otro archivo, en vez de tumbar el job cada lunes.
                 print(f"  {archivo}: bloqueado (403)")
                 bloqueadas.append(archivo)
@@ -134,7 +134,7 @@ def main() -> int:
     print(f"bloqueados: {len(bloqueadas)} {bloqueadas}")
     if bloqueadas:
         print(
-            "::warning::CONASAMI contestó 403 (bloqueo de bots, ver decisión #44): "
+            "::warning::CONASAMI contestó 403 (bloqueo de bots, ver decisión #45): "
             + ", ".join(bloqueadas)
         )
     salida_actions(actualizados=", ".join(hechas), bloqueados=", ".join(bloqueadas))

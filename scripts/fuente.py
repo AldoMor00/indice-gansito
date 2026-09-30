@@ -17,7 +17,7 @@ from pathlib import Path
 
 # El host contesta 403 si la petición no trae `Accept` (urllib no lo manda por su
 # cuenta), y Akamai además bloquea a clientes no-navegador aunque lo traigan
-# (decisión #44): de ahí que lo mismo funcione en el navegador y aquí no.
+# (decisión #45): de ahí que lo mismo funcione en el navegador y aquí no.
 CABECERAS = {
     "Accept": "*/*",
     "User-Agent": "indice-gansito (+https://github.com/AldoMor00/indice-gansito)",
@@ -32,7 +32,7 @@ class Bloqueada(urllib.error.HTTPError):
     """El host contestó 403: no deja entrar, que no es lo mismo que "no publicado".
 
     Es subclase de HTTPError para que quien no la distinga siga tronando como antes;
-    quien sí (CONASAMI, decisión #44) la declara "bloqueado" y sale en verde.
+    quien sí (CONASAMI, decisión #45) la declara "bloqueado" y sale en verde.
     """
 
 
