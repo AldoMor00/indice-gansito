@@ -16,7 +16,7 @@ y lo que hay que configurar a mano en [`entorno.md`](entorno.md).
 | tema | decisiones |
 |---|---|
 | [Alcance y ambientes](#alcance-y-ambientes) | 1, 4, 5, 6, 11, 18 |
-| [Zona raw e ingesta](#zona-raw-e-ingesta) | 2, 9, 34, 36, 37, 43, 44 |
+| [Zona raw e ingesta](#zona-raw-e-ingesta) | 2, 9, 34, 36, 37, 43, 45 |
 | [Bronze y notebooks](#bronze-y-notebooks) | 3, 7, 8 |
 | [Silver: identidad y calidad](#silver-identidad-y-calidad) | 12, 13, 15, 16, 17, 38, 39 |
 | [Escritura y layout de tablas](#escritura-y-layout-de-tablas) | 14, 32, 33 |
@@ -211,7 +211,7 @@ corrompe: gold truena antes de escribir. Si el hueco es temporal se cura solo.
 **Costo.** Si un día es permanente, raw, bronze y silver avanzan y gold se queda congelado en la
 última quincena antes del hueco, tronando cada martes, hasta que se decida con el caso a la vista.
 
-### 44. El 403 de CONASAMI es "bloqueado", no fallo
+### 45. El 403 de CONASAMI es "bloqueado", no fallo
 
 **Decisión.** La ingesta de CONASAMI declara "bloqueado" el archivo cuyo host contesta 403:
 lo avisa como warning, sale en verde y no commitea. Si en enero de 2027 sigue bloqueado, el
