@@ -15,8 +15,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-# El CDN de la fuente contesta 403 si la petición no trae `Accept`. urllib no lo manda
-# por su cuenta y curl sí, que es por qué lo mismo funciona en la terminal y aquí no.
+# El host contesta 403 si la petición no trae `Accept` (urllib no lo manda por su
+# cuenta), y Akamai además bloquea a clientes no-navegador aunque lo traigan
+# (decisión #44): de ahí que lo mismo funcione en el navegador y aquí no.
 CABECERAS = {
     "Accept": "*/*",
     "User-Agent": "indice-gansito (+https://github.com/AldoMor00/indice-gansito)",
@@ -27,10 +28,18 @@ CABECERAS = {
 NO_PUBLICADA = (404, 503)
 
 
+class Bloqueada(urllib.error.HTTPError):
+    """El host contestó 403: no deja entrar, que no es lo mismo que "no publicado".
+
+    Es subclase de HTTPError para que quien no la distinga siga tronando como antes;
+    quien sí (CONASAMI, decisión #44) la declara "bloqueado" y sale en verde.
+    """
+
+
 def descarga(url: str, destino: Path) -> tuple[str, int] | None:
     """Baja `url` a `destino`. Devuelve (sha256, bytes), o None si no está publicada.
 
-    Cualquier otro error se propaga: un 403 leído como "todavía no sale" dejaría al
+    Un 403 se propaga como `Bloqueada`: leerlo como "todavía no sale" dejaría al
     pipeline sin bajar nada y sin quejarse. La tanda es reanudable, así que tronar es
     barato —el manifiesto ya tiene lo que alcanzó a escribir.
     """
@@ -49,6 +58,8 @@ def descarga(url: str, destino: Path) -> tuple[str, int] | None:
     except urllib.error.HTTPError as e:
         if e.code in NO_PUBLICADA:
             return None
+        if e.code == 403:
+            raise Bloqueada(e.url, e.code, e.msg, e.hdrs, e.fp) from e
         raise
     return digest.hexdigest(), total
 

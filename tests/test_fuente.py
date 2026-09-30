@@ -31,6 +31,12 @@ def test_descarga_no_se_traga_los_demas_errores(tmp_path, monkeypatch):
         fuente.descarga("https://ejemplo/x.csv", tmp_path / "x.csv")
 
 
+def test_descarga_marca_el_403_como_bloqueo(tmp_path, monkeypatch):
+    _con_error(monkeypatch, 403)
+    with pytest.raises(fuente.Bloqueada):
+        fuente.descarga("https://ejemplo/x.csv", tmp_path / "x.csv")
+
+
 def test_descarga_pide_accept():
     assert fuente.CABECERAS["Accept"] == "*/*"
 
