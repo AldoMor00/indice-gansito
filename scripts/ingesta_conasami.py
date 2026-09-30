@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import polars as pl
-from fuente import descarga, leer_manifiesto, salida_actions
+from fuente import Bloqueada, descarga, leer_manifiesto, salida_actions
 
 BASE = "https://repodatos.atdt.gob.mx/api_update/conasami/salarios_minimos"
 
@@ -112,10 +112,18 @@ def main() -> int:
     print(f"archivos: {len(ARCHIVOS)}, manifiesto con {len(manifiesto)} entradas")
 
     hechas = []
+    bloqueadas = []
     manifiesto_ruta.parent.mkdir(parents=True, exist_ok=True)
     with manifiesto_ruta.open("a", encoding="utf-8") as f:
         for archivo in ARCHIVOS:
-            entrada = procesa(archivo, args.destino, manifiesto)
+            try:
+                entrada = procesa(archivo, args.destino, manifiesto)
+            except Bloqueada:
+                # El host no deja entrar (decisión #44): se declara y se sigue con el
+                # otro archivo, en vez de tumbar el job cada lunes.
+                print(f"  {archivo}: bloqueado (403)")
+                bloqueadas.append(archivo)
+                continue
             if entrada is None:
                 continue
             f.write(json.dumps(entrada, ensure_ascii=False) + "\n")
@@ -123,7 +131,13 @@ def main() -> int:
             hechas.append(f"{archivo} v{entrada['version']}")
 
     print(f"actualizados: {len(hechas)} {hechas}")
-    salida_actions(actualizados=", ".join(hechas))
+    print(f"bloqueados: {len(bloqueadas)} {bloqueadas}")
+    if bloqueadas:
+        print(
+            "::warning::CONASAMI contestó 403 (bloqueo de bots, ver decisión #44): "
+            + ", ".join(bloqueadas)
+        )
+    salida_actions(actualizados=", ".join(hechas), bloqueados=", ".join(bloqueadas))
     return 0
 
 
