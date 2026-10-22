@@ -96,9 +96,7 @@ def test_publicados_arma_un_bundle_por_anio():
 
 def test_publicados_acepta_el_enlace_sin_acento():
     # El portal alterna entre las dos formas; ninguna puede dejar el mapa vacío.
-    assert ingesta.publicados(LISTADO.replace("Quién", "Quien")) == ingesta.publicados(
-        LISTADO
-    )
+    assert ingesta.publicados(LISTADO.replace("Quién", "Quien")) == ingesta.publicados(LISTADO)
 
 
 def test_publicados_no_confunde_el_diccionario_ni_los_metadatos():
