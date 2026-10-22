@@ -16,7 +16,7 @@ y lo que hay que configurar a mano en [`entorno.md`](entorno.md).
 | tema | decisiones |
 |---|---|
 | [Alcance y ambientes](#alcance-y-ambientes) | 1, 4, 5, 6, 11, 18 |
-| [Zona raw e ingesta](#zona-raw-e-ingesta) | 2, 9, 34, 36, 37, 43, 45 |
+| [Zona raw e ingesta](#zona-raw-e-ingesta) | 2, 9, 34, 36, 37, 43, 45, 46 |
 | [Bronze y notebooks](#bronze-y-notebooks) | 3, 7, 8 |
 | [Silver: identidad y calidad](#silver-identidad-y-calidad) | 12, 13, 15, 16, 17, 38, 39 |
 | [Escritura y layout de tablas](#escritura-y-layout-de-tablas) | 14, 32, 33 |
@@ -142,6 +142,9 @@ descarga, la comparación siempre es descarga contra descarga y git nunca entra 
 
 ### 34. Profeco se lee del portal, por bundle anual
 
+*Ajustada por #46: la ingesta ya descomprime zip y rar; `--local` sigue disponible como escape.
+Lo que abajo dice de extraer rar a mano quedó histórico.*
+
 **Decisión.** La ingesta baja de `datos.profeco.gob.mx`, un bundle por año, y el canal viejo
 (`repodatos`) se descarta. No se re-ingesta nada: el `url_origen` de las líneas viejas se queda
 apuntando al host caído. La corrida se decide con el CSV de metadatos antes de bajar el bundle.
@@ -227,6 +230,22 @@ navegador (carrera armamentista contra el bot-manager) y cambiar de fuente (las 
 **Costo.** Un bloqueo que siga vivo en enero de 2027 no se verá en rojo: hay que revisar el
 warning antes de esa fecha. La descarga manual rompería para esa versión la cadena de
 `sha256` descarga-contra-descarga (#9).
+
+### 46. La ingesta acepta zip y rar
+
+**Decisión.** `del_bundle` detecta el formato del bundle por su firma y procesa zip y rar con
+el mismo flujo. Para rar usa `rarfile`, que saca tamaño y CRC32 del encabezado y delega la
+descompresión a `7z` o `unrar`; el job instala `p7zip-full` y `p7zip-rar`. `--local` queda sólo
+como escape.
+
+**Motivo.** El portal cambió el bundle de 2026 de zip a rar el 6 de octubre de 2026 sin aviso,
+y el formato no es contrato (`fuentes.md`). `rarfile` da el mismo tamaño y CRC32 del encabezado
+que el directorio central del zip, así que la detección de quincenas reescritas no cambia. Se
+descartó procesar rar sólo con `--local`: en un año activo obliga a una extracción manual por
+cada publicación, justo lo que el cron evita.
+
+**Costo.** Una dependencia de Python y dos paquetes del sistema en el runner. Si el portal
+cambia a un tercer formato, la corrida truena con un mensaje explícito hasta que se agregue.
 
 ---
 

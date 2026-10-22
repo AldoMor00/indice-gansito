@@ -32,11 +32,14 @@ que hay que saber para automatizarlo:
   preguntarle si cambió. Lo que sí hay es un CSV de metadatos de 877 bytes que declara
   `Cobertura temporal` y `Última modificación`.
 - **Un token inválido contesta `200` con HTML**, no `404`: una página con un
-  `alert('Documento no disponible')`. Hay que ver que lo que llegó sea un zip.
-- **El zip trae su propio manifiesto**: el directorio central lleva tamaño y CRC32 de cada
-  miembro, legibles sin descomprimir.
+  `alert('Documento no disponible')`. Hay que ver que lo que llegó sea un zip o un rar.
+- **Zip y rar traen su propio índice**: el tamaño y el CRC32 de cada miembro se leen del
+  encabezado sin descomprimir.
 - **No pide nada**: ni cookie, ni referer, ni `User-Agent`.
-- **2025 viene en `.rar`**; 2024 y 2026 en `.zip`. 2023 no tiene bundle.
+- **El formato no es contrato.** El 11 de septiembre de 2026 el bundle de 2026 era zip; el 6
+  de octubre el portal lo reempaquetó y desde entonces los bundles se sirven en rar (RAR5).
+  Verificado el 21 de octubre de 2026: 2015 a 2026 vienen en rar. La ingesta detecta la firma
+  en cada corrida (decisión #46). El portal también publica 2023; este repo arranca en 2024.
 - **El nombre del archivo cambió de convención**: `MM-AAAA_01`/`_02` hasta 2025, `MM-AAAA_Q1`/`_Q2`
   desde 2026.
 

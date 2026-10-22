@@ -63,18 +63,18 @@ def _li(token: str, texto: str) -> str:
 LISTADO = "\n".join(
     [
         "                     </ul>",
-        _li("b9540b181657c2bc7735892091e81f96", "Quien es Quien en los Precios 2025"),
-        _li("9d62040eae6dcc63e36b8ac821427647", "Quien es Quien en los Precios 2026"),
+        _li("b9540b181657c2bc7735892091e81f96", "Quién es Quién en los Precios 2025"),
+        _li("9d62040eae6dcc63e36b8ac821427647", "Quién es Quién en los Precios 2026"),
         _li("42ed7dad4da507b9d536d9b737e7912d", "Metadatos dataset"),
-        _li("2de3505b2d37e7db72557a09262d95c5", "Quien es Quien en los Precios 2024"),
+        _li("2de3505b2d37e7db72557a09262d95c5", "Quién es Quién en los Precios 2024"),
         _li("2de3505b2d37e7db72557a09262d95c7", "Diccionario de datos dataset"),
     ]
 )
 
 METADATOS = (
     "Metadato,Descripción\n"
-    'Título,"Programa Quién es Quién en los Precios, Julio de 2026."\n'
-    "Cobertura temporal,2026-07-01 a 2026-07-31\n"
+    'Título,"Programa Quién es Quién en los Precios, Enero 2024 - Agosto de 2026."\n'
+    "Cobertura temporal,2024-01-01 a 2026-08-31\n"
     "Temporalidad de actualización,Mensual\n"
 )
 
@@ -92,6 +92,13 @@ def test_publicados_arma_un_bundle_por_anio():
         2025: f"{ingesta.BASE}/file.php?t=b9540b181657c2bc7735892091e81f96",
         2026: f"{ingesta.BASE}/file.php?t=9d62040eae6dcc63e36b8ac821427647",
     }
+
+
+def test_publicados_acepta_el_enlace_sin_acento():
+    # El portal alterna entre las dos formas; ninguna puede dejar el mapa vacío.
+    assert ingesta.publicados(LISTADO.replace("Quién", "Quien")) == ingesta.publicados(
+        LISTADO
+    )
 
 
 def test_publicados_no_confunde_el_diccionario_ni_los_metadatos():
@@ -112,12 +119,28 @@ def test_plantilla_cambiada_deja_el_mapa_vacio():
 
 
 def test_cobertura_lee_el_mes_mas_reciente():
-    assert ingesta.cobertura(METADATOS) == (2026, 7)
+    # El rango empieza en 2024: si se toma el inicio en vez del fin, la sonda cree que
+    # la fuente no cubre nada nuevo y la corrida termina sin bajar el bundle.
+    assert ingesta.cobertura(METADATOS) == (2026, 8)
 
 
 def test_cobertura_se_queja_si_el_metadato_cambia():
     with pytest.raises(RuntimeError):
         ingesta.cobertura("Metadato,Descripción\nAutor,Profeco\n")
+
+
+def test_formato_reconoce_zip_y_rar(tmp_path: Path):
+    # El portal cambió de zip a rar sin avisar: decide la firma, no el nombre.
+    comprimido = tmp_path / "bundle"
+    with zipfile.ZipFile(comprimido, "w") as zf:
+        zf.writestr("QQP_2026/08-2026_Q1.csv", "producto\n")
+    assert ingesta.formato(comprimido) == "zip"
+
+    comprimido.write_bytes(b"Rar!\x1a\x07\x01\x00" + b"\x00" * 8)
+    assert ingesta.formato(comprimido) == "rar"
+
+    comprimido.write_bytes(b"<html>Documento no disponible</html>")
+    assert ingesta.formato(comprimido) is None
 
 
 def test_miembro_reconoce_las_dos_convenciones():
@@ -319,16 +342,16 @@ def test_del_bundle_se_salta_lo_que_no_cambio_y_entrega_lo_reescrito(tmp_path, m
     assert [q.etiqueta for q, _, _ in lote] == ["2026-07_q2"]
 
 
-def test_del_bundle_truena_si_lo_que_bajo_no_es_zip(tmp_path, monkeypatch):
-    # Las dos formas de llegar aquí: el año que viene como rar, y la página de error del
-    # portal, que contesta 200 con HTML en vez de 404 cuando el token no existe.
+def test_del_bundle_truena_si_lo_que_bajo_no_es_zip_ni_rar(tmp_path, monkeypatch):
+    # La página de error del portal contesta 200 con HTML en vez de 404 cuando el token
+    # no existe; también caería aquí un tercer formato que no se sepa abrir.
     def html(_url, destino):
         destino.write_bytes(b"<script> alert('Documento no disponible'); </script>")
         return "sha", destino.stat().st_size
 
     monkeypatch.setattr(ingesta, "descarga", html)
     cola = [ingesta.Quincena(2026, 7, 2)]
-    with pytest.raises(RuntimeError, match="--local"):
+    with pytest.raises(RuntimeError, match="no es zip ni rar"):
         list(ingesta.del_bundle("https://ejemplo/bundle", cola, {}, tmp_path))
 
 

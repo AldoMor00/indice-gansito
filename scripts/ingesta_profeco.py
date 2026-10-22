@@ -27,13 +27,14 @@ import sys
 import tempfile
 import zipfile
 import zlib
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import closing
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import NamedTuple
 
 import polars as pl
+import rarfile
 import yaml
 from fuente import descarga, leer_manifiesto, salida_actions
 
@@ -44,8 +45,10 @@ LISTADO = f"{BASE}/qqp.php"
 # termina en 95c5 y el del diccionario en 95c7. La única forma de saber el de 2027 es
 # leerlo del listado el día que aparezca su `li`, y es lo que hace automático el cambio
 # de año. Si un día cambian la plantilla, el mapa sale vacío y la corrida truena.
+# El texto del enlace alterna entre `Quien` y `Quién`: el acento no es parte del contrato.
 ENLACE_ANIO = re.compile(
-    r'href="(file\.php\?t=[0-9a-f]+)"[^>]*>\s*Quien es Quien en los Precios\s+(\d{4})\s*<',
+    r'href="(file\.php\?t=[0-9a-f]+)"[^>]*>\s*'
+    r"Qui[eé]n es Qui[eé]n en los Precios\s+(\d{4})\s*<",
     re.IGNORECASE,
 )
 ENLACE_METADATOS = re.compile(
@@ -56,7 +59,13 @@ ENLACE_METADATOS = re.compile(
 # evita bajar los 186 MB del bundle —2.5 GB de CSV adentro— para descubrir que no trae
 # nada nuevo. Hace falta porque el bundle no expone `Last-Modified`, ni `ETag`, ni
 # `Content-Length`, ni `Range`: no hay forma más barata de preguntarle si cambió.
-COBERTURA = re.compile(r"^Cobertura temporal,(\d{4})-(\d{2})-", re.MULTILINE)
+# La cobertura viene como rango —"2024-01-01 a 2026-08-31"— y el mes que importa es el
+# final: el inicio es el de siempre y tomarlo por publicación más reciente deja la cola
+# vacía en silencio.
+COBERTURA = re.compile(
+    r"^Cobertura temporal,\d{4}-\d{2}-\d{2}\s+a\s+(\d{4})-(\d{2})-\d{2}",
+    re.MULTILINE,
+)
 
 # La única codificación de un byte que se acepta como plan B, y va nombrada. `latin-1` no
 # serviría: acepta los 256 bytes, así que nunca falla y por tanto nunca detecta que está
@@ -66,7 +75,7 @@ RESPALDO = "cp1252"
 # Todo lo que escribe esta fuente vive bajo este directorio del repo de datos.
 ZONA = "profeco"
 
-# La fuente no publica nada anterior: 2023 no tiene bundle.
+# El portal también publica 2023, pero el contrato de este repo arranca en 2024.
 PRIMERA = (2024, 1, 1)
 
 # Las 15 columnas del contrato, en el orden en que la fuente las sirve. Se declaran, igual
@@ -325,49 +334,106 @@ def escribe(df: pl.DataFrame, ruta: Path) -> None:
     df.write_parquet(ruta, compression="zstd")
 
 
+def formato(bundle: Path) -> str | None:
+    """El formato del bundle por su firma, o None si no es zip ni rar.
+
+    No es un detalle de configuración: el portal cambió el bundle de 2026 de zip a rar
+    el 6 de octubre de 2026 sin avisar, así que se detecta en cada corrida (decisión #46).
+    """
+    if zipfile.is_zipfile(bundle):
+        return "zip"
+    if rarfile.is_rarfile(bundle):
+        return "rar"
+    return None
+
+
+def elegidas(
+    nombres: list[str],
+    candidatas: list[Quincena],
+    sellos: Sellos,
+    sello_de: Callable[[str], tuple[int, int]],
+) -> Iterator[tuple[Quincena, str]]:
+    """Las que hay que extraer: pendientes o reescritas, comparando tamaño y CRC32.
+
+    `sello_de` devuelve (tamaño sin comprimir, CRC32) del miembro. El directorio central
+    del zip y el encabezado del rar lo traen sin descomprimir, así que cotejar contra el
+    manifiesto no cuesta una lectura extra.
+    """
+    for q in candidatas:
+        if (nombre := miembro(nombres, q)) is None:
+            print(f"  {q.etiqueta}: no viene en el bundle")
+            continue
+        if (sello := sellos.get(q.etiqueta)) is not None:
+            if not cambio(sello_de(nombre), sello):
+                continue
+            print(f"  {q.etiqueta}: la fuente la reescribió")
+        yield q, nombre
+
+
 def del_bundle(
     url: str, candidatas: list[Quincena], sellos: Sellos, tmp: Path
 ) -> Iterator[tuple[Quincena, Path, str]]:
     """Baja el bundle del año y entrega (quincena, csv, origen) de lo que haya que hacer.
 
-    Lo pendiente, y además lo que la fuente haya reescrito. Eso segundo sale gratis: el
-    directorio central del zip trae el tamaño y el CRC32 de cada miembro sin descomprimir
-    un byte, así que cotejarlos contra el manifiesto no cuesta ni una lectura extra.
+    Acepta zip y rar porque el portal alterna entre los dos. Lo pendiente, y además lo que
+    la fuente haya reescrito, sale del encabezado del contenedor sin descomprimir.
     """
     bundle = tmp / "bundle"
     if descarga(url, bundle) is None:
         print(f"  la fuente no sirvió {url}")
         return
-    if not zipfile.is_zipfile(bundle):
+
+    fmt = formato(bundle)
+    if fmt is None:
         raise RuntimeError(
-            f"lo que sirvió {url} no es un zip. O el año viene como rar —2025 lo es— y "
-            "hay que extraerlo a mano y pasarlo con --local, o el token cambió y el "
-            "portal devolvió su página de error, que contesta 200 con HTML y no 404."
+            f"lo que sirvió {url} no es zip ni rar. Si el token cambió, el portal "
+            "contesta 200 con su página de error; si no, cambió el formato y hay "
+            "que agregarlo al script."
         )
-    with zipfile.ZipFile(bundle) as zf:
-        nombres = zf.namelist()
-        for q in candidatas:
-            if (nombre := miembro(nombres, q)) is None:
-                print(f"  {q.etiqueta}: no viene en el bundle")
-                continue
-            info = zf.getinfo(nombre)
-            if (sello := sellos.get(q.etiqueta)) is not None:
-                if not cambio((info.file_size, info.CRC), sello):
-                    continue
-                print(f"  {q.etiqueta}: la fuente la reescribió")
-            crudo = tmp / "crudo.csv"
-            with zf.open(nombre) as dentro, crudo.open("wb") as f:
-                shutil.copyfileobj(dentro, f)
-            yield q, crudo, f"{url}#{nombre}"
+    # UnRAR en Windows no abre un archivo sin extensión; los demás también agradecen
+    # el sufijo. El formato ya se decidió por la firma, no por el nombre de la URL.
+    bundle = bundle.rename(bundle.with_name(f"bundle.{fmt}"))
+
+    match fmt:
+        case "zip":
+            with zipfile.ZipFile(bundle) as zf:
+                for q, nombre in elegidas(
+                    zf.namelist(),
+                    candidatas,
+                    sellos,
+                    lambda n: (zf.getinfo(n).file_size, zf.getinfo(n).CRC),
+                ):
+                    crudo = tmp / "crudo.csv"
+                    with zf.open(nombre) as dentro, crudo.open("wb") as f:
+                        shutil.copyfileobj(dentro, f)
+                    yield q, crudo, f"{url}#{nombre}"
+        case "rar":
+            try:
+                with rarfile.RarFile(bundle) as rf:
+                    for q, nombre in elegidas(
+                        rf.namelist(),
+                        candidatas,
+                        sellos,
+                        lambda n: (rf.getinfo(n).file_size, rf.getinfo(n).CRC),
+                    ):
+                        crudo = tmp / "crudo.csv"
+                        with rf.open(nombre) as dentro, crudo.open("wb") as f:
+                            shutil.copyfileobj(dentro, f)
+                        yield q, crudo, f"{url}#{nombre}"
+            except rarfile.RarCannotExec as e:
+                raise RuntimeError(
+                    "la fuente sirvió un rar y no hay con qué extraerlo. "
+                    "Instala 7z (p7zip-full y p7zip-rar) o unrar; ver decisión #46."
+                ) from e
 
 
 def del_local(
     raiz: Path, url: str, candidatas: list[Quincena], sellos: Sellos
 ) -> Iterator[tuple[Quincena, Path, str]]:
-    """Los CSV ya extraídos a mano, que es la única vía para el año que viene en rar.
+    """Los CSV ya extraídos a mano, como escape si un bundle no se puede abrir.
 
-    Aquí no hay directorio central del que leer el CRC32, así que lo reescrito se detecta
-    sólo por tamaño. Para forzar una quincena concreta está `--rehacer`.
+    Aquí no hay encabezado del que leer el CRC32, así que lo reescrito se detecta sólo
+    por tamaño. Para forzar una quincena concreta está `--rehacer`.
     """
     disponibles = {ruta.name.lower(): ruta for ruta in raiz.rglob("*.csv")}
     for q in candidatas:
