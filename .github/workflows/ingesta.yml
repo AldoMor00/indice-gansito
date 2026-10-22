@@ -51,6 +51,11 @@ jobs:
         with:
           enable-cache: true
 
+      # El portal alterna entre zip y rar; p7zip-rar es el que le da a 7z el lector de
+      # rar. En la imagen del runner ya vienen, pero se declaran para no depender de eso.
+      - name: Instala el extractor de rar
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full p7zip-rar
+
       - name: Procesa la tanda
         id: ingesta
         run: uv run --python 3.13 scripts/ingesta_profeco.py --destino datos --max "${{ inputs.max || 5 }}"
